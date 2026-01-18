@@ -1,7 +1,7 @@
 import React, { useState, useEffect, Suspense } from 'react';
 import { Routes, Route, useNavigate, useLocation, Navigate, useParams } from 'react-router-dom';
 import { onMessage } from 'firebase/messaging';
-import { signOut } from 'firebase/auth';
+import { signOut, onAuthStateChanged } from 'firebase/auth';
 import { messaging, auth } from './services/firebase';
 import { User, GoogleSetupData } from './types';
 import { DBService } from './services/database';
@@ -164,13 +164,13 @@ const AppContent = ({
 
         <Suspense fallback={<LoadingFallback />}>
           <Routes>
-            <Route path="/" element={<Feed currentUser={currentUser} onUserClick={(userId) => navigate(`/profile/${userId}`)} />} />
-            <Route path="/messages" element={<Messages currentUser={currentUser} onChatSelect={(user) => navigate(`/chat/${user.id}`)} onUserClick={(userId) => navigate(`/profile/${userId}`)} />} />
+            <Route path="/" element={<Feed currentUser={currentUser} onUserClick={(userId) => navigate(`/ profile / ${userId} `)} />} />
+            <Route path="/messages" element={<Messages currentUser={currentUser} onChatSelect={(user) => navigate(`/ chat / ${user.id} `)} onUserClick={(userId) => navigate(` / profile / ${userId} `)} />} />
             <Route path="/chat/:userId" element={<ChatWrapper currentUser={currentUser} />} />
             <Route path="/profile" element={<Profile user={currentUser} currentUser={currentUser} isOwnProfile={true} onLogout={onLogout} />} />
             <Route path="/profile/:userId" element={<Profile currentUser={currentUser} isOwnProfile={false} />} />
             <Route path="/create" element={<CreateWrapper currentUser={currentUser} />} />
-            <Route path="/notifications" element={<Notifications currentUser={currentUser} onUserClick={(userId) => navigate(`/profile/${userId}`)} />} />
+            <Route path="/notifications" element={<Notifications currentUser={currentUser} onUserClick={(userId) => navigate(`/ profile / ${userId} `)} />} />
             <Route path="/settings" element={<SettingsWrapper currentUser={currentUser} onLogout={onLogout} onUpdateUser={onUpdateUser} onDeleteAccount={onDeleteAccount} onSwitchAccount={onSwitchAccount} onAddAccount={onAddAccount} />} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
@@ -211,6 +211,37 @@ const App = () => {
       // DBService.setUserOnline(user.id, true); // Method doesn't exist - removed
     }
     setIsLoading(false);
+  }, []);
+
+  // Firebase Auth State Listener
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
+      if (firebaseUser) {
+        // Firebase user is signed in
+        const storedUser = localStorage.getItem('currentUser');
+        if (!storedUser) {
+          // Firebase signed in but no localStorage - fetch from Firestore
+          try {
+            const userData = await DBService.getUserById(firebaseUser.uid);
+            if (userData) {
+              localStorage.setItem('currentUser', JSON.stringify(userData));
+              setCurrentUser(userData);
+            }
+          } catch (error) {
+            console.error('Failed to fetch user data:', error);
+          }
+        }
+      } else {
+        // Firebase user signed out - clear localStorage
+        const storedUser = localStorage.getItem('currentUser');
+        if (storedUser) {
+          localStorage.removeItem('currentUser');
+          setCurrentUser(null);
+        }
+      }
+    });
+
+    return () => unsubscribe();
   }, []);
 
   const handleLogin = async (user: User) => {
