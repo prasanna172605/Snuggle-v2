@@ -1,0 +1,29 @@
+name: Simple Deploy to Production
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  build_and_deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install & Build
+        run: |
+          npm ci
+          npm run build
+        env:
+           # If you have environment variables, add them here
+           CI: false # Ensures warnings don't break the build
+
+      - name: Deploy to Firebase
+        uses: FirebaseExtended/action-hosting-deploy@v0
+        with:
+          repoToken: ${{ secrets.GITHUB_TOKEN }}
+          firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_SNUGGLE_73465 }}
+          channelId: live
+          projectId: snuggle-73465

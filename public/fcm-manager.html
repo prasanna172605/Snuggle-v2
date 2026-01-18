@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>FCM Token Manager</title>
+    <style>
+        body {
+            font-family: Arial;
+            padding: 20px;
+            max-width: 900px;
+            margin: 0 auto;
+        }
+
+        .user {
+            border: 1px solid #ddd;
+            padding: 15px;
+            margin: 10px 0;
+            background: #f9f9f9;
+        }
+
+        .token {
+            font-family: monospace;
+            font-size: 11px;
+            word-break: break-all;
+            background: white;
+            padding: 8px;
+            margin: 5px 0;
+            border-left: 3px solid #4CAF50;
+        }
+
+        button {
+            padding: 10px 15px;
+            margin: 5px;
+            background: #4CAF50;
+            color: white;
+            border: none;
+            cursor: pointer;
+            border-radius: 4px;
+        }
+
+        button:hover {
+            background: #45a049;
+        }
+
+        button.danger {
+            background: #f44336;
+        }
+
+        button.danger:hover {
+            background: #da190b;
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        #output {
+            margin-top: 20px;
+        }
+
+        h1 {
+            color: #333;
+        }
+
+        .count {
+            color: #666;
+            font-size: 14px;
+        }
+    </style>
+</head>
+
+<body>
+    <h1>🔔 FCM Token Manager</h1>
+    <div>
+        <button onclick="loadTokens()">Load All User Tokens</button>
+        <button onclick="testNotification()">Test Send Notification</button>
+    </div>
+
+    <div id="output"></div>
+
+    <script type="module">
+        import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
+        import { getFirestore, collection, getDocs, doc, updateDoc } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyBKvYGH3TjGsKrHu0_hxqbwBCrxW-zyC1Y",
+            authDomain: "snuggle-73465.firebaseapp.com",
+            projectId: "snuggle-73465",
+            storageBucket: "snuggle-73465.firebasestorage.app",
+            messagingSenderId: "582661078044",
+            appId: "1:582661078044:web:40e3b29f62de3f53e03cf4"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+        let allUsers = [];
+
+        window.loadTokens = async function () {
+            const output = document.getElementById('output');
+            output.innerHTML = '<p>Loading users...</p>';
+
+            try {
+                const usersSnapshot = await getDocs(collection(db, 'users'));
+                allUsers = [];
+                let html = '<h2>User FCM Tokens:</h2>';
+
+                usersSnapshot.forEach(doc => {
+                    const data = doc.data();
+                    const tokens = data.fcmTokens || [];
+                    allUsers.push({ id: doc.id, data, tokens });
+
+                    html += `
+                        <div class="user">
+                            <strong>👤 ${data.username || data.fullName || 'Unknown'}</strong>
+                            <span class="count">(${tokens.length} token${tokens.length !== 1 ? 's' : ''})</span>
+                            <br><small>ID: ${doc.id}</small>
+                            ${tokens.length > 0 ? `
+                                <div style="margin-top: 10px;">
+                                    ${tokens.map((t, i) => `
+                                        <div class="token">
+                                            Token ${i + 1}: ${t.substring(0, 60)}...${t.substring(t.length - 20)}
+                                            <button onclick="removeToken('${doc.id}', ${i})" class="danger" style="font-size: 11px; padding: 4px 8px; margin-left: 10px;">Remove</button>
+                                        </div>
+                                    `).join('')}
+                                </div>
+                            ` : '<p style="color: #999;">No tokens registered</p>'}
+                        </div>
+                    `;
+                });
+
+                output.innerHTML = html;
+            } catch (e) {
+                output.innerHTML = `<p style="color: red;">❌ Error: ${e.message}</p>`;
+            }
+        };
+
+        window.removeToken = async function (userId, tokenIndex) {
+            if (!confirm('Remove this token?')) return;
+
+            try {
+                const user = allUsers.find(u => u.id === userId);
+                const newTokens = user.tokens.filter((_, i) => i !== tokenIndex);
+
+                await updateDoc(doc(db, 'users', userId), {
+                    fcmTokens: newTokens
+                });
+
+                alert('✅ Token removed! Reload to see changes.');
+                loadTokens();
+            } catch (e) {
+                alert('❌ Error: ' + e.message);
+            }
+        };
+
+        window.testNotification = async function () {
+            const userId = prompt('Enter user ID to send test notification:');
+            if (!userId) return;
+
+            try {
+                const response = await fetch('https://snuggle-seven.vercel.app/api/send-push', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        receiverId: userId,
+                        title: '🧪 Test Notification',
+                        body: 'This is a manual test from FCM Token Manager'
+                    })
+                });
+
+                const data = await response.json();
+                alert(JSON.stringify(data, null, 2));
+            } catch (e) {
+                alert('❌ Error: ' + e.message);
+            }
+        };
+
+        // Auto-load on page load
+        loadTokens();
+    </script>
+</body>
+
+</html>

@@ -1,0 +1,32 @@
+{
+  "projects": {
+    "default": "snuggle-dev",
+    "development": "snuggle-dev",
+    "staging": "snuggle-staging",
+    "production": "snuggle-73465"
+  },
+  "targets": {
+    "snuggle-dev": {
+      "hosting": {
+        "dev": [
+          "snuggle-dev"
+        ]
+      }
+    },
+    "snuggle-staging": {
+      "hosting": {
+        "staging": [
+          "snuggle-staging"
+        ]
+      }
+    },
+    "snuggle-prod": {
+      "hosting": {
+        "production": [
+          "snuggle-prod"
+        ]
+      }
+    }
+  },
+  "etags": {}
+}

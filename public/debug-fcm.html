@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>FCM Token Debugger</title>
+    <style>
+        body { font-family: Arial; padding: 20px; }
+        .user { border: 1px solid #ccc; padding: 15px; margin: 10px 0; }
+        .token { font-family: monospace; font-size: 12px; word-break: break-all; background: #f0f0f0; padding: 5px; }
+        button { padding: 10px; margin: 5px; }
+    </style>
+</head>
+<body>
+    <h1>FCM Token Debugger</h1>
+    <button onclick="checkTokens()">Check User Tokens</button>
+    <button onclick="clearMyTokens()">Clear My Tokens</button>
+    <button onclick="registerToken()">Re-register Token</button>
+    
+    <div id="output"></div>
+
+    <script type="module">
+        import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
+        import { getFirestore, collection, getDocs } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
+
+        // Replace with your Firebase config
+        const firebaseConfig = {
+            apiKey: "AIzaSyBKvYGH3TjGsKrHu0_hxqbwBCrxW-zyC1Y",
+            authDomain: "snuggle-73465.firebaseapp.com",
+            projectId: "snuggle-73465",
+            storageBucket: "snuggle-73465.firebasestorage.app",
+            messagingSenderId: "582661078044",
+            appId: "1:582661078044:web:40e3b29f62de3f53e03cf4"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+
+        window.checkTokens = async function() {
+            const output = document.getElementById('output');
+            output.innerHTML = '<p>Loading...</p>';
+            
+            try {
+                const usersSnapshot = await getDocs(collection(db, 'users'));
+                let html = '<h2>All Users FCM Tokens:</h2>';
+                
+                usersSnapshot.forEach(doc => {
+                    const data = doc.data();
+                    const tokens = data.fcmTokens || [];
+                    html += `
+                        <div class="user">
+                            <strong>User:</strong> ${data.username || data.fullName || doc.id}<br>
+                            <strong>ID:</strong> ${doc.id}<br>
+                            <strong>Token Count:</strong> ${tokens.length}<br>
+                            <strong>Tokens:</strong><br>
+                            ${tokens.map((t, i) => `<div class="token">${i+1}. ${t.substring(0, 50)}...</div>`).join('')}
+                        </div>
+                    `;
+                });
+                
+                output.innerHTML = html;
+            } catch(e) {
+                output.innerHTML = `<p style="color: red;">Error: ${e.message}</p>`;
+            }
+        };
+
+        window.clearMyTokens = function() {
+            alert('Open browser console and run: DBService.clearFCMTokens(YOUR_USER_ID)');
+        };
+
+        window.registerToken = function() {
+            alert('Go to Settings and toggle notifications OFF then ON');
+        };
+    </script>
+</body>
+</html>

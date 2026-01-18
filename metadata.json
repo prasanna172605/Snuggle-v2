@@ -1,0 +1,8 @@
+{
+  "name": "Copy of SNUGGLE",
+  "description": "A cozy social media application with real-time messaging, stories, and social feed.",
+  "requestFramePermissions": [
+    "camera",
+    "microphone"
+  ]
+}

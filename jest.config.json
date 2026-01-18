@@ -1,0 +1,54 @@
+{
+    "testEnvironment": "jsdom",
+    "setupFilesAfterEnv": [
+        "<rootDir>/src/setupTests.ts"
+    ],
+    "moduleNameMapper": {
+        "^@/(.*)$": "<rootDir>/$1",
+        "\\.(css|less|scss|sass)$": "identity-obj-proxy"
+    },
+    "transform": {
+        "^.+\\.(ts|tsx)$": [
+            "ts-jest",
+            {
+                "tsconfig": {
+                    "jsx": "react",
+                    "esModuleInterop": true,
+                    "allowSyntheticDefaultImports": true
+                }
+            }
+        ]
+    },
+    "collectCoverageFrom": [
+        "components/**/*.{ts,tsx}",
+        "services/**/*.{ts,tsx}",
+        "utils/**/*.{ts,tsx}",
+        "hooks/**/*.{ts,tsx}",
+        "!**/*.d.ts",
+        "!**/node_modules/**"
+    ],
+    "coverageThreshold": {
+        "global": {
+            "branches": 60,
+            "functions": 60,
+            "lines": 70,
+            "statements": 70
+        }
+    },
+    "testMatch": [
+        "**/__tests__/**/*.[jt]s?(x)",
+        "**/?(*.)+(spec|test).[jt]s?(x)"
+    ],
+    "moduleFileExtensions": [
+        "ts",
+        "tsx",
+        "js",
+        "jsx",
+        "json"
+    ],
+    "testPathIgnorePatterns": [
+        "/node_modules/",
+        "/dist/",
+        "/build/"
+    ]
+}

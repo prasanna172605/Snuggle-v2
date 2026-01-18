@@ -1,0 +1,161 @@
+/* Mobile-First Responsive Utilities */
+
+@layer utilities {
+
+    /* Touch Targets - Minimum 44x44px */
+    .touch-target {
+        min-width: 44px;
+        min-height: 44px;
+    }
+
+    /* Safe Areas for Mobile */
+    .safe-top {
+        padding-top: env(safe-area-inset-top);
+    }
+
+    .safe-bottom {
+        padding-bottom: env(safe-area-inset-bottom);
+    }
+
+    .safe-left {
+        padding-left: env(safe-area-inset-left);
+    }
+
+    .safe-right {
+        padding-right: env(safe-area-inset-right);
+    }
+
+    /* Mobile Typography */
+    .text-mobile-body {
+        font-size: 16px;
+        line-height: 1.5;
+    }
+
+    .text-mobile-small {
+        font-size: 14px;
+        line-height: 1.4;
+    }
+
+    /* Thumb-Reachable Zone */
+    .thumb-zone {
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        /* Content within 75% of screen height from bottom */
+    }
+
+    /* Hide scrollbar while allowing scroll */
+    .hide-scrollbar {
+        -ms-overflow-style: none;
+        scrollbar-width: none;
+    }
+
+    .hide-scrollbar::-webkit-scrollbar {
+        display: none;
+    }
+
+    /* Smooth scroll for mobile */
+    .smooth-scroll {
+        -webkit-overflow-scrolling: touch;
+        scroll-behavior: smooth;
+    }
+
+    /* Prevent text selection on tap (for buttons/icons) */
+    .no-tap-highlight {
+        -webkit-tap-highlight-color: transparent;
+        -webkit-touch-callout: none;
+        user-select: none;
+    }
+
+    /* Active/Press State */
+    .tap-active:active {
+        transform: scale(0.95);
+        transition: transform 0.1s ease;
+    }
+
+    /* Full-width touch area */
+    .touch-full {
+        display: block;
+        width: 100%;
+        padding: 12px 16px;
+    }
+
+    /* Card spacing for mobile */
+    .mobile-card {
+        margin: 8px 12px;
+        border-radius: 12px;
+    }
+
+    /* Bottom nav spacing */
+    .bottom-nav-spacing {
+        padding-bottom: calc(64px + env(safe-area-inset-bottom));
+    }
+
+    /* Gesture-friendly padding */
+    .swipe-padding {
+        padding-left: 8px;
+        padding-right: 8px;
+    }
+}
+
+/* Mobile-Specific Responsive Classes */
+@media (max-width: 640px) {
+
+    /* Stack on mobile */
+    .mobile-stack>* {
+        width: 100%;
+        margin-bottom: 8px;
+    }
+
+    /* Full viewport height minus nav */
+    .mobile-full-height {
+        height: calc(100vh - 64px - env(safe-area-inset-bottom));
+    }
+
+    /* Modal full screen on mobile */
+    .mobile-modal {
+        position: fixed;
+        inset: 0;
+        border-radius: 0;
+    }
+}
+
+/* Tablet adjustments */
+@media (min-width: 641px) and (max-width: 1024px) {
+    .tablet-columns-2 {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 16px;
+    }
+}
+
+/* Desktop enhancements */
+@media (min-width: 1025px) {
+    .desktop-sidebar {
+        display: block;
+    }
+
+    .desktop-max-width {
+        max-width: 1200px;
+        margin: 0 auto;
+    }
+}
+
+/* Orientation handling */
+@media (orientation: landscape) and (max-height: 500px) {
+
+    /* Compact mode for landscape phones */
+    .landscape-compact {
+        padding-top: 8px;
+        padding-bottom: 8px;
+    }
+}
+
+/* High DPI displays */
+@media (-webkit-min-device-pixel-ratio: 2),
+(min-resolution: 192dpi) {
+    .retina-image {
+        image-rendering: -webkit-optimize-contrast;
+    }
+}

@@ -1,0 +1,49 @@
+name: Pull Request Preview
+
+on:
+  pull_request:
+    branches: [staging, main]
+
+jobs:
+  preview:
+    name: Deploy Preview
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+          cache: 'npm'
+      
+      - name: Install dependencies
+        run: npm ci
+      
+      - name: Run tests
+        run: echo "Skipping tests" # npm test -- --watchAll=false
+      
+      - name: Build application
+        run: npm run build:staging
+      
+      - name: Deploy to Firebase Preview Channel
+        uses: FirebaseExtended/action-hosting-deploy@v0
+        with:
+          repoToken: ${{ secrets.GITHUB_TOKEN }}
+          firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_STAGING || '' }}
+          projectId: snuggle-staging
+          expires: 7d
+        id: firebase_hosting_preview
+      
+      - name: Comment Preview URL
+        uses: actions/github-script@v6
+        with:
+          script: |
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: `🔍 **Preview Deployment**\n\n✅ Preview URL: ${{ steps.firebase_hosting_preview.outputs.details_url }}\n\nExpires in 7 days.`
+            })

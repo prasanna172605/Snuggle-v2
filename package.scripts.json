@@ -1,0 +1,27 @@
+{
+    "scripts": {
+        "dev": "vite --mode development",
+        "build": "tsc && vite build",
+        "build:dev": "tsc && vite build --mode development",
+        "build:staging": "tsc && vite build --mode staging",
+        "build:prod": "tsc && vite build --mode production",
+        "preview": "vite preview",
+        "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
+        "test": "jest",
+        "test:watch": "jest --watch",
+        "test:coverage": "jest --coverage",
+        "emulators": "firebase emulators:start",
+        "deploy:dev": "firebase use development && npm run build:dev && firebase deploy",
+        "deploy:staging": "firebase use staging && npm run build:staging && firebase deploy",
+        "deploy:prod": "firebase use production && npm run build:prod && firebase deploy",
+        "deploy:hosting:dev": "firebase use development && firebase deploy --only hosting",
+        "deploy:hosting:staging": "firebase use staging && firebase deploy --only hosting",
+        "deploy:hosting:prod": "firebase use production && firebase deploy --only hosting",
+        "deploy:functions:dev": "firebase use development && firebase deploy --only functions",
+        "deploy:functions:staging": "firebase use staging && firebase deploy --only functions",
+        "deploy:functions:prod": "firebase use production && firebase deploy --only functions",
+        "deploy:rules:dev": "firebase use development && firebase deploy --only database,storage",
+        "deploy:rules:staging": "firebase use staging && firebase deploy --only database,storage",
+        "deploy:rules:prod": "firebase use production && firebase deploy --only database,storage"
+    }
+}
