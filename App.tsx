@@ -195,6 +195,18 @@ const App = () => {
     const storedUser = localStorage.getItem('currentUser');
     if (storedUser) {
       const user = JSON.parse(storedUser);
+
+      // Reconstruct timestamp methods for localStorage data
+      if (user.createdAt?._seconds) {
+        user.createdAt = { toMillis: () => user.createdAt._seconds * 1000 };
+      }
+      if (user.updatedAt?._seconds) {
+        user.updatedAt = { toMillis: () => user.updatedAt._seconds * 1000 };
+      }
+      if (user.lastLogin?._seconds) {
+        user.lastLogin = { toMillis: () => user.lastLogin._seconds * 1000 };
+      }
+
       setCurrentUser(user);
       // DBService.setUserOnline(user.id, true); // Method doesn't exist - removed
     }
