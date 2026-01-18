@@ -7,6 +7,8 @@ import crypto from 'crypto';
 import speakeasy from 'speakeasy';
 import QRCode from 'qrcode';
 
+const router = express.Router();
+
 // POST /api/v1/auth/signup
 router.post('/signup', async (req, res, next) => {
     try {
