@@ -1162,6 +1162,45 @@ export class DBService {
         return [userId1, userId2].sort().join('_');
     }
 
+    static async sendPushNotification(payload: {
+        receiverId: string;
+        title: string;
+        body: string;
+        url?: string;
+        icon?: string;
+        type?: string;
+    }): Promise<void> {
+        try {
+            const user = auth.currentUser;
+            if (!user) return;
+            const token = await user.getIdToken();
+
+            // Using relative URL '/api' which Vercel/Vite will proxy to the backend function
+            const response = await fetch('/api/send-push', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify(payload)
+            });
+
+            if (!response.ok) {
+                // Determine if it was just a suppression (success case for UI purposes)
+                const resJson = await response.json().catch(() => ({}));
+                if (resJson.status === 'suppressed') {
+                    console.log('[DB] Push suppressed by preference');
+                    return;
+                }
+                console.warn('[DB] Push notification failed:', resJson);
+            } else {
+                console.log('[DB] Push notification sent properly via Vercel');
+            }
+        } catch (error) {
+            console.error('[DB] Error sending push notification:', error);
+        }
+    }
+
     static async saveUserToken(userId: string, token: string): Promise<void> {
         if (!userId || !token) return;
 
@@ -1274,8 +1313,19 @@ export class DBService {
             [`unreadCounts.${messageData.receiverId}`]: increment(1)
         });
 
-        // Push Notification now handled by backend Cloud Function (onMessageCreate)
-        // Client only updates DB.
+        // Trigger Push Notification via Vercel (Free Tier Backend)
+        const senderProfile = await this.getUserById(messageData.senderId);
+        const senderName = senderProfile?.fullName || "New Message";
+        const msgBody = messageData.type === 'text' ? messageData.text : `Sent a ${messageData.type}`;
+
+        this.sendPushNotification({
+            receiverId: messageData.receiverId!,
+            title: senderName,
+            body: msgBody,
+            url: '/messages',
+            icon: senderProfile?.avatar,
+            type: messageData.type || 'message'
+        }).catch(err => console.error("Push trigger failed", err));
 
         return { ...messageData, status: finalStatus };
     }
