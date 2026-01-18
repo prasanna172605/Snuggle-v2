@@ -194,11 +194,16 @@ export class DBService {
         const userSnap = await getDoc(userRef);
         if (userSnap.exists()) {
             const data = userSnap.data() as DBUser;
+
+            const createdAtTs = convertTimestamp(data.createdAt);
+            const updatedAtTs = convertTimestamp(data.updatedAt);
+            const lastLoginTs = convertTimestamp(data.lastLogin);
+
             return {
                 ...data,
-                createdAt: data.createdAt?.toMillis() || Date.now(),
-                updatedAt: data.updatedAt?.toMillis() || Date.now(),
-                lastLogin: data.lastLogin?.toMillis() || Date.now()
+                createdAt: createdAtTs?.toMillis() || Date.now(),
+                updatedAt: updatedAtTs?.toMillis() || Date.now(),
+                lastLogin: lastLoginTs?.toMillis() || Date.now()
             } as User;
         }
         return null;
@@ -210,11 +215,16 @@ export class DBService {
         if (querySnapshot.empty) return null;
 
         const data = querySnapshot.docs[0].data() as DBUser;
+
+        const createdAtTs = convertTimestamp(data.createdAt);
+        const updatedAtTs = convertTimestamp(data.updatedAt);
+        const lastLoginTs = convertTimestamp(data.lastLogin);
+
         return {
             ...data,
-            createdAt: data.createdAt?.toMillis() || Date.now(),
-            updatedAt: data.updatedAt?.toMillis() || Date.now(),
-            lastLogin: data.lastLogin?.toMillis() || Date.now()
+            createdAt: createdAtTs?.toMillis() || Date.now(),
+            updatedAt: updatedAtTs?.toMillis() || Date.now(),
+            lastLogin: lastLoginTs?.toMillis() || Date.now()
         } as User;
     }
 
