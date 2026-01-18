@@ -32,6 +32,36 @@ import { ref as rtdbRef, set, onDisconnect, serverTimestamp as rtdbServerTimesta
 // Types
 import { User, Post as AppPost, Story as AppStory, Notification as AppNotification, CoreContent, ContentType, ContentStatus, ContentPriority } from '../types';
 
+export interface Call {
+    id: string;
+    callerId: string;
+    recipientId: string;
+    startTime: Timestamp;
+    endTime?: Timestamp;
+    duration?: number;
+    status: 'ongoing' | 'ended' | 'missed';
+}
+
+// Helper function to convert API timestamps to Firebase Timestamps
+function convertTimestamp(value: any): Timestamp | null {
+    if (!value) return null;
+
+    // Already a Firebase Timestamp
+    if (value instanceof Timestamp) return value;
+
+    // API response format: { _seconds, _nanoseconds }
+    if (value._seconds !== undefined && value._nanoseconds !== undefined) {
+        return new Timestamp(value._seconds, value._nanoseconds);
+    }
+
+    // Plain number (milliseconds)
+    if (typeof value === 'number') {
+        return Timestamp.fromMillis(value);
+    }
+
+    return null;
+}
+
 // DB Model for User (matches Firestore data)
 export interface DBUser {
     id: string;

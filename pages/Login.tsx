@@ -124,8 +124,26 @@ const Login: React.FC<LoginProps> = ({ onLogin, onNavigate, onGoogleSetupNeeded 
         return;
       }
 
+      // Convert API timestamps to Firebase Timestamps
+      const userData = data.data.user;
+      if (userData.createdAt?._seconds) {
+        userData.createdAt = {
+          toMillis: () => userData.createdAt._seconds * 1000
+        };
+      }
+      if (userData.updatedAt?._seconds) {
+        userData.updatedAt = {
+          toMillis: () => userData.updatedAt._seconds * 1000
+        };
+      }
+      if (userData.lastLogin?._seconds) {
+        userData.lastLogin = {
+          toMillis: () => userData.lastLogin._seconds * 1000
+        };
+      }
+
       // Use the user data from backend ensuring sync
-      onLogin(data.data.user);
+      onLogin(userData);
 
     } catch (err: any) {
       console.error(err);
