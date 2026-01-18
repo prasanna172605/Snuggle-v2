@@ -95,7 +95,7 @@ export default async function handler(req, res) {
 
         const devices = devicesSnap.val();
         const tokens = Object.values(devices)
-            .map((d: any) => d.token)
+            .map((d) => d.token)
             .filter(t => typeof t === 'string' && t.length > 0);
 
         const uniqueTokens = [...new Set(tokens)];
