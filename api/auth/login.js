@@ -75,16 +75,20 @@ export default async function handler(req, res) {
 
         // Update last login
         await db.collection('users').doc(uid).update({
-            lastLogin: Date.now(),
+            lastLogin: admin.firestore.FieldValue.serverTimestamp(),
             isOnline: true
         });
+
+        // Get updated user data with proper timestamps
+        const updatedUserDoc = await db.collection('users').doc(uid).get();
+        const updatedUserData = updatedUserDoc.data();
 
         return res.status(200).json({
             status: "success",
             message: "Logged in successfully",
             token: idToken,
             data: {
-                user: userData
+                user: updatedUserData
             }
         });
 
