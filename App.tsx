@@ -164,13 +164,13 @@ const AppContent = ({
 
         <Suspense fallback={<LoadingFallback />}>
           <Routes>
-            <Route path="/" element={<Feed currentUser={currentUser} onUserClick={(userId) => navigate(`/ profile / ${userId} `)} />} />
-            <Route path="/messages" element={<Messages currentUser={currentUser} onChatSelect={(user) => navigate(`/ chat / ${user.id} `)} onUserClick={(userId) => navigate(` / profile / ${userId} `)} />} />
+            <Route path="/" element={<Feed currentUser={currentUser} onUserClick={(userId) => navigate(`/profile/${userId}`)} />} />
+            <Route path="/messages" element={<Messages currentUser={currentUser} onChatSelect={(user) => navigate(`/chat/${user.id}`)} onUserClick={(userId) => navigate(`/profile/${userId}`)} />} />
             <Route path="/chat/:userId" element={<ChatWrapper currentUser={currentUser} />} />
             <Route path="/profile" element={<Profile user={currentUser} currentUser={currentUser} isOwnProfile={true} onLogout={onLogout} />} />
             <Route path="/profile/:userId" element={<Profile currentUser={currentUser} isOwnProfile={false} />} />
             <Route path="/create" element={<CreateWrapper currentUser={currentUser} />} />
-            <Route path="/notifications" element={<Notifications currentUser={currentUser} onUserClick={(userId) => navigate(`/ profile / ${userId} `)} />} />
+            <Route path="/notifications" element={<Notifications currentUser={currentUser} onUserClick={(userId) => navigate(`/profile/${userId}`)} />} />
             <Route path="/settings" element={<SettingsWrapper currentUser={currentUser} onLogout={onLogout} onUpdateUser={onUpdateUser} onDeleteAccount={onDeleteAccount} onSwitchAccount={onSwitchAccount} onAddAccount={onAddAccount} />} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
