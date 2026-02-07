@@ -2,7 +2,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useCall } from '../context/CallContext';
 import { DBService } from '../services/database';
-import { Phone, PhoneOff, Mic, MicOff, Video, VideoOff, MonitorUp, PhoneIncoming } from 'lucide-react';
+import { Phone, PhoneOff, Mic, MicOff, Video, VideoOff, MonitorUp, PhoneIncoming, Volume2, VolumeX } from 'lucide-react';
 import { User } from '../types';
 
 const CallOverlay: React.FC = () => {
@@ -25,9 +25,11 @@ const CallOverlay: React.FC = () => {
 
   const [caller, setCaller] = useState<User | null>(null);
   const [activeUser, setActiveUser] = useState<User | null>(null);
+  const [isSpeakerOn, setIsSpeakerOn] = useState(true);
 
   const localVideoRef = useRef<HTMLVideoElement>(null);
   const remoteVideoRef = useRef<HTMLVideoElement>(null);
+  const audioRef = useRef<HTMLAudioElement>(null);
 
   useEffect(() => {
     if (incomingCall) {
@@ -58,6 +60,18 @@ const CallOverlay: React.FC = () => {
       remoteVideoRef.current.srcObject = remoteStream;
     }
   }, [remoteStream]);
+
+  // Speaker toggle function
+  const toggleSpeaker = () => {
+    if (audioRef.current) {
+      audioRef.current.muted = isSpeakerOn;
+      setIsSpeakerOn(!isSpeakerOn);
+    }
+    // Also toggle video element audio if present
+    if (remoteVideoRef.current) {
+      remoteVideoRef.current.muted = isSpeakerOn;
+    }
+  };
 
   if (incomingCall && caller) {
     return (
@@ -97,43 +111,61 @@ const CallOverlay: React.FC = () => {
   }
 
   if (activeCall) {
+    const isVideoCall = activeCall.type === 'video';
+    const showRemoteVideo = isVideoCall && remoteStream && !isCameraOff;
+
     return (
       <div className="fixed inset-0 z-50 bg-gray-900 flex flex-col">
-        {/* Main Video (Remote) */}
-        <div className="flex-1 relative overflow-hidden">
-          {remoteStream ? (
+        {/* Main Content Area */}
+        <div className="flex-1 relative overflow-hidden flex items-center justify-center">
+
+          {/* Video Call - Remote Video */}
+          {isVideoCall && remoteStream && (
             <video
               ref={remoteVideoRef}
               autoPlay
               playsInline
-              muted={false}
+              muted={!isSpeakerOn}
               className="w-full h-full object-cover"
             />
-          ) : (
-            <div className="w-full h-full flex items-center justify-center flex-col">
-              <img src={activeUser?.avatar} className="w-32 h-32 rounded-full border-4 border-gray-700 opacity-50 mb-4" />
-              <p className="text-white/50 animate-pulse">Connecting...</p>
+          )}
+
+          {/* Centered Profile Photo - Show for audio calls OR video calls when remote camera is off/connecting */}
+          {(!isVideoCall || !remoteStream) && (
+            <div className="flex flex-col items-center justify-center">
+              <div className="relative mb-6">
+                <div className="absolute inset-0 bg-snuggle-500/30 rounded-full animate-pulse scale-110"></div>
+                <img
+                  src={activeUser?.avatar || '/vite.svg'}
+                  alt={activeUser?.username || 'User'}
+                  className="w-40 h-40 rounded-full object-cover border-4 border-white/20 shadow-2xl relative z-10"
+                />
+              </div>
+              <h3 className="text-white text-2xl font-bold mb-1">{activeUser?.fullName || 'Connecting...'}</h3>
+              <p className="text-white/60 text-sm">
+                {remoteStream ? (isVideoCall ? 'Camera off' : 'Audio call connected') : 'Connecting...'}
+              </p>
             </div>
           )}
 
           {/* AUDIO element for audio-only calls */}
           {remoteStream && (
             <audio
-              ref={(el) => {
-                if (el && remoteStream) {
-                  console.log('[CallOverlay] Setting audio element stream');
-                  el.srcObject = remoteStream;
-                  el.play().catch(e => console.error('Audio play failed:', e));
-                }
-              }}
+              ref={audioRef}
               autoPlay
               playsInline
+              muted={!isSpeakerOn}
             />
           )}
 
-          {/* Local Video (PIP) */}
-          {activeCall.type === 'video' && (
-            <div className="absolute top-4 right-4 w-32 h-48 bg-gray-800 rounded-xl overflow-hidden shadow-2xl border border-white/20">
+          {/* Set audio stream separately */}
+          {remoteStream && audioRef.current && (
+            <>{audioRef.current.srcObject = remoteStream}</>
+          )}
+
+          {/* Local Video PIP (for video calls) */}
+          {isVideoCall && (
+            <div className="absolute top-20 right-4 w-32 h-48 bg-gray-800 rounded-xl overflow-hidden shadow-2xl border border-white/20">
               <video
                 ref={localVideoRef}
                 autoPlay
@@ -181,7 +213,6 @@ const CallOverlay: React.FC = () => {
                 <div className="flex items-center gap-2">
                   <button
                     onClick={() => {
-                      // Reject the incoming call waiting request
                       if (incomingCall) {
                         DBService.sendSignal({
                           type: 'busy',
@@ -189,12 +220,6 @@ const CallOverlay: React.FC = () => {
                           receiverId: incomingCall.callerId,
                           timestamp: Date.now()
                         });
-                        // We need to clear the incoming call state from context
-                        // Since we don't have a direct setter exposed, we might need to expose one or use a new method
-                        // But we can't easily modify context from here without exposing more.
-                        // Workaround: The context should probably handle this better.
-                        // Actually, let's just expose a way to dismiss incoming call.
-                        // Or better: update rejectCall in context to handle this case!
                       }
                     }}
                     className="p-2 bg-red-500/20 text-red-400 rounded-full hover:bg-red-500 hover:text-white transition-colors"
@@ -216,7 +241,17 @@ const CallOverlay: React.FC = () => {
 
         {/* Controls */}
         <div className="bg-gray-900/90 backdrop-blur p-6 pb-8 absolute bottom-0 left-0 right-0">
-          <div className="flex items-center justify-center space-x-6">
+          <div className="flex items-center justify-center space-x-5">
+            {/* Speaker Toggle */}
+            <button
+              onClick={toggleSpeaker}
+              className={`p-4 rounded-full shadow-lg transition-all transform hover:scale-105 ${!isSpeakerOn ? 'bg-red-500 text-white hover:bg-red-600' : 'bg-white text-gray-900 hover:bg-gray-100'
+                }`}
+            >
+              {isSpeakerOn ? <Volume2 className="w-6 h-6" /> : <VolumeX className="w-6 h-6" />}
+            </button>
+
+            {/* Mic Toggle */}
             <button
               onClick={toggleMic}
               className={`p-4 rounded-full shadow-lg transition-all transform hover:scale-105 ${isMicMuted ? 'bg-red-500 text-white hover:bg-red-600' : 'bg-white text-gray-900 hover:bg-gray-100'
@@ -246,6 +281,7 @@ const CallOverlay: React.FC = () => {
               </button>
             )}
 
+            {/* End Call */}
             <button
               onClick={endCall}
               className="p-5 bg-red-500 rounded-full text-white hover:bg-red-600 shadow-xl transform hover:scale-110 transition-all border-4 border-gray-900/50"
