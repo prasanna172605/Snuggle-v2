@@ -23,6 +23,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                     const user = await DBService.getUserById(firebaseUser.uid);
                     if (user) {
                         setCurrentUser(user);
+
+                        // Auto-register FCM token for push notifications
+                        // This ensures the device token is always saved on login
+                        if ('Notification' in window && Notification.permission === 'granted') {
+                            DBService.requestNotificationPermission(user.id).catch(err =>
+                                console.log('[Auth] FCM token registration skipped:', err)
+                            );
+                        }
                     } else {
                         // Handle case where user exists in Auth but not in DB (rare)
                         setCurrentUser({
