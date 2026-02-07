@@ -175,10 +175,10 @@ const AppContent = ({
     location.pathname === '/create';
 
   return (
-    <div className="min-h-screen bg-snuggle-50 dark:bg-black flex justify-center">
+    <div className="h-screen w-screen overflow-hidden bg-white dark:bg-dark-bg">
       {/* Toast Notifications */}
       <Toaster position="top-right" richColors closeButton />
-      <div className="w-full md:max-w-6xl xl:max-w-7xl bg-white dark:bg-dark-bg relative shadow-2xl min-h-screen md:h-[calc(100vh-2rem)] md:max-h-[calc(100vh-2rem)] flex flex-col md:flex-row overflow-hidden md:rounded-2xl md:my-4 md:border md:border-gray-200 dark:md:border-gray-800">
+      <div className="w-full h-full flex flex-col md:flex-row overflow-hidden">
         <CallOverlay />
 
         {/* Sidebar - Desktop Only */}
@@ -194,7 +194,7 @@ const AppContent = ({
         />
 
         {/* Main Content */}
-        <div className="flex-1 flex flex-col relative w-full h-[100dvh] md:h-full overflow-hidden bg-gray-50 dark:bg-black/90 md:rounded-r-2xl">
+        <div className={`flex-1 flex flex-col relative w-full h-full bg-gray-50 dark:bg-black/90 ${isFullScreen ? 'overflow-hidden' : 'overflow-y-auto'}`}>
           <AnimatePresence mode="wait" initial={false}>
             <Suspense fallback={<LoadingFallback />}>
               <Routes location={location} key={location.pathname}>

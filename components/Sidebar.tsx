@@ -52,8 +52,9 @@ const Sidebar: React.FC<SidebarProps> = ({ unreadCount, onLogout, onSwitchAccoun
         </NavLink>
     );
 
+
     return (
-        <aside className="hidden md:flex flex-col w-64 h-screen bg-white dark:bg-black border-r border-gray-100 dark:border-dark-border py-6 px-4 sticky top-0 z-40">
+        <aside className="hidden md:flex flex-col w-64 h-full flex-shrink-0 bg-white dark:bg-black border-r border-gray-100 dark:border-dark-border py-6 px-4 z-40">
             {/* Brand */}
             <div className="flex items-center gap-3 px-4 mb-8">
                 <div className="w-10 h-10 bg-gradient-to-tr from-snuggle-500 to-snuggle-600 rounded-xl flex items-center justify-center shadow-lg shadow-snuggle-500/20">

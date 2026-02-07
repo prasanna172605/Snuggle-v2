@@ -390,7 +390,7 @@ const Chat: React.FC<ChatProps> = ({ currentUser, otherUser, onBack }) => {
   };
 
   return (
-    <div className="flex flex-col h-[100dvh] md:h-full bg-[#0f1014] text-white overflow-hidden relative font-['Plus_Jakarta_Sans']">
+    <div className="flex flex-col h-full bg-[#0f1014] text-white overflow-hidden relative font-['Plus_Jakarta_Sans']">
       {showCamera && <CameraCapture onCapture={handleCameraCapture} onClose={() => setShowCamera(false)} />}
 
       {/* Header */}
