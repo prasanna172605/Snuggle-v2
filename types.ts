@@ -27,6 +27,8 @@ export interface User {
   // Social
   followers?: string[];
   following?: string[];
+  likedPosts?: string[];
+  savedPosts?: string[];
   socialLinks?: {
     instagram?: string;
     twitter?: string;
@@ -81,7 +83,8 @@ export interface Post {
   userAvatar?: string;
   caption: string;
   imageUrl?: string;
-  likes: number;
+  likes: number | string[];  // Can be count or array of user IDs
+  likedBy?: string[];  // Array of user IDs who liked this post
   comments: number;
   mediaType?: 'image' | 'video';
   commentCount?: number;

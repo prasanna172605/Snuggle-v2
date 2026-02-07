@@ -103,21 +103,35 @@ const Feed: React.FC<FeedProps> = ({ currentUser, onUserClick }) => {
     }, [currentUser]);
 
     const handleLike = async (postId: string) => {
-        await DBService.likePost(postId, currentUser.id);
-        // Re-fetch posts to update like count and state
+        const post = posts.find(p => p.id === postId);
+        const likesArray = Array.isArray(post?.likes) ? post.likes : [];
+        const isLiked = likesArray.includes(currentUser.id);
+
+        if (isLiked) {
+            await DBService.unlikePost(postId, currentUser.id);
+        } else {
+            await DBService.likePost(postId, currentUser.id);
+        }
+        // Re-fetch posts to update like state
         const updatedPosts = await DBService.getFeed(currentUser.id, 50);
         setPosts(updatedPosts);
     };
 
     const handleSave = async (postId: string) => {
-        toast.success('Post saved!');
-        // TODO: Implement save in DBService
+        const isSaved = currentUser.savedPosts?.includes(postId);
+
+        if (isSaved) {
+            await DBService.unsavePost(postId, currentUser.id);
+            toast.success('Removed from saved');
+        } else {
+            await DBService.savePost(postId, currentUser.id);
+            toast.success('Post saved!');
+        }
     };
 
     const handleShare = async (postId: string) => {
-        const postUrl = `${window.location.origin}/post/${postId}`;
-        await navigator.clipboard.writeText(postUrl);
-        toast.success('Link copied to clipboard!');
+        // TODO: Open share modal to select users
+        toast.info('Share to chat coming soon!');
     };
 
     const handleComment = (postId: string) => {
@@ -236,9 +250,15 @@ const Feed: React.FC<FeedProps> = ({ currentUser, onUserClick }) => {
                             {/* Actions */}
                             <div className="flex items-center justify-between px-3 pt-3">
                                 <div className="flex items-center gap-4">
-                                    <button onClick={() => handleLike(post.id)} className="group flex items-center gap-1.5 focus:outline-none">
-                                        <Heart className={`w-6 h-6 transition-transform active:scale-90 ${post.likes > 0 ? 'fill-red-500 text-red-500' : 'text-gray-900 dark:text-white stroke-[1.5px]'}`} />
-                                    </button>
+                                    {(() => {
+                                        const likesArray = Array.isArray(post.likes) ? post.likes : [];
+                                        const isLiked = likesArray.includes(currentUser.id);
+                                        return (
+                                            <button onClick={() => handleLike(post.id)} className="group flex items-center gap-1.5 focus:outline-none">
+                                                <Heart className={`w-6 h-6 transition-transform active:scale-90 ${isLiked ? 'fill-red-500 text-red-500' : 'text-gray-900 dark:text-white stroke-[1.5px]'}`} />
+                                            </button>
+                                        );
+                                    })()}
 
                                     <button onClick={() => handleComment(post.id)} className="group flex items-center gap-1.5 focus:outline-none">
                                         <MessageSquare className="w-6 h-6 text-gray-900 dark:text-white stroke-[1.5px]" />
@@ -250,15 +270,20 @@ const Feed: React.FC<FeedProps> = ({ currentUser, onUserClick }) => {
                                 </div>
 
                                 {/* Save/Bookmark */}
-                                <button onClick={() => handleSave(post.id)} className="group focus:outline-none">
-                                    <Bookmark className="w-6 h-6 text-gray-900 dark:text-white stroke-[1.5px]" />
-                                </button>
+                                {(() => {
+                                    const isSaved = currentUser.savedPosts?.includes(post.id);
+                                    return (
+                                        <button onClick={() => handleSave(post.id)} className="group focus:outline-none">
+                                            <Bookmark className={`w-6 h-6 ${isSaved ? 'fill-white text-white dark:fill-white dark:text-white' : 'text-gray-900 dark:text-white stroke-[1.5px]'}`} />
+                                        </button>
+                                    );
+                                })()}
                             </div>
 
                             {/* Likes Text */}
                             <div className="px-4 py-1">
                                 <p className="font-bold text-sm text-gray-900 dark:text-white">
-                                    {post.likes} likes
+                                    {Array.isArray(post.likes) ? post.likes.length : post.likes} likes
                                 </p>
                             </div>
 

@@ -72,8 +72,6 @@ const Sidebar: React.FC<SidebarProps> = ({ unreadCount, onLogout, onSwitchAccoun
                 <NavItem to="/notifications" icon={Bell} label="Notifications" />
                 <NavItem to="/profile" icon={User} label="Profile" />
                 <NavItem to="/create" icon={Plus} label="Create" />
-                <NavItem to="/activities" icon={Heart} label="Your Activity" />
-                <NavItem to="/saved" icon={Bookmark} label="Saved" />
             </nav>
 
             {/* Bottom Menu Area */}
@@ -85,13 +83,17 @@ const Sidebar: React.FC<SidebarProps> = ({ unreadCount, onLogout, onSwitchAccoun
                             <Settings className="w-5 h-5" />
                             <span className="font-medium">Settings</span>
                         </NavLink>
+                        <NavLink to="/activities" className="flex items-center gap-3 px-4 py-3 hover:bg-gray-50 dark:hover:bg-dark-border transition-colors">
+                            <Heart className="w-5 h-5" />
+                            <span className="font-medium">Your Activity</span>
+                        </NavLink>
+                        <NavLink to="/saved" className="flex items-center gap-3 px-4 py-3 hover:bg-gray-50 dark:hover:bg-dark-border transition-colors">
+                            <Bookmark className="w-5 h-5" />
+                            <span className="font-medium">Saved</span>
+                        </NavLink>
                         <div className="flex items-center gap-3 px-4 py-3 hover:bg-gray-50 dark:hover:bg-dark-border transition-colors cursor-pointer" onClick={toggleTheme}>
                             {isDarkMode ? <Moon className="w-5 h-5" /> : <Sun className="w-5 h-5" />}
                             <span className="font-medium">Switch Appearance</span>
-                        </div>
-                        <div className="flex items-center gap-3 px-4 py-3 hover:bg-gray-50 dark:hover:bg-dark-border transition-colors cursor-pointer">
-                            <Bookmark className="w-5 h-5" />
-                            <span className="font-medium">Saves</span>
                         </div>
                         <div className="flex items-center gap-3 px-4 py-3 hover:bg-gray-50 dark:hover:bg-dark-border transition-colors cursor-pointer" onClick={onAddAccount}>
                             <Users className="w-5 h-5" />

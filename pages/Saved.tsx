@@ -14,16 +14,18 @@ const Saved: React.FC<SavedProps> = ({ currentUser, onBack }) => {
 
     useEffect(() => {
         loadSavedPosts();
-    }, []);
+    }, [currentUser.id]);
 
     const loadSavedPosts = async () => {
         setLoading(true);
-        // TODO: Implement DBService.getSavedPosts()
-        // For now, using empty array
-        setTimeout(() => {
-            setSavedPosts([]);
+        try {
+            const posts = await DBService.getSavedPosts(currentUser.id);
+            setSavedPosts(posts);
+        } catch (error) {
+            console.error('Error loading saved posts:', error);
+        } finally {
             setLoading(false);
-        }, 500);
+        }
     };
 
     return (

@@ -1,8 +1,9 @@
 import React, { useState, useRef, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   User as UserIcon, Lock, Bell, Shield, LogOut, Camera, Trash2,
   Download, ChevronRight, Mail, Smartphone, Globe, AlertTriangle,
-  MapPin, Calendar, Link as LinkIcon, Save, Moon, Sun, Users
+  MapPin, Calendar, Link as LinkIcon, Save, Moon, Sun, Users, Heart, Bookmark
 } from 'lucide-react';
 import { User } from '../types';
 import { DBService } from '../services/database';
@@ -31,6 +32,7 @@ const Settings: React.FC<SettingsProps> = ({
   onDeleteAccount,
   onSwitchAccount
 }) => {
+  const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<TabType>('profile');
   const [isLoading, setIsLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -523,7 +525,33 @@ const Settings: React.FC<SettingsProps> = ({
               <ChevronRight className="w-5 h-5 text-gray-400" />
             </div>
 
-            {/* Data Export */}
+            {/* Your Activity - Mobile Only */}
+            <div className="md:hidden bg-white dark:bg-dark-card p-6 rounded-[32px] shadow-sm flex items-center justify-between cursor-pointer" onClick={() => navigate('/activities')}>
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-pink-50 dark:bg-pink-900/20 rounded-full text-pink-600">
+                  <Heart className="w-6 h-6" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-lg">Your Activity</h3>
+                  <p className="text-xs text-gray-500">Likes, comments, and more</p>
+                </div>
+              </div>
+              <ChevronRight className="w-5 h-5 text-gray-400" />
+            </div>
+
+            {/* Saved - Mobile Only */}
+            <div className="md:hidden bg-white dark:bg-dark-card p-6 rounded-[32px] shadow-sm flex items-center justify-between cursor-pointer" onClick={() => navigate('/saved')}>
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-amber-50 dark:bg-amber-900/20 rounded-full text-amber-600">
+                  <Bookmark className="w-6 h-6" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-lg">Saved</h3>
+                  <p className="text-xs text-gray-500">Posts you've saved</p>
+                </div>
+              </div>
+              <ChevronRight className="w-5 h-5 text-gray-400" />
+            </div>
             <div className="bg-white dark:bg-dark-card p-6 rounded-[32px] shadow-sm">
               <h3 className="font-bold text-lg mb-2">Data & Privacy</h3>
               <p className="text-sm text-gray-500 mb-4">Download a copy of your data including posts, messages, and profile info.</p>

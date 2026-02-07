@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { User, Post } from '../types';
-import { Settings, Grid, Edit3, Share2, MessageCircle, UserPlus, UserMinus, UserCheck, Camera, Save, X as XIcon, MapPin, Calendar, Link as LinkIcon, Phone } from 'lucide-react';
+import { Settings, Grid, Edit3, Share2, MessageCircle, UserPlus, UserMinus, UserCheck, Camera, Save, X as XIcon, MapPin, Calendar, Link as LinkIcon, Phone, Bookmark, Play, Film, UserSquare2 } from 'lucide-react';
 import { DBService } from '../services/database';
 import { SkeletonProfile } from '../components/common/Skeleton';
 
@@ -31,6 +31,8 @@ const Profile: React.FC<ProfileProps> = ({ user: propUser, currentUser, isOwnPro
     const [avatarFile, setAvatarFile] = useState<File | null>(null);
     const [previewAvatar, setPreviewAvatar] = useState<string | null>(null);
     const [editError, setEditError] = useState('');
+    const [activeTab, setActiveTab] = useState<'posts' | 'reels' | 'saved' | 'tagged'>('posts');
+    const [savedPosts, setSavedPosts] = useState<Post[]>([]);
 
     useEffect(() => {
         const loadProfile = async () => {
@@ -290,153 +292,243 @@ const Profile: React.FC<ProfileProps> = ({ user: propUser, currentUser, isOwnPro
         );
     }
 
-    // --- View Mode UI (Existing with small enhancements) ---
+    // --- View Mode UI (Instagram-like) ---
     return (
-        <div className="pb-28 pt-2 px-2 relative">
-            <div className="grid grid-cols-2 gap-2">
+        <div className="pb-28 relative bg-white dark:bg-black min-h-screen">
+            {/* Header with Settings */}
+            <div className="sticky top-0 z-20 bg-white/80 dark:bg-black/80 backdrop-blur-md border-b border-gray-100 dark:border-dark-border">
+                <div className="flex items-center justify-between px-4 py-3 max-w-4xl mx-auto">
+                    <h1 className="text-xl font-bold text-gray-900 dark:text-white">{user.username}</h1>
+                    {isOwnProfile && (
+                        <button onClick={() => navigate('/settings')} className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-full transition-colors">
+                            <Settings className="w-6 h-6" />
+                        </button>
+                    )}
+                </div>
+            </div>
 
-                {/* Main Profile Card */}
-                <div className="col-span-2 bg-white dark:bg-dark-card rounded-bento p-6 flex flex-col items-center justify-center text-center shadow-sm relative overflow-hidden transition-colors border border-transparent dark:border-dark-border">
-                    <div className="absolute top-0 left-0 right-0 h-24 bg-gradient-to-r from-cyan-100 to-blue-100 dark:from-cyan-900/40 dark:to-blue-900/40 opacity-50" />
-
-                    <div className="relative z-10 mt-4">
-                        <div className="w-28 h-28 rounded-[36px] p-1.5 bg-white dark:bg-dark-card shadow-sm mb-4">
-                            <img src={user.avatar} alt={user.username} className="w-full h-full rounded-[30px] object-cover" />
+            <div className="max-w-4xl mx-auto px-4">
+                {/* Profile Header - Horizontal Layout */}
+                <div className="py-6 flex items-start gap-6 md:gap-10">
+                    {/* Avatar */}
+                    <div className="flex-shrink-0">
+                        <div className="w-20 h-20 md:w-36 md:h-36 rounded-full ring-2 ring-gray-200 dark:ring-gray-700 p-1 bg-gradient-to-tr from-yellow-400 via-pink-500 to-purple-500">
+                            <img src={user.avatar} alt={user.username} className="w-full h-full rounded-full object-cover bg-gray-200" />
                         </div>
-                        <h2 className="text-2xl font-extrabold text-gray-900 dark:text-white">{user.fullName}</h2>
-                        <p className="text-gray-400 font-medium text-sm">@{user.username}</p>
+                    </div>
 
-                        {/* New Info Badges */}
-                        <div className="flex flex-wrap gap-2 justify-center mt-3">
-                            {user.location?.city && (
-                                <div className="flex items-center gap-1 text-xs font-bold text-gray-500 bg-gray-50 px-2 py-1 rounded-lg">
-                                    <MapPin className="w-3 h-3" /> {user.location.city}, {user.location.country}
+                    {/* Info Section */}
+                    <div className="flex-1 min-w-0">
+                        {/* Username and Actions */}
+                        <div className="flex flex-wrap items-center gap-3 mb-4">
+                            <h2 className="text-xl font-semibold text-gray-900 dark:text-white">{user.username}</h2>
+                            {isOwnProfile ? (
+                                <div className="flex gap-2">
+                                    <button
+                                        onClick={() => setIsEditing(true)}
+                                        className="px-4 py-1.5 bg-gray-100 dark:bg-gray-800 rounded-lg font-semibold text-sm hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
+                                    >
+                                        Edit profile
+                                    </button>
+                                    <button
+                                        className="px-4 py-1.5 bg-gray-100 dark:bg-gray-800 rounded-lg font-semibold text-sm hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
+                                    >
+                                        View archive
+                                    </button>
+                                </div>
+                            ) : (
+                                <div className="flex gap-2">
+                                    <button
+                                        onClick={handleFollowToggle}
+                                        disabled={followLoading}
+                                        className={`px-6 py-1.5 rounded-lg font-semibold text-sm transition-colors flex items-center gap-2 ${isFollowing
+                                                ? 'bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-white hover:bg-gray-200'
+                                                : 'bg-blue-500 text-white hover:bg-blue-600'
+                                            }`}
+                                    >
+                                        {followLoading ? (
+                                            <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
+                                        ) : isFollowing ? 'Following' : 'Follow'}
+                                    </button>
+                                    <button
+                                        onClick={() => navigate(`/chat/${user.id}`)}
+                                        className="px-4 py-1.5 bg-gray-100 dark:bg-gray-800 rounded-lg font-semibold text-sm hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
+                                    >
+                                        Message
+                                    </button>
                                 </div>
                             )}
+                        </div>
+
+                        {/* Stats Row */}
+                        <div className="hidden md:flex gap-8 mb-4">
+                            <div className="text-center">
+                                <span className="font-bold text-gray-900 dark:text-white">{userPosts.length}</span>
+                                <span className="text-gray-500 ml-1">posts</span>
+                            </div>
+                            <div
+                                className="cursor-pointer hover:opacity-70"
+                                onClick={() => openFollowList('followers')}
+                            >
+                                <span className="font-bold text-gray-900 dark:text-white">{user.followers?.length || 0}</span>
+                                <span className="text-gray-500 ml-1">followers</span>
+                            </div>
+                            <div
+                                className="cursor-pointer hover:opacity-70"
+                                onClick={() => openFollowList('following')}
+                            >
+                                <span className="font-bold text-gray-900 dark:text-white">{user.following?.length || 0}</span>
+                                <span className="text-gray-500 ml-1">following</span>
+                            </div>
+                        </div>
+
+                        {/* Bio (Desktop) */}
+                        <div className="hidden md:block">
+                            <p className="font-semibold text-gray-900 dark:text-white">{user.fullName}</p>
+                            {user.bio && <p className="text-gray-700 dark:text-gray-300 text-sm whitespace-pre-line">{user.bio}</p>}
                             {user.socialLinks?.website && (
-                                <a href={user.socialLinks.website} target="_blank" className="flex items-center gap-1 text-xs font-bold text-blue-500 bg-blue-50 px-2 py-1 rounded-lg hover:underline">
-                                    <LinkIcon className="w-3 h-3" /> Website
+                                <a href={user.socialLinks.website} target="_blank" className="text-blue-900 dark:text-blue-400 font-semibold text-sm hover:underline">
+                                    {user.socialLinks.website.replace(/^https?:\/\//, '')}
                                 </a>
                             )}
                         </div>
-
-                        <div className="mt-3 bg-gray-50 dark:bg-dark-bg px-4 py-2 rounded-2xl inline-block max-w-xs">
-                            <p className="text-gray-600 dark:text-gray-300 text-sm leading-relaxed">{user.bio || 'No bio yet ☁️'}</p>
-                        </div>
                     </div>
+                </div>
 
-                    {isOwnProfile && (
-                        <div className="absolute top-4 right-4 z-20 flex gap-2">
-                            <button onClick={() => navigate('/settings')} title="Settings" className="p-2 bg-white/80 dark:bg-black/50 backdrop-blur rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors shadow-sm">
-                                <Settings className="w-5 h-5" />
-                            </button>
-                        </div>
+                {/* Bio (Mobile) */}
+                <div className="md:hidden pb-4 border-b border-gray-100 dark:border-dark-border">
+                    <p className="font-semibold text-gray-900 dark:text-white">{user.fullName}</p>
+                    {user.bio && <p className="text-gray-700 dark:text-gray-300 text-sm whitespace-pre-line">{user.bio}</p>}
+                    {user.socialLinks?.website && (
+                        <a href={user.socialLinks.website} target="_blank" className="text-blue-900 dark:text-blue-400 font-semibold text-sm hover:underline">
+                            {user.socialLinks.website.replace(/^https?:\/\//, '')}
+                        </a>
                     )}
                 </div>
 
-                {/* Action Bar */}
-                <div className="col-span-2 bg-white dark:bg-dark-card rounded-bento p-2 shadow-sm transition-colors border border-transparent dark:border-dark-border">
-                    <div className="space-y-2">
-                        {/* Stats Row - Clickable */}
-                        <div className="grid grid-cols-2 gap-2 mb-2">
-                            <div
-                                onClick={() => openFollowList('followers')}
-                                className="bg-gray-50 dark:bg-dark-bg p-3 rounded-xl text-center cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
-                            >
-                                <span className="block text-xl font-bold text-gray-900 dark:text-white">{user?.followers?.length || 0}</span>
-                                <span className="text-xs text-gray-400 font-bold uppercase tracking-wider">Followers</span>
-                            </div>
-                            <div
-                                onClick={() => openFollowList('following')}
-                                className="bg-gray-50 dark:bg-dark-bg p-3 rounded-xl text-center cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
-                            >
-                                <span className="block text-xl font-bold text-gray-900 dark:text-white">{user?.following?.length || 0}</span>
-                                <span className="text-xs text-gray-400 font-bold uppercase tracking-wider">Following</span>
-                            </div>
-                        </div>
-
-                        {/* Buttons based on profile ownership */}
-                        {isOwnProfile ? (
-                            <div className="grid grid-cols-2 gap-2">
-                                <button
-                                    onClick={() => setIsEditing(true)}
-                                    className="bg-gray-100 dark:bg-dark-bg text-gray-900 dark:text-white px-4 py-2.5 rounded-xl font-semibold text-sm hover:bg-gray-200 dark:hover:bg-dark-border transition-colors flex items-center justify-center gap-2"
-                                >
-                                    <Edit3 className="w-4 h-4" />
-                                    Edit Profile
-                                </button>
-                                <button
-                                    className="bg-gray-100 dark:bg-dark-bg text-gray-900 dark:text-white px-4 py-2.5 rounded-xl font-semibold text-sm hover:bg-gray-200 dark:hover:bg-dark-border transition-colors flex items-center justify-center gap-2"
-                                >
-                                    <Share2 className="w-4 h-4" />
-                                    Share Profile
-                                </button>
-                            </div>
-                        ) : (
-                            <div className="grid grid-cols-2 gap-2">
-                                <button
-                                    onClick={() => navigate(`/chat/${user.id}`)}
-                                    className="bg-gray-100 dark:bg-dark-bg text-gray-900 dark:text-white px-4 py-2.5 rounded-xl font-semibold text-sm hover:bg-gray-200 dark:hover:bg-dark-border transition-colors flex items-center justify-center gap-2"
-                                >
-                                    <MessageCircle className="w-4 h-4" />
-                                    Message
-                                </button>
-                                <button
-                                    onClick={handleFollowToggle}
-                                    disabled={followLoading}
-                                    className={`px-4 py-2.5 rounded-xl font-bold text-sm transition-colors flex items-center justify-center gap-2 
-                                        ${isFollowing
-                                            ? 'bg-gray-100 text-gray-900 hover:bg-red-50 hover:text-red-500 hover:border-red-200 border border-transparent'
-                                            : 'bg-black text-white hover:bg-gray-800'}`}
-                                >
-                                    {followLoading ? (
-                                        <div className="w-4 h-4 rounded-full border-2 border-current border-t-transparent animate-spin" />
-                                    ) : isFollowing ? (
-                                        <>
-                                            <UserCheck className="w-4 h-4" />
-                                            Following
-                                        </>
-                                    ) : (
-                                        <>
-                                            <UserPlus className="w-4 h-4" />
-                                            Follow
-                                        </>
-                                    )}
-                                </button>
-                            </div>
-                        )}
+                {/* Stats Row (Mobile) */}
+                <div className="md:hidden py-3 grid grid-cols-3 border-b border-gray-100 dark:border-dark-border">
+                    <div className="text-center">
+                        <span className="block font-bold text-gray-900 dark:text-white">{userPosts.length}</span>
+                        <span className="text-xs text-gray-500">posts</span>
+                    </div>
+                    <div
+                        className="text-center cursor-pointer"
+                        onClick={() => openFollowList('followers')}
+                    >
+                        <span className="block font-bold text-gray-900 dark:text-white">{user.followers?.length || 0}</span>
+                        <span className="text-xs text-gray-500">followers</span>
+                    </div>
+                    <div
+                        className="text-center cursor-pointer"
+                        onClick={() => openFollowList('following')}
+                    >
+                        <span className="block font-bold text-gray-900 dark:text-white">{user.following?.length || 0}</span>
+                        <span className="text-xs text-gray-500">following</span>
                     </div>
                 </div>
 
-                {/* Posts Header */}
-                <div className="col-span-2 mt-2 flex items-center justify-between px-2">
-                    <h3 className="font-bold text-gray-900 dark:text-white">Recent Snaps</h3>
-                    <span className="text-xs font-bold text-gray-400 bg-white dark:bg-dark-card px-2 py-1 rounded-lg border border-transparent dark:border-dark-border">
-                        {userPosts.length}
-                    </span>
+                {/* Story Highlights (Placeholder) */}
+                <div className="py-4 flex gap-4 overflow-x-auto scrollbar-hide">
+                    <div className="flex flex-col items-center gap-1 flex-shrink-0">
+                        <div className="w-16 h-16 rounded-full border-2 border-gray-200 dark:border-gray-700 flex items-center justify-center bg-gray-50 dark:bg-gray-900">
+                            <span className="text-2xl">+</span>
+                        </div>
+                        <span className="text-xs text-gray-500">New</span>
+                    </div>
                 </div>
 
-                {/* Posts Grid */}
-                <div className="col-span-2 grid grid-cols-2 gap-2">
-                    {userPosts.map(post => (
-                        <div key={post.id} className="aspect-square bg-gray-200 dark:bg-gray-800 rounded-[24px] overflow-hidden relative group">
+                {/* Tab Bar */}
+                <div className="flex border-t border-b border-gray-100 dark:border-dark-border">
+                    <button
+                        onClick={() => setActiveTab('posts')}
+                        className={`flex-1 py-3 flex justify-center items-center gap-1 border-t-2 -mt-px transition-colors ${activeTab === 'posts'
+                                ? 'border-gray-900 dark:border-white text-gray-900 dark:text-white'
+                                : 'border-transparent text-gray-400'
+                            }`}
+                    >
+                        <Grid className="w-5 h-5" />
+                    </button>
+                    <button
+                        onClick={() => setActiveTab('reels')}
+                        className={`flex-1 py-3 flex justify-center items-center gap-1 border-t-2 -mt-px transition-colors ${activeTab === 'reels'
+                                ? 'border-gray-900 dark:border-white text-gray-900 dark:text-white'
+                                : 'border-transparent text-gray-400'
+                            }`}
+                    >
+                        <Film className="w-5 h-5" />
+                    </button>
+                    {isOwnProfile && (
+                        <button
+                            onClick={() => setActiveTab('saved')}
+                            className={`flex-1 py-3 flex justify-center items-center gap-1 border-t-2 -mt-px transition-colors ${activeTab === 'saved'
+                                    ? 'border-gray-900 dark:border-white text-gray-900 dark:text-white'
+                                    : 'border-transparent text-gray-400'
+                                }`}
+                        >
+                            <Bookmark className="w-5 h-5" />
+                        </button>
+                    )}
+                    <button
+                        onClick={() => setActiveTab('tagged')}
+                        className={`flex-1 py-3 flex justify-center items-center gap-1 border-t-2 -mt-px transition-colors ${activeTab === 'tagged'
+                                ? 'border-gray-900 dark:border-white text-gray-900 dark:text-white'
+                                : 'border-transparent text-gray-400'
+                            }`}
+                    >
+                        <UserSquare2 className="w-5 h-5" />
+                    </button>
+                </div>
+
+                {/* Posts Grid - 3 Columns */}
+                <div className="grid grid-cols-3 gap-0.5 md:gap-1">
+                    {activeTab === 'posts' && userPosts.map(post => (
+                        <div key={post.id} className="aspect-square relative group cursor-pointer">
                             {post.mediaType === 'video' ? (
-                                <video src={post.imageUrl} className="w-full h-full object-cover" />
+                                <>
+                                    <video src={post.imageUrl} className="w-full h-full object-cover" />
+                                    <div className="absolute top-2 right-2">
+                                        <Play className="w-5 h-5 text-white fill-white drop-shadow-lg" />
+                                    </div>
+                                </>
                             ) : (
                                 <img src={post.imageUrl} className="w-full h-full object-cover" alt="" />
                             )}
-                            <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                                <div className="text-white font-bold flex items-center gap-1">
-                                    <span className="text-lg">{post.likes}</span>
-                                    <span className="text-2xl">❤️</span>
+                            <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-6">
+                                <div className="flex items-center gap-1 text-white font-bold">
+                                    <span>❤️</span>
+                                    <span>{Array.isArray(post.likes) ? post.likes.length : post.likes}</span>
+                                </div>
+                                <div className="flex items-center gap-1 text-white font-bold">
+                                    <span>💬</span>
+                                    <span>{post.comments}</span>
                                 </div>
                             </div>
                         </div>
                     ))}
-                    {userPosts.length === 0 && (
-                        <div className="col-span-2 bg-white dark:bg-dark-card rounded-bento py-12 flex flex-col items-center justify-center text-gray-300 dark:text-gray-600 transition-colors border border-transparent dark:border-dark-border">
-                            <Grid className="w-12 h-12 mb-2" />
-                            <p className="font-medium">No posts yet</p>
+                    {activeTab === 'reels' && (
+                        <div className="col-span-3 py-12 text-center text-gray-400">
+                            <Film className="w-12 h-12 mx-auto mb-2 opacity-50" />
+                            <p>No reels yet</p>
+                        </div>
+                    )}
+                    {activeTab === 'saved' && isOwnProfile && (
+                        <div className="col-span-3 py-12 text-center text-gray-400">
+                            <Bookmark className="w-12 h-12 mx-auto mb-2 opacity-50" />
+                            <p>Only you can see what you've saved</p>
+                        </div>
+                    )}
+                    {activeTab === 'tagged' && (
+                        <div className="col-span-3 py-12 text-center text-gray-400">
+                            <UserSquare2 className="w-12 h-12 mx-auto mb-2 opacity-50" />
+                            <p>No tagged posts</p>
+                        </div>
+                    )}
+                    {activeTab === 'posts' && userPosts.length === 0 && (
+                        <div className="col-span-3 py-12 text-center text-gray-400">
+                            <Camera className="w-12 h-12 mx-auto mb-2 opacity-50" />
+                            <h3 className="font-bold text-xl text-gray-900 dark:text-white mb-1">Share Photos</h3>
+                            <p className="text-sm">When you share photos, they will appear on your profile.</p>
                         </div>
                     )}
                 </div>

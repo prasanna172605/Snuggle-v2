@@ -1016,8 +1016,14 @@ export class DBService {
 
     static async likePost(postId: string, userId: string): Promise<void> {
         const postRef = doc(db, 'posts', postId);
+        const userRef = doc(db, 'users', userId);
+
+        // Add to post's likes and user's likedPosts
         await updateDoc(postRef, {
             likes: arrayUnion(userId)
+        });
+        await updateDoc(userRef, {
+            likedPosts: arrayUnion(postId)
         });
 
         // Create notification
@@ -1037,9 +1043,52 @@ export class DBService {
 
     static async unlikePost(postId: string, userId: string): Promise<void> {
         const postRef = doc(db, 'posts', postId);
+        const userRef = doc(db, 'users', userId);
+
         await updateDoc(postRef, {
             likes: arrayRemove(userId)
         });
+        await updateDoc(userRef, {
+            likedPosts: arrayRemove(postId)
+        });
+    }
+
+    static async savePost(postId: string, userId: string): Promise<void> {
+        const userRef = doc(db, 'users', userId);
+        await updateDoc(userRef, {
+            savedPosts: arrayUnion(postId)
+        });
+    }
+
+    static async unsavePost(postId: string, userId: string): Promise<void> {
+        const userRef = doc(db, 'users', userId);
+        await updateDoc(userRef, {
+            savedPosts: arrayRemove(postId)
+        });
+    }
+
+    static async getSavedPosts(userId: string): Promise<Post[]> {
+        const user = await this.getUserById(userId);
+        if (!user || !user.savedPosts || user.savedPosts.length === 0) return [];
+
+        const posts: Post[] = [];
+        for (const postId of user.savedPosts) {
+            const post = await this.getPost(postId);
+            if (post) posts.push(post);
+        }
+        return posts;
+    }
+
+    static async getLikedPosts(userId: string): Promise<Post[]> {
+        const user = await this.getUserById(userId);
+        if (!user || !user.likedPosts || user.likedPosts.length === 0) return [];
+
+        const posts: Post[] = [];
+        for (const postId of user.likedPosts) {
+            const post = await this.getPost(postId);
+            if (post) posts.push(post);
+        }
+        return posts;
     }
 
     static async deletePost(postId: string): Promise<void> {
