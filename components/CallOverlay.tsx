@@ -134,7 +134,7 @@ const CallOverlay: React.FC = () => {
               ref={remoteVideoRef}
               autoPlay
               playsInline
-              muted={!isSpeakerOn}
+              // Do NOT mute - audio is part of video stream and must always play
               className="w-full h-full object-cover"
             />
           )}
@@ -157,13 +157,15 @@ const CallOverlay: React.FC = () => {
             </div>
           )}
 
-          {/* AUDIO element for audio-only calls */}
+          {/* AUDIO element for remote audio - NEVER mute this, always plays */}
           {remoteStream && (
             <audio
               ref={audioRef}
               autoPlay
               playsInline
-              muted={!isSpeakerOn}
+            // IMPORTANT: Do NOT use muted here - audio must always play
+            // Speaker toggle in web browsers is just a UI indicator
+            // Real audio routing (earpiece/speaker) is controlled by the OS
             />
           )}
 
