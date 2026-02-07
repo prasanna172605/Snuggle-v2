@@ -46,6 +46,8 @@ const Chat: React.FC<ChatProps> = ({ currentUser, otherUser, onBack }) => {
   const typingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const isTypingRef = useRef(false);
   const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const isNearBottomRef = useRef(true); // Track if user is near bottom for smart scroll
+  const isInitialLoadRef = useRef(true); // Track initial load to scroll to bottom once
 
   const loadMessages = async () => {
     const msgs = await DBService.getMessages(currentUser.id, otherUser.id);
@@ -120,8 +122,20 @@ const Chat: React.FC<ChatProps> = ({ currentUser, otherUser, onBack }) => {
     };
   }, [currentUser.id, otherUser.id]);
 
+  // Smart scroll: only scroll to bottom if user is near bottom or on initial load
+  const handleChatScroll = () => {
+    if (!chatContainerRef.current) return;
+    const { scrollTop, scrollHeight, clientHeight } = chatContainerRef.current;
+    // Consider "near bottom" if within 150px of the bottom
+    isNearBottomRef.current = scrollHeight - scrollTop - clientHeight < 150;
+  };
+
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    // Only auto-scroll on initial load or if user is near the bottom
+    if (isInitialLoadRef.current || isNearBottomRef.current) {
+      messagesEndRef.current?.scrollIntoView({ behavior: isInitialLoadRef.current ? 'auto' : 'smooth' });
+      isInitialLoadRef.current = false;
+    }
 
     // Mark messages as seen when new ones arrive and we are viewing them
     const markUnreadAsSeen = async () => {
@@ -418,7 +432,7 @@ const Chat: React.FC<ChatProps> = ({ currentUser, otherUser, onBack }) => {
 
 
       {/* Chat Area */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-4 no-scrollbar relative z-10" ref={chatContainerRef}>
+      <div className="flex-1 overflow-y-auto p-4 space-y-4 no-scrollbar relative z-10" ref={chatContainerRef} onScroll={handleChatScroll}>
         {loading ? (
           <div className="pt-10 px-2">
             <SkeletonChat />
