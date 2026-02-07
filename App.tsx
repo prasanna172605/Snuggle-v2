@@ -177,7 +177,7 @@ const AppContent = ({
     <div className="min-h-screen bg-snuggle-50 dark:bg-black flex justify-center">
       {/* Toast Notifications */}
       <Toaster position="top-right" richColors closeButton />
-      <div className="w-full max-w-lg bg-white dark:bg-dark-bg relative">
+      <div className="w-full md:max-w-md lg:max-w-4xl xl:max-w-6xl bg-white dark:bg-dark-bg relative shadow-2xl min-h-screen flex flex-col">
         <div className="bg-red-500 text-white text-center text-xs font-bold py-1 z-50 relative">
           DEBUG MODE v3 - TEST PUSH ENABLED
         </div>
