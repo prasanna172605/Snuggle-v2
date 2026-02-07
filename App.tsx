@@ -175,7 +175,7 @@ const AppContent = ({
     location.pathname === '/create';
 
   return (
-    <div className="h-screen w-screen overflow-hidden bg-white dark:bg-dark-bg">
+    <div className="h-[100dvh] w-screen overflow-hidden bg-white dark:bg-dark-bg">
       {/* Toast Notifications */}
       <Toaster position="top-right" richColors closeButton />
       <div className="w-full h-full flex flex-col md:flex-row overflow-hidden">
