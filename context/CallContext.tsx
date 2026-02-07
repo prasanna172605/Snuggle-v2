@@ -40,6 +40,7 @@ export const CallProvider: React.FC<{ children: React.ReactNode; currentUser: Us
   const callInitiator = useRef<string>(''); // Track who initiated the call
   const iceCandidatesQueue = useRef<RTCIceCandidateInit[]>([]);
   const qualityMonitorInterval = useRef<NodeJS.Timeout | null>(null);
+  const remoteUserIdRef = useRef<string>(''); // Track remote user ID synchronously for ICE candidates
 
   // Generate unique device ID to prevent multi-device conflicts
   const deviceId = useRef<string>(
@@ -104,14 +105,18 @@ export const CallProvider: React.FC<{ children: React.ReactNode; currentUser: Us
     const pc = new RTCPeerConnection(servers);
 
     pc.onicecandidate = (event) => {
-      if (event.candidate && activeCall) {
+      // Use ref instead of state to ensure we have the receiver ID immediately
+      if (event.candidate && remoteUserIdRef.current && currentUser) {
+        console.log('[WebRTC] Sending ICE candidate to:', remoteUserIdRef.current);
         DBService.sendSignal({
           type: 'candidate',
           candidate: event.candidate.toJSON(),
-          senderId: currentUser!.id,
-          receiverId: activeCall.userId,
+          senderId: currentUser.id,
+          receiverId: remoteUserIdRef.current,
           timestamp: Date.now(),
         });
+      } else if (event.candidate) {
+        console.warn('[WebRTC] ICE candidate generated but no remoteUserIdRef:', remoteUserIdRef.current);
       }
     };
 
@@ -270,6 +275,9 @@ export const CallProvider: React.FC<{ children: React.ReactNode; currentUser: Us
 
       setActiveCall({ userId: receiverId, type });
 
+      // Set ref BEFORE creating peer connection so ICE candidates know where to go
+      remoteUserIdRef.current = receiverId;
+
       const pc = createPeerConnection();
       stream.getTracks().forEach((track) => pc.addTrack(track, stream));
 
@@ -416,6 +424,9 @@ export const CallProvider: React.FC<{ children: React.ReactNode; currentUser: Us
         setIncomingCall(null); // NOW we clear incoming call as we are making it active
         setActiveCall({ userId: callerId, type });
 
+        // Set ref BEFORE creating peer connection so ICE candidates know where to go
+        remoteUserIdRef.current = callerId;
+
         const pc = createPeerConnection();
         stream.getTracks().forEach((track) => pc.addTrack(track, stream));
 
@@ -470,6 +481,9 @@ export const CallProvider: React.FC<{ children: React.ReactNode; currentUser: Us
       // SET CALL START TIME IMMEDIATELY when accepting
       callStartTime.current = Date.now();
       callInitiator.current = callerId;
+
+      // Set ref BEFORE creating peer connection so ICE candidates know where to go
+      remoteUserIdRef.current = callerId;
       console.log('[CallContext] Call start time set on accept:', callStartTime.current);
 
       const pc = createPeerConnection();
@@ -562,6 +576,7 @@ export const CallProvider: React.FC<{ children: React.ReactNode; currentUser: Us
     setConnectionQuality('high'); // Reset quality
     callStartTime.current = 0; // Reset timer
     callInitiator.current = '';
+    remoteUserIdRef.current = ''; // Reset remote user ID ref
     iceCandidatesQueue.current = []; // Reset ICE candidates queue
 
     if (peerConnection.current) {
