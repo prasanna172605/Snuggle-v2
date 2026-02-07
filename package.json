@@ -4,10 +4,11 @@
   "version": "1.0.0",
   "type": "module",
   "scripts": {
-    "dev": "concurrently \"node server.js\" \"vite\"",
+    "dev": "concurrently \"node api/index.js\" \"vite\"",
     "dev:frontend": "vite",
     "build": "vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "start": "node api/index.js"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",
