@@ -1,12 +1,32 @@
-import React from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { NavLink } from 'react-router-dom';
-import { Home, MessageCircle, User, Plus, Bell, Settings, LogOut } from 'lucide-react';
+import { Home, MessageCircle, User, Plus, Bell, Settings, LogOut, Menu, Moon, Sun, Bookmark, Users } from 'lucide-react';
+import { useTheme } from '../context/ThemeContext';
 
 interface SidebarProps {
     unreadCount: number;
+    onLogout: () => void;
+    onSwitchAccount?: (userId: string) => void;
+    onAddAccount?: () => void;
 }
 
-const Sidebar: React.FC<SidebarProps> = ({ unreadCount }) => {
+const Sidebar: React.FC<SidebarProps> = ({ unreadCount, onLogout, onSwitchAccount, onAddAccount }) => {
+    const [showMenu, setShowMenu] = useState(false);
+    const menuRef = useRef<HTMLDivElement>(null);
+    const { effectiveTheme, toggleTheme } = useTheme();
+    const isDarkMode = effectiveTheme === 'dark';
+
+    // Close menu when clicking outside
+    useEffect(() => {
+        const handleClickOutside = (event: MouseEvent) => {
+            if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
+                setShowMenu(false);
+            }
+        };
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => document.removeEventListener('mousedown', handleClickOutside);
+    }, []);
+
     const NavItem = ({ to, icon: Icon, label }: { to: string; icon: any; label: string }) => (
         <NavLink
             to={to}
@@ -33,7 +53,7 @@ const Sidebar: React.FC<SidebarProps> = ({ unreadCount }) => {
     );
 
     return (
-        <aside className="hidden md:flex flex-col w-64 h-screen bg-white dark:bg-dark-card border-r border-gray-100 dark:border-dark-border py-6 px-4 sticky top-0">
+        <aside className="hidden md:flex flex-col w-64 h-screen bg-white dark:bg-black border-r border-gray-100 dark:border-dark-border py-6 px-4 sticky top-0 z-40">
             {/* Brand */}
             <div className="flex items-center gap-3 px-4 mb-8">
                 <div className="w-10 h-10 bg-gradient-to-tr from-snuggle-500 to-snuggle-600 rounded-xl flex items-center justify-center shadow-lg shadow-snuggle-500/20">
@@ -50,18 +70,46 @@ const Sidebar: React.FC<SidebarProps> = ({ unreadCount }) => {
                 <NavItem to="/messages" icon={MessageCircle} label="Messages" />
                 <NavItem to="/notifications" icon={Bell} label="Notifications" />
                 <NavItem to="/profile" icon={User} label="Profile" />
-                <NavItem to="/settings" icon={Settings} label="Settings" />
+                <NavItem to="/create" icon={Plus} label="Create" />
             </nav>
 
-            {/* Create Action */}
-            <div className="mt-auto mb-6">
-                <NavLink
-                    to="/create"
-                    className="flex items-center justify-center gap-3 w-full bg-snuggle-500 hover:bg-snuggle-600 text-white py-3.5 rounded-xl shadow-lg shadow-snuggle-500/25 transition-all transform hover:scale-[1.02] active:scale-95"
+            {/* Bottom Menu Area */}
+            <div className="mt-auto relative" ref={menuRef}>
+                {/* Popup Menu */}
+                {showMenu && (
+                    <div className="absolute bottom-full left-0 w-60 mb-2 bg-white dark:bg-dark-card border border-gray-100 dark:border-dark-border rounded-2xl shadow-xl overflow-hidden animate-in slide-in-from-bottom-2 fade-in duration-200">
+                        <NavLink to="/settings" className="flex items-center gap-3 px-4 py-3 hover:bg-gray-50 dark:hover:bg-dark-border transition-colors">
+                            <Settings className="w-5 h-5" />
+                            <span className="font-medium">Settings</span>
+                        </NavLink>
+                        <div className="flex items-center gap-3 px-4 py-3 hover:bg-gray-50 dark:hover:bg-dark-border transition-colors cursor-pointer" onClick={toggleTheme}>
+                            {isDarkMode ? <Moon className="w-5 h-5" /> : <Sun className="w-5 h-5" />}
+                            <span className="font-medium">Switch Appearance</span>
+                        </div>
+                        <div className="flex items-center gap-3 px-4 py-3 hover:bg-gray-50 dark:hover:bg-dark-border transition-colors cursor-pointer">
+                            <Bookmark className="w-5 h-5" />
+                            <span className="font-medium">Saves</span>
+                        </div>
+                        <div className="flex items-center gap-3 px-4 py-3 hover:bg-gray-50 dark:hover:bg-dark-border transition-colors cursor-pointer" onClick={onAddAccount}>
+                            <Users className="w-5 h-5" />
+                            <span className="font-medium">Switch Accounts</span>
+                        </div>
+                        <div className="h-px bg-gray-100 dark:bg-dark-border my-1" />
+                        <button onClick={onLogout} className="w-full flex items-center gap-3 px-4 py-3 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/10 transition-colors">
+                            <LogOut className="w-5 h-5" />
+                            <span className="font-medium">Log out</span>
+                        </button>
+                    </div>
+                )}
+
+                {/* Menu Trigger */}
+                <button
+                    onClick={() => setShowMenu(!showMenu)}
+                    className={`flex items-center gap-4 px-4 py-3 w-full rounded-xl transition-all duration-200 hover:bg-gray-100 dark:hover:bg-gray-800 ${showMenu ? 'bg-gray-100 dark:bg-gray-800' : ''}`}
                 >
-                    <Plus className="w-6 h-6" strokeWidth={2.5} />
-                    <span className="font-bold">New Post</span>
-                </NavLink>
+                    <Menu className="w-6 h-6" />
+                    <span className="font-medium text-base">More</span>
+                </button>
             </div>
         </aside>
     );

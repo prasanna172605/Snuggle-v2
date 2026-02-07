@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import {
   User as UserIcon, Lock, Bell, Shield, LogOut, Camera, Trash2,
   Download, ChevronRight, Mail, Smartphone, Globe, AlertTriangle,
-  MapPin, Calendar, Link as LinkIcon, Save, Moon, Sun
+  MapPin, Calendar, Link as LinkIcon, Save, Moon, Sun, Users
 } from 'lucide-react';
 import { User } from '../types';
 import { DBService } from '../services/database';
@@ -330,20 +330,22 @@ const Settings: React.FC<SettingsProps> = ({
               </div>
             </div>
 
-            {/* Save Button */}
-            <div className="fixed bottom-6 left-0 right-0 px-4 md:px-0 max-w-2xl mx-auto pointer-events-none">
+            {/* Save Button - Sticky Footer */}
+            <div className="sticky bottom-0 left-0 right-0 p-4 bg-white/80 dark:bg-black/80 backdrop-blur-md border-t border-gray-200 dark:border-dark-border mt-6 -mx-4 md:rounded-b-[32px] flex justify-center z-10">
               <button
                 onClick={handleProfileUpdate}
                 disabled={isSaving}
-                className="w-full pointer-events-auto bg-black dark:bg-white text-white dark:text-black font-bold py-4 rounded-2xl shadow-xl hover:scale-[1.02] active:scale-95 transition-all flex justify-center items-center gap-2"
+                className="w-full max-w-md bg-black dark:bg-white text-white dark:text-black font-bold py-3.5 rounded-xl shadow-lg hover:scale-[1.02] active:scale-95 transition-all flex justify-center items-center gap-2"
               >
                 {isSaving ? <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <Save className="w-5 h-5" />}
                 Save Changes
               </button>
             </div>
-            <div className="h-20" />
+            <div className="h-4" /> {/* Spacer */}
           </div>
         )}
+
+
 
         {/* SECURITY TAB */}
         {activeTab === 'security' && (
@@ -504,6 +506,20 @@ const Settings: React.FC<SettingsProps> = ({
               <div className={`w-12 h-7 rounded-full transition-colors relative ${isDarkMode ? 'bg-indigo-500' : 'bg-gray-200 dark:bg-gray-700'}`}>
                 <div className={`absolute top-1 w-5 h-5 bg-white rounded-full transition-transform ${isDarkMode ? 'left-6' : 'left-1'}`} />
               </div>
+            </div>
+
+            {/* Switch Account */}
+            <div className="bg-white dark:bg-dark-card p-6 rounded-[32px] shadow-sm flex items-center justify-between cursor-pointer" onClick={() => onSwitchAccount(currentUser.id)}>
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-purple-50 dark:bg-purple-900/20 rounded-full text-purple-600">
+                  <Users className="w-6 h-6" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-lg">Switch Account</h3>
+                  <p className="text-xs text-gray-500">{currentUser.username}</p>
+                </div>
+              </div>
+              <ChevronRight className="w-5 h-5 text-gray-400" />
             </div>
 
             {/* Data Export */}

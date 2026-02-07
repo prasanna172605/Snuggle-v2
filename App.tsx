@@ -6,7 +6,7 @@ import { messaging, auth } from './services/firebase';
 import { User, GoogleSetupData } from './types';
 import { DBService } from './services/database';
 import { Loader2 } from 'lucide-react';
-import { Toaster } from 'sonner';
+import { Toaster, toast } from 'sonner';
 import { errorHandler } from './services/globalErrorHandler';
 import { ThemeProvider } from './context/ThemeContext';
 import { NotificationProvider } from './context/NotificationContext';
@@ -179,13 +179,19 @@ const AppContent = ({
       {/* Toast Notifications */}
       <Toaster position="top-right" richColors closeButton />
       <div className="w-full md:max-w-6xl xl:max-w-7xl bg-white dark:bg-dark-bg relative shadow-2xl min-h-screen flex flex-col md:flex-row overflow-hidden md:rounded-2xl md:my-4 md:border md:border-gray-200 dark:md:border-gray-800">
-        <div className="bg-red-500 text-white text-center text-xs font-bold py-1 z-50 absolute top-0 left-0 right-0 md:hidden">
-          DEBUG MODE v3
-        </div>
         <CallOverlay />
 
         {/* Sidebar - Desktop Only */}
-        <Sidebar unreadCount={unreadCount} />
+        <Sidebar
+          unreadCount={unreadCount}
+          onLogout={onLogout}
+          onSwitchAccount={(id) => {
+            toast.info("Switching accounts coming soon!");
+          }}
+          onAddAccount={() => {
+            toast.info("add account coming soon!");
+          }}
+        />
 
         {/* Main Content */}
         <div className="flex-1 flex flex-col relative w-full h-full overflow-hidden bg-gray-50 dark:bg-black/90 md:rounded-r-2xl">
