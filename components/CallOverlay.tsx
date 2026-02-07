@@ -61,6 +61,14 @@ const CallOverlay: React.FC = () => {
     }
   }, [remoteStream]);
 
+  // Set audio stream via useEffect (not in JSX to avoid React error #31)
+  useEffect(() => {
+    if (audioRef.current && remoteStream) {
+      console.log('[CallOverlay] Setting audio stream');
+      audioRef.current.srcObject = remoteStream;
+    }
+  }, [remoteStream]);
+
   // Speaker toggle function
   const toggleSpeaker = () => {
     if (audioRef.current) {
@@ -158,10 +166,7 @@ const CallOverlay: React.FC = () => {
             />
           )}
 
-          {/* Set audio stream separately */}
-          {remoteStream && audioRef.current && (
-            <>{audioRef.current.srcObject = remoteStream}</>
-          )}
+
 
           {/* Local Video PIP (for video calls) */}
           {isVideoCall && (
