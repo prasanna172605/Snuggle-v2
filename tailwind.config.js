@@ -23,9 +23,9 @@ export default {
           900: '#134e4a',
         },
         dark: {
-          bg: '#0f172a',
-          card: '#1e293b',
-          border: '#334155',
+          bg: '#000000',
+          card: '#000000',
+          border: '#262626',
         },
         glass: {
           100: 'rgba(255, 255, 255, 0.1)',

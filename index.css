@@ -19,7 +19,7 @@
 
   /* Dark mode body */
   .dark body {
-    @apply bg-gray-900 text-gray-100;
+    @apply bg-black text-gray-100;
   }
 
   /* Prevent transition on theme change for specific elements */
@@ -54,7 +54,7 @@
 
 body {
   font-family: 'Plus Jakarta Sans', sans-serif;
-  background-color: #0f172a;
+  background-color: #000000;
   -webkit-tap-highlight-color: transparent;
   margin: 0;
   padding: 0;
@@ -89,7 +89,7 @@ body {
 }
 
 .dark .glass-panel {
-  background: rgba(20, 20, 25, 0.7);
+  background: rgba(0, 0, 0, 0.85);
   border: 1px solid rgba(255, 255, 255, 0.08);
 }
 
