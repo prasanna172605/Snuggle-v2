@@ -21,6 +21,7 @@ messaging.onBackgroundMessage((payload) => {
 
     const notificationData = payload.data || {};
     const isCallNotification = notificationData.type === 'call';
+    const messageId = notificationData.messageId || Date.now().toString();
 
     // Customize notification based on type
     const notificationTitle = payload.notification?.title || 'Snuggle';
@@ -28,8 +29,11 @@ messaging.onBackgroundMessage((payload) => {
         body: payload.notification?.body || 'New notification',
         icon: '/vite.svg',
         badge: '/vite.svg',
-        tag: isCallNotification ? 'call-notification' : 'default',
+        tag: isCallNotification ? 'call-notification' : `snuggle-bg-${messageId}`,
         requireInteraction: isCallNotification, // Keep call notifications visible
+        vibrate: [200, 100, 200], // Vibration for all notifications
+        silent: false, // Ensure sound plays
+        renotify: true, // Always play sound even if replacing same tag
         data: notificationData
     };
 
@@ -39,7 +43,7 @@ messaging.onBackgroundMessage((payload) => {
             { action: 'accept', title: 'Accept', icon: '/vite.svg' },
             { action: 'decline', title: 'Decline', icon: '/vite.svg' }
         ];
-        notificationOptions.vibrate = [200, 100, 200, 100, 200]; // Vibration pattern
+        notificationOptions.vibrate = [200, 100, 200, 100, 200]; // Longer vibration for calls
     }
 
     self.registration.showNotification(notificationTitle, notificationOptions);

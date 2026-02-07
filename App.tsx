@@ -141,14 +141,27 @@ const AppContent = ({
     });
 
     if (messaging) {
-      onMessage(messaging, (payload) => {
+      onMessage(messaging, async (payload) => {
         console.log('[App] Foreground push received:', payload);
         const { title, body, icon } = payload.notification || {};
-        if (Notification.permission === 'granted') {
-          new Notification(title || 'Snuggle', {
-            body,
-            icon: icon || '/vite.svg'
-          });
+
+        // Use ServiceWorker showNotification for mobile compatibility
+        if (Notification.permission === 'granted' && 'serviceWorker' in navigator) {
+          try {
+            const registration = await navigator.serviceWorker.ready;
+            await registration.showNotification(title || 'Snuggle', {
+              body,
+              icon: icon || '/vite.svg',
+              badge: '/vite.svg',
+              vibrate: [200, 100, 200], // Vibration pattern for mobile
+              tag: 'snuggle-foreground', // Prevents duplicates with same tag
+              renotify: true, // Play sound even if same tag
+              silent: false, // Ensure sound plays
+              data: payload.data
+            } as NotificationOptions);
+          } catch (err) {
+            console.warn('[App] ServiceWorker notification failed:', err);
+          }
         }
       });
     }
