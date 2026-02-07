@@ -95,7 +95,7 @@ export const OptimizedAvatar: React.FC<{
         return (
             <div
                 className={cn(
-                    'rounded-full bg-gradient-to-br from-cyan-400 to-cyan-600 flex items-center justify-center text-white font-semibold',
+                    'rounded-full bg-accent flex items-center justify-center text-white font-semibold',
                     sizeClasses[size],
                     className
                 )}

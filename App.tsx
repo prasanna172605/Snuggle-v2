@@ -26,6 +26,7 @@ const Create = React.lazy(() => import('./pages/Create'));
 const Notifications = React.lazy(() => import('./pages/Notifications'));
 const Activities = React.lazy(() => import('./pages/Activities'));
 const Saved = React.lazy(() => import('./pages/Saved'));
+const RecentlyDeleted = React.lazy(() => import('./pages/RecentlyDeleted'));
 const BottomNav = React.lazy(() => import('./components/BottomNav'));
 import Sidebar from './components/Sidebar';
 import CallOverlay from './components/CallOverlay';
@@ -210,6 +211,7 @@ const AppContent = ({
                 <Route path="/settings" element={<PageTransition><SettingsWrapper currentUser={currentUser} onLogout={onLogout} onUpdateUser={onUpdateUser} onDeleteAccount={onDeleteAccount} onSwitchAccount={onSwitchAccount} onAddAccount={onAddAccount} /></PageTransition>} />
                 <Route path="/activities" element={<PageTransition><Activities currentUser={currentUser} onBack={() => navigate(-1)} /></PageTransition>} />
                 <Route path="/saved" element={<PageTransition><Saved currentUser={currentUser} onBack={() => navigate(-1)} /></PageTransition>} />
+                <Route path="/recently-deleted" element={<PageTransition><RecentlyDeleted currentUser={currentUser} onBack={() => navigate(-1)} /></PageTransition>} />
                 <Route path="*" element={<Navigate to="/" replace />} />
               </Routes>
             </Suspense>

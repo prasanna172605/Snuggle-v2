@@ -1,8 +1,8 @@
 
 import React, { useState, useEffect } from 'react';
-import { User, Post, Story } from '../types';
+import { User, Post, Story, Comment as AppComment } from '../types';
 import { DBService } from '../services/database';
-import { Heart, MessageSquare, Send, MoreHorizontal, Loader2, Play, Bookmark } from 'lucide-react';
+import { Heart, MessageSquare, Send, MoreHorizontal, Loader2, Play, Bookmark, X, Trash2, Edit3, Copy, Flag } from 'lucide-react';
 import StoryViewer from '../components/StoryViewer';
 import { SkeletonPost, SkeletonAvatar } from '../components/common/Skeleton';
 import { formatRelativeTime } from '../utils/dateUtils';
@@ -12,6 +12,266 @@ interface FeedProps {
     currentUser: User;
     onUserClick?: (userId: string) => void;
 }
+
+// Comments Modal Component
+const CommentsModal: React.FC<{
+    post: Post;
+    user: User;
+    currentUser: User;
+    onClose: () => void;
+    onCommentAdded: () => void;
+}> = ({ post, user, currentUser, onClose, onCommentAdded }) => {
+    const [comments, setComments] = useState<AppComment[]>([]);
+    const [newComment, setNewComment] = useState('');
+    const [loading, setLoading] = useState(true);
+    const [submitting, setSubmitting] = useState(false);
+
+    useEffect(() => {
+        loadComments();
+    }, [post.id]);
+
+    const loadComments = async () => {
+        setLoading(true);
+        try {
+            const cmts = await DBService.getComments(post.id);
+            setComments(cmts);
+        } catch (e) {
+            console.error('Error loading comments:', e);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!newComment.trim()) return;
+
+        setSubmitting(true);
+        try {
+            await DBService.addComment({
+                postId: post.id,
+                userId: currentUser.id,
+                text: newComment.trim(),
+                username: currentUser.username || 'user'
+            });
+            setNewComment('');
+            await loadComments();
+            onCommentAdded();
+            toast.success('Comment added!');
+        } catch (e) {
+            toast.error('Failed to add comment');
+        } finally {
+            setSubmitting(false);
+        }
+    };
+
+    return (
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center">
+            <div className="absolute inset-0 bg-black/60" onClick={onClose} />
+            <div className="relative w-full sm:max-w-lg bg-white dark:bg-dark-surface rounded-t-3xl sm:rounded-2xl max-h-[80vh] flex flex-col">
+                {/* Header */}
+                <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-dark-border">
+                    <h3 className="font-bold text-lg text-gray-900 dark:text-white">Comments</h3>
+                    <button onClick={onClose} className="p-2 hover:bg-gray-100 dark:hover:bg-dark-hover rounded-full">
+                        <X className="w-5 h-5" />
+                    </button>
+                </div>
+
+                {/* Comments List */}
+                <div className="flex-1 overflow-y-auto p-4 space-y-4">
+                    {loading ? (
+                        <div className="flex justify-center py-8">
+                            <Loader2 className="w-6 h-6 animate-spin text-accent" />
+                        </div>
+                    ) : comments.length === 0 ? (
+                        <div className="text-center py-8 text-gray-500">
+                            <MessageSquare className="w-12 h-12 mx-auto mb-2 opacity-50" />
+                            <p>No comments yet. Be the first!</p>
+                        </div>
+                    ) : (
+                        comments.map(comment => (
+                            <div key={comment.id} className="flex gap-3">
+                                <div className="w-8 h-8 rounded-full bg-accent flex items-center justify-center text-white text-sm font-bold flex-shrink-0">
+                                    {comment.username?.charAt(0).toUpperCase() || 'U'}
+                                </div>
+                                <div className="flex-1">
+                                    <p className="text-sm">
+                                        <span className="font-bold text-gray-900 dark:text-white mr-2">{comment.username}</span>
+                                        <span className="text-gray-700 dark:text-gray-300">{comment.text}</span>
+                                    </p>
+                                    <p className="text-xs text-gray-400 mt-1">
+                                        {formatRelativeTime(comment.createdAt)}
+                                    </p>
+                                </div>
+                            </div>
+                        ))
+                    )}
+                </div>
+
+                {/* Comment Input */}
+                <form onSubmit={handleSubmit} className="p-4 border-t border-gray-200 dark:border-dark-border flex gap-3">
+                    <input
+                        type="text"
+                        value={newComment}
+                        onChange={(e) => setNewComment(e.target.value)}
+                        placeholder="Add a comment..."
+                        className="flex-1 bg-gray-100 dark:bg-dark-bg border-none rounded-full px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-accent/30"
+                    />
+                    <button
+                        type="submit"
+                        disabled={!newComment.trim() || submitting}
+                        className="bg-accent text-white px-4 py-2 rounded-full font-medium text-sm disabled:opacity-50"
+                    >
+                        {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Post'}
+                    </button>
+                </form>
+            </div>
+        </div>
+    );
+};
+
+// Post Options Menu Component
+const PostOptionsMenu: React.FC<{
+    post: Post;
+    isOwner: boolean;
+    onEdit: () => void;
+    onDelete: () => void;
+    onClose: () => void;
+}> = ({ post, isOwner, onEdit, onDelete, onClose }) => {
+    const handleCopyLink = () => {
+        navigator.clipboard.writeText(`${window.location.origin}/post/${post.id}`);
+        toast.success('Link copied!');
+        onClose();
+    };
+
+    return (
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center">
+            <div className="absolute inset-0 bg-black/60" onClick={onClose} />
+            <div className="relative w-full sm:max-w-sm bg-white dark:bg-dark-surface rounded-t-3xl sm:rounded-2xl overflow-hidden">
+                <div className="py-2">
+                    {isOwner && (
+                        <>
+                            <button
+                                onClick={() => { onEdit(); onClose(); }}
+                                className="w-full px-6 py-4 flex items-center gap-4 hover:bg-gray-50 dark:hover:bg-dark-hover"
+                            >
+                                <Edit3 className="w-5 h-5 text-gray-600 dark:text-gray-400" />
+                                <span className="text-gray-900 dark:text-white font-medium">Edit Post</span>
+                            </button>
+                            <button
+                                onClick={() => { onDelete(); onClose(); }}
+                                className="w-full px-6 py-4 flex items-center gap-4 hover:bg-gray-50 dark:hover:bg-dark-hover"
+                            >
+                                <Trash2 className="w-5 h-5 text-red-500" />
+                                <span className="text-red-500 font-medium">Delete Post</span>
+                            </button>
+                        </>
+                    )}
+                    <button
+                        onClick={handleCopyLink}
+                        className="w-full px-6 py-4 flex items-center gap-4 hover:bg-gray-50 dark:hover:bg-dark-hover"
+                    >
+                        <Copy className="w-5 h-5 text-gray-600 dark:text-gray-400" />
+                        <span className="text-gray-900 dark:text-white font-medium">Copy Link</span>
+                    </button>
+                    {!isOwner && (
+                        <button
+                            onClick={() => { toast.info('Report submitted'); onClose(); }}
+                            className="w-full px-6 py-4 flex items-center gap-4 hover:bg-gray-50 dark:hover:bg-dark-hover"
+                        >
+                            <Flag className="w-5 h-5 text-gray-600 dark:text-gray-400" />
+                            <span className="text-gray-900 dark:text-white font-medium">Report</span>
+                        </button>
+                    )}
+                </div>
+                <button
+                    onClick={onClose}
+                    className="w-full py-4 border-t border-gray-200 dark:border-dark-border font-bold text-gray-500"
+                >
+                    Cancel
+                </button>
+            </div>
+        </div>
+    );
+};
+
+// Edit Post Modal
+const EditPostModal: React.FC<{
+    post: Post;
+    onSave: (caption: string) => void;
+    onClose: () => void;
+}> = ({ post, onSave, onClose }) => {
+    const [caption, setCaption] = useState(post.caption);
+    const [saving, setSaving] = useState(false);
+
+    const handleSave = async () => {
+        setSaving(true);
+        await onSave(caption);
+        setSaving(false);
+    };
+
+    return (
+        <div className="fixed inset-0 z-50 flex items-center justify-center">
+            <div className="absolute inset-0 bg-black/60" onClick={onClose} />
+            <div className="relative w-full max-w-lg mx-4 bg-white dark:bg-dark-surface rounded-2xl overflow-hidden">
+                <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-dark-border">
+                    <button onClick={onClose} className="text-gray-500 font-medium">Cancel</button>
+                    <h3 className="font-bold text-lg text-gray-900 dark:text-white">Edit Post</h3>
+                    <button
+                        onClick={handleSave}
+                        disabled={saving}
+                        className="text-accent font-bold disabled:opacity-50"
+                    >
+                        {saving ? <Loader2 className="w-5 h-5 animate-spin" /> : 'Done'}
+                    </button>
+                </div>
+                <div className="p-4">
+                    <textarea
+                        value={caption}
+                        onChange={(e) => setCaption(e.target.value)}
+                        className="w-full h-32 bg-gray-100 dark:bg-dark-bg rounded-xl p-4 text-sm focus:outline-none focus:ring-2 focus:ring-accent/30 resize-none"
+                        placeholder="Write a caption..."
+                    />
+                </div>
+            </div>
+        </div>
+    );
+};
+
+// Delete Confirmation Modal
+const DeleteConfirmModal: React.FC<{
+    onConfirm: () => void;
+    onClose: () => void;
+}> = ({ onConfirm, onClose }) => {
+    return (
+        <div className="fixed inset-0 z-50 flex items-center justify-center">
+            <div className="absolute inset-0 bg-black/60" onClick={onClose} />
+            <div className="relative w-full max-w-sm mx-4 bg-white dark:bg-dark-surface rounded-2xl overflow-hidden text-center">
+                <div className="p-6">
+                    <Trash2 className="w-12 h-12 text-red-500 mx-auto mb-4" />
+                    <h3 className="font-bold text-lg text-gray-900 dark:text-white mb-2">Delete Post?</h3>
+                    <p className="text-sm text-gray-500 mb-6">
+                        This post will be moved to Recently Deleted. You can restore it within 30 days.
+                    </p>
+                    <div className="flex gap-3">
+                        <button
+                            onClick={onClose}
+                            className="flex-1 py-3 bg-gray-100 dark:bg-dark-bg rounded-xl font-medium text-gray-700 dark:text-gray-300"
+                        >
+                            Cancel
+                        </button>
+                        <button
+                            onClick={onConfirm}
+                            className="flex-1 py-3 bg-red-500 text-white rounded-xl font-bold"
+                        >
+                            Delete
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+};
 
 const StoriesBento: React.FC<{
     onUserClick?: (id: string) => void;
@@ -26,9 +286,9 @@ const StoriesBento: React.FC<{
             <div className="flex overflow-x-auto gap-4 no-scrollbar pb-2">
                 {/* Create Story */}
                 <div className="flex flex-col items-center space-y-1 min-w-[72px]">
-                    <div className="w-[72px] h-[72px] rounded-[24px] border-2 border-dashed border-snuggle-300 dark:border-snuggle-700 p-1 flex items-center justify-center cursor-pointer hover:bg-snuggle-50 dark:hover:bg-dark-border transition-colors">
-                        <div className="w-full h-full rounded-[18px] bg-snuggle-100 dark:bg-dark-bg flex items-center justify-center">
-                            <span className="text-2xl text-snuggle-500">+</span>
+                    <div className="w-[72px] h-[72px] rounded-[24px] border-2 border-dashed border-accent/40 dark:border-accent/30 p-1 flex items-center justify-center cursor-pointer hover:bg-accent/5 dark:hover:bg-accent/10 transition-colors">
+                        <div className="w-full h-full rounded-[18px] bg-accent/10 dark:bg-accent/20 flex items-center justify-center">
+                            <span className="text-2xl text-accent">+</span>
                         </div>
                     </div>
                     <span className="text-xs font-medium text-gray-500 dark:text-gray-400">Add Story</span>
@@ -40,7 +300,7 @@ const StoriesBento: React.FC<{
 
                     return (
                         <div key={user.id} className="flex flex-col items-center space-y-1 min-w-[72px]" onClick={() => onStoryClick(user.id)}>
-                            <div className={`w-[72px] h-[72px] rounded-[24px] p-[2px] cursor-pointer transition-all ${allViewed ? 'bg-gray-300 dark:bg-gray-600' : 'bg-gradient-to-tr from-snuggle-400 to-emerald-600'}`}>
+                            <div className={`w-[72px] h-[72px] rounded-[24px] p-[2px] cursor-pointer transition-all ${allViewed ? 'bg-gray-300 dark:bg-gray-600' : 'bg-warm'}`}>
                                 <div className="w-full h-full rounded-[22px] bg-white dark:bg-dark-card p-[2px]">
                                     <img src={user.avatar} className="w-full h-full rounded-[20px] object-cover" alt={user.username} />
                                 </div>
@@ -64,16 +324,24 @@ const Feed: React.FC<FeedProps> = ({ currentUser, onUserClick }) => {
     const [storyUsers, setStoryUsers] = useState<User[]>([]);
     const [viewingStoryUserId, setViewingStoryUserId] = useState<string | null>(null);
 
+    // Modal State
+    const [commentsPost, setCommentsPost] = useState<Post | null>(null);
+    const [menuPost, setMenuPost] = useState<Post | null>(null);
+    const [editPost, setEditPost] = useState<Post | null>(null);
+    const [deletePost, setDeletePost] = useState<Post | null>(null);
+
     useEffect(() => {
         const loadFeed = async () => {
             setLoading(true);
             try {
                 // Use getFeed to fetch posts from followed users + self
                 const feedPosts = await DBService.getFeed(currentUser.id, 50);
-                setPosts(feedPosts);
+                // Filter out deleted posts
+                const activePosts = feedPosts.filter(p => !p.isDeleted);
+                setPosts(activePosts);
 
                 // Fetch users for posts
-                const uIds = new Set(feedPosts.map(p => p.userId));
+                const uIds = new Set(activePosts.map(p => p.userId));
                 const allUsers = await DBService.getUsers();
                 const newUsers: Record<string, User> = {};
                 allUsers.forEach(u => {
@@ -102,6 +370,12 @@ const Feed: React.FC<FeedProps> = ({ currentUser, onUserClick }) => {
         }
     }, [currentUser]);
 
+    const refreshPosts = async () => {
+        const updatedPosts = await DBService.getFeed(currentUser.id, 50);
+        const activePosts = updatedPosts.filter(p => !p.isDeleted);
+        setPosts(activePosts);
+    };
+
     const handleLike = async (postId: string) => {
         const post = posts.find(p => p.id === postId);
         const likesArray = Array.isArray(post?.likes) ? post.likes : [];
@@ -112,9 +386,7 @@ const Feed: React.FC<FeedProps> = ({ currentUser, onUserClick }) => {
         } else {
             await DBService.likePost(postId, currentUser.id);
         }
-        // Re-fetch posts to update like state
-        const updatedPosts = await DBService.getFeed(currentUser.id, 50);
-        setPosts(updatedPosts);
+        await refreshPosts();
     };
 
     const handleSave = async (postId: string) => {
@@ -134,9 +406,32 @@ const Feed: React.FC<FeedProps> = ({ currentUser, onUserClick }) => {
         toast.info('Share to chat coming soon!');
     };
 
-    const handleComment = (postId: string) => {
-        toast.info('Comments coming soon!');
-        // TODO: Open comment modal
+    const handleComment = (post: Post) => {
+        setCommentsPost(post);
+    };
+
+    const handleEditSave = async (caption: string) => {
+        if (!editPost) return;
+        try {
+            await DBService.updatePost(editPost.id, { caption });
+            toast.success('Post updated!');
+            setEditPost(null);
+            await refreshPosts();
+        } catch (e) {
+            toast.error('Failed to update post');
+        }
+    };
+
+    const handleDeleteConfirm = async () => {
+        if (!deletePost) return;
+        try {
+            await DBService.softDeletePost(deletePost.id, currentUser.id);
+            toast.success('Post moved to Recently Deleted');
+            setDeletePost(null);
+            await refreshPosts();
+        } catch (e) {
+            toast.error('Failed to delete post');
+        }
     };
 
     const handleStoryClick = (userId: string) => {
@@ -194,6 +489,42 @@ const Feed: React.FC<FeedProps> = ({ currentUser, onUserClick }) => {
 
     return (
         <div className="pb-20 pt-0">
+            {/* Modals */}
+            {commentsPost && users[commentsPost.userId] && (
+                <CommentsModal
+                    post={commentsPost}
+                    user={users[commentsPost.userId]}
+                    currentUser={currentUser}
+                    onClose={() => setCommentsPost(null)}
+                    onCommentAdded={refreshPosts}
+                />
+            )}
+
+            {menuPost && (
+                <PostOptionsMenu
+                    post={menuPost}
+                    isOwner={menuPost.userId === currentUser.id}
+                    onEdit={() => setEditPost(menuPost)}
+                    onDelete={() => setDeletePost(menuPost)}
+                    onClose={() => setMenuPost(null)}
+                />
+            )}
+
+            {editPost && (
+                <EditPostModal
+                    post={editPost}
+                    onSave={handleEditSave}
+                    onClose={() => setEditPost(null)}
+                />
+            )}
+
+            {deletePost && (
+                <DeleteConfirmModal
+                    onConfirm={handleDeleteConfirm}
+                    onClose={() => setDeletePost(null)}
+                />
+            )}
+
             {viewingStoryUserId && users[viewingStoryUserId] && storiesByUser[viewingStoryUserId] && (
                 <StoryViewer
                     stories={storiesByUser[viewingStoryUserId]}
@@ -231,7 +562,10 @@ const Feed: React.FC<FeedProps> = ({ currentUser, onUserClick }) => {
                                         <p className="text-[10px] text-gray-400 font-medium">{formatRelativeTime(post.createdAt)}</p>
                                     </div>
                                 </div>
-                                <button className="text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors">
+                                <button
+                                    onClick={() => setMenuPost(post)}
+                                    className="text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors"
+                                >
                                     <MoreHorizontal className="w-5 h-5" />
                                 </button>
                             </div>
@@ -260,7 +594,7 @@ const Feed: React.FC<FeedProps> = ({ currentUser, onUserClick }) => {
                                         );
                                     })()}
 
-                                    <button onClick={() => handleComment(post.id)} className="group flex items-center gap-1.5 focus:outline-none">
+                                    <button onClick={() => handleComment(post)} className="group flex items-center gap-1.5 focus:outline-none">
                                         <MessageSquare className="w-6 h-6 text-gray-900 dark:text-white stroke-[1.5px]" />
                                     </button>
 
@@ -294,7 +628,10 @@ const Feed: React.FC<FeedProps> = ({ currentUser, onUserClick }) => {
                                     {post.caption}
                                 </p>
                                 {post.comments > 0 && (
-                                    <button className="text-gray-400 text-sm mt-1 font-medium">
+                                    <button
+                                        onClick={() => handleComment(post)}
+                                        className="text-gray-400 text-sm mt-1 font-medium hover:text-gray-600 dark:hover:text-gray-300"
+                                    >
                                         View all {post.comments} comments
                                     </button>
                                 )}

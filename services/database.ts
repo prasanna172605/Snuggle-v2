@@ -1091,16 +1091,115 @@ export class DBService {
         return posts;
     }
 
-    static async deletePost(postId: string): Promise<void> {
-        // Delete post document
+    // Update post caption/tags
+    static async updatePost(postId: string, updates: { caption?: string; tags?: string[] }): Promise<void> {
         const postRef = doc(db, 'posts', postId);
+        await updateDoc(postRef, {
+            ...updates,
+            updatedAt: serverTimestamp()
+        });
+    }
+
+    // Soft delete - moves to recycle bin for 30 days
+    static async softDeletePost(postId: string, userId: string): Promise<void> {
+        const postRef = doc(db, 'posts', postId);
+        const userRef = doc(db, 'users', userId);
+
+        // Mark post as deleted with timestamp
+        await updateDoc(postRef, {
+            deletedAt: serverTimestamp(),
+            isDeleted: true
+        });
+
+        // Add to user's deleted posts array
+        await updateDoc(userRef, {
+            deletedPosts: arrayUnion(postId)
+        });
+    }
+
+    // Restore from recycle bin
+    static async restorePost(postId: string, userId: string): Promise<void> {
+        const postRef = doc(db, 'posts', postId);
+        const userRef = doc(db, 'users', userId);
+
+        // Remove deleted markers
+        await updateDoc(postRef, {
+            deletedAt: null,
+            isDeleted: false
+        });
+
+        // Remove from user's deleted posts
+        await updateDoc(userRef, {
+            deletedPosts: arrayRemove(postId)
+        });
+    }
+
+    // Permanently delete - no recovery
+    static async permanentlyDeletePost(postId: string, userId: string): Promise<void> {
+        const postRef = doc(db, 'posts', postId);
+        const userRef = doc(db, 'users', userId);
+
+        // Delete the post document
         await deleteDoc(postRef);
+
+        // Remove from user's deleted posts array
+        await updateDoc(userRef, {
+            deletedPosts: arrayRemove(postId)
+        });
 
         // Delete associated comments
         const commentsQuery = query(collection(db, 'comments'), where('postId', '==', postId));
         const commentsSnapshot = await getDocs(commentsQuery);
         const deletePromises = commentsSnapshot.docs.map(doc => deleteDoc(doc.ref));
         await Promise.all(deletePromises);
+    }
+
+    // Get deleted posts for recycle bin (within 30 days)
+    static async getDeletedPosts(userId: string): Promise<Post[]> {
+        const user = await this.getUserById(userId);
+        if (!user || !user.deletedPosts || user.deletedPosts.length === 0) return [];
+
+        const posts: Post[] = [];
+        const thirtyDaysAgo = new Date();
+        thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
+        for (const postId of user.deletedPosts) {
+            const postRef = doc(db, 'posts', postId);
+            const postSnap = await getDoc(postRef);
+            if (postSnap.exists()) {
+                const postData = postSnap.data();
+                const deletedAt = postData.deletedAt?.toDate();
+
+                // Only include if deleted within 30 days
+                if (deletedAt && deletedAt >= thirtyDaysAgo) {
+                    posts.push({
+                        id: postSnap.id,
+                        ...postData,
+                        deletedAt: postData.deletedAt
+                    } as Post);
+                } else if (deletedAt && deletedAt < thirtyDaysAgo) {
+                    // Auto-delete posts older than 30 days
+                    await this.permanentlyDeletePost(postId, userId);
+                }
+            }
+        }
+        return posts;
+    }
+
+    // Legacy deletePost - now calls softDeletePost
+    static async deletePost(postId: string, userId?: string): Promise<void> {
+        if (userId) {
+            await this.softDeletePost(postId, userId);
+        } else {
+            // Fallback for backwards compatibility - hard delete
+            const postRef = doc(db, 'posts', postId);
+            await deleteDoc(postRef);
+
+            const commentsQuery = query(collection(db, 'comments'), where('postId', '==', postId));
+            const commentsSnapshot = await getDocs(commentsQuery);
+            const deletePromises = commentsSnapshot.docs.map(doc => deleteDoc(doc.ref));
+            await Promise.all(deletePromises);
+        }
     }
 
     // ==================== COMMENT OPERATIONS ====================
@@ -1138,6 +1237,20 @@ export class DBService {
         }
 
         return newComment;
+    }
+
+    // Get comments for a post
+    static async getComments(postId: string): Promise<AppComment[]> {
+        const commentsQuery = query(
+            collection(db, 'comments'),
+            where('postId', '==', postId),
+            orderBy('createdAt', 'desc')
+        );
+        const snapshot = await getDocs(commentsQuery);
+        return snapshot.docs.map(doc => ({
+            id: doc.id,
+            ...doc.data()
+        } as AppComment));
     }
 
     static async getPostComments(postId: string): Promise<AppComment[]> {

@@ -29,6 +29,7 @@ export interface User {
   following?: string[];
   likedPosts?: string[];
   savedPosts?: string[];
+  deletedPosts?: string[];
   socialLinks?: {
     instagram?: string;
     twitter?: string;
@@ -90,6 +91,11 @@ export interface Post {
   commentCount?: number;
   createdAt?: any;
   timestamp?: number;
+  updatedAt?: any;
+  // Soft delete fields
+  deletedAt?: any;
+  isDeleted?: boolean;
+  tags?: string[];
 }
 
 export interface Story {

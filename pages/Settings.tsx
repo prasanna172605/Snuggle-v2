@@ -249,7 +249,7 @@ const Settings: React.FC<SettingsProps> = ({
             {/* Avatar Section */}
             <div className="bg-white dark:bg-dark-card p-6 rounded-[32px] shadow-sm flex flex-col items-center">
               <div className="relative group cursor-pointer" onClick={() => fileInputRef.current?.click()}>
-                <div className="w-24 h-24 rounded-full p-1 bg-gradient-to-tr from-yellow-400 to-fuchsia-600">
+                <div className="w-24 h-24 rounded-full p-1 bg-warm">
                   <img src={avatar} className="w-full h-full rounded-full object-cover border-4 border-white dark:border-dark-card" />
                 </div>
                 <div className="absolute inset-0 bg-black/40 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all">

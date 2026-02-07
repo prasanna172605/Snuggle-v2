@@ -546,7 +546,7 @@ const Chat: React.FC<ChatProps> = ({ currentUser, otherUser, onBack }) => {
                     <div className={`
                       message-bubble px-3 py-2 shadow-sm relative z-10
                       ${isMe
-                        ? `bg-gradient-to-br from-snuggle-500 to-snuggle-600 text-white ${roundedClass}`
+                        ? `bg-primary text-white ${roundedClass}`
                         : `bg-gray-100 dark:bg-dark-border text-gray-900 dark:text-gray-100 border border-gray-100 dark:border-dark-border ${roundedClass}`
                       }
                     `}>

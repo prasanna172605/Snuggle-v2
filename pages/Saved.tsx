@@ -2,13 +2,16 @@ import React, { useState, useEffect } from 'react';
 import { User, Post } from '../types';
 import { DBService } from '../services/database';
 import { ArrowLeft, Bookmark, Grid, Play } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 
 interface SavedProps {
     currentUser: User;
     onBack?: () => void;
+    onPostClick?: (postId: string) => void;
 }
 
-const Saved: React.FC<SavedProps> = ({ currentUser, onBack }) => {
+const Saved: React.FC<SavedProps> = ({ currentUser, onBack, onPostClick }) => {
+    const navigate = useNavigate();
     const [savedPosts, setSavedPosts] = useState<Post[]>([]);
     const [loading, setLoading] = useState(true);
 
@@ -25,6 +28,14 @@ const Saved: React.FC<SavedProps> = ({ currentUser, onBack }) => {
             console.error('Error loading saved posts:', error);
         } finally {
             setLoading(false);
+        }
+    };
+
+    const handlePostClick = (postId: string) => {
+        if (onPostClick) {
+            onPostClick(postId);
+        } else {
+            navigate(`/post/${postId}`);
         }
     };
 
@@ -53,7 +64,11 @@ const Saved: React.FC<SavedProps> = ({ currentUser, onBack }) => {
                 ) : savedPosts.length > 0 ? (
                     <div className="grid grid-cols-3 gap-1">
                         {savedPosts.map(post => (
-                            <div key={post.id} className="aspect-square relative group cursor-pointer">
+                            <div
+                                key={post.id}
+                                onClick={() => handlePostClick(post.id)}
+                                className="aspect-square relative group cursor-pointer"
+                            >
                                 <img src={post.imageUrl} className="w-full h-full object-cover rounded-lg" alt="" />
                                 {post.mediaType === 'video' && (
                                     <div className="absolute top-2 right-2">
@@ -61,7 +76,7 @@ const Saved: React.FC<SavedProps> = ({ currentUser, onBack }) => {
                                     </div>
                                 )}
                                 <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-4 rounded-lg">
-                                    <span className="text-white font-semibold">{post.likes} ❤️</span>
+                                    <span className="text-white font-semibold">{Array.isArray(post.likes) ? post.likes.length : post.likes} ❤️</span>
                                     <span className="text-white font-semibold">{post.comments} 💬</span>
                                 </div>
                             </div>

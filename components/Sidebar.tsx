@@ -57,7 +57,7 @@ const Sidebar: React.FC<SidebarProps> = ({ unreadCount, onLogout, onSwitchAccoun
         <aside className="hidden md:flex flex-col w-64 h-full flex-shrink-0 bg-white dark:bg-black border-r border-gray-100 dark:border-dark-border py-6 px-4 z-40">
             {/* Brand */}
             <div className="flex items-center gap-3 px-4 mb-8">
-                <div className="w-10 h-10 bg-gradient-to-tr from-snuggle-500 to-snuggle-600 rounded-xl flex items-center justify-center shadow-lg shadow-snuggle-500/20">
+                <div className="w-10 h-10 bg-primary rounded-xl flex items-center justify-center shadow-lg shadow-primary/20">
                     <span className="text-white font-bold text-xl">S</span>
                 </div>
                 <h1 className="text-2xl font-bold bg-gradient-to-r from-gray-900 to-gray-600 dark:from-white dark:to-gray-400 bg-clip-text text-transparent">

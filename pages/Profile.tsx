@@ -312,7 +312,7 @@ const Profile: React.FC<ProfileProps> = ({ user: propUser, currentUser, isOwnPro
                 <div className="py-6 flex items-start gap-6 md:gap-10">
                     {/* Avatar */}
                     <div className="flex-shrink-0">
-                        <div className="w-20 h-20 md:w-36 md:h-36 rounded-full ring-2 ring-gray-200 dark:ring-gray-700 p-1 bg-gradient-to-tr from-yellow-400 via-pink-500 to-purple-500">
+                        <div className="w-20 h-20 md:w-36 md:h-36 rounded-full ring-2 ring-warm p-1">
                             <img src={user.avatar} alt={user.username} className="w-full h-full rounded-full object-cover bg-gray-200" />
                         </div>
                     </div>
@@ -342,8 +342,8 @@ const Profile: React.FC<ProfileProps> = ({ user: propUser, currentUser, isOwnPro
                                         onClick={handleFollowToggle}
                                         disabled={followLoading}
                                         className={`px-6 py-1.5 rounded-lg font-semibold text-sm transition-colors flex items-center gap-2 ${isFollowing
-                                                ? 'bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-white hover:bg-gray-200'
-                                                : 'bg-blue-500 text-white hover:bg-blue-600'
+                                            ? 'bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-white hover:bg-gray-200'
+                                            : 'bg-blue-500 text-white hover:bg-blue-600'
                                             }`}
                                     >
                                         {followLoading ? (
@@ -443,8 +443,8 @@ const Profile: React.FC<ProfileProps> = ({ user: propUser, currentUser, isOwnPro
                     <button
                         onClick={() => setActiveTab('posts')}
                         className={`flex-1 py-3 flex justify-center items-center gap-1 border-t-2 -mt-px transition-colors ${activeTab === 'posts'
-                                ? 'border-gray-900 dark:border-white text-gray-900 dark:text-white'
-                                : 'border-transparent text-gray-400'
+                            ? 'border-gray-900 dark:border-white text-gray-900 dark:text-white'
+                            : 'border-transparent text-gray-400'
                             }`}
                     >
                         <Grid className="w-5 h-5" />
@@ -452,8 +452,8 @@ const Profile: React.FC<ProfileProps> = ({ user: propUser, currentUser, isOwnPro
                     <button
                         onClick={() => setActiveTab('reels')}
                         className={`flex-1 py-3 flex justify-center items-center gap-1 border-t-2 -mt-px transition-colors ${activeTab === 'reels'
-                                ? 'border-gray-900 dark:border-white text-gray-900 dark:text-white'
-                                : 'border-transparent text-gray-400'
+                            ? 'border-gray-900 dark:border-white text-gray-900 dark:text-white'
+                            : 'border-transparent text-gray-400'
                             }`}
                     >
                         <Film className="w-5 h-5" />
@@ -462,8 +462,8 @@ const Profile: React.FC<ProfileProps> = ({ user: propUser, currentUser, isOwnPro
                         <button
                             onClick={() => setActiveTab('saved')}
                             className={`flex-1 py-3 flex justify-center items-center gap-1 border-t-2 -mt-px transition-colors ${activeTab === 'saved'
-                                    ? 'border-gray-900 dark:border-white text-gray-900 dark:text-white'
-                                    : 'border-transparent text-gray-400'
+                                ? 'border-gray-900 dark:border-white text-gray-900 dark:text-white'
+                                : 'border-transparent text-gray-400'
                                 }`}
                         >
                             <Bookmark className="w-5 h-5" />
@@ -472,8 +472,8 @@ const Profile: React.FC<ProfileProps> = ({ user: propUser, currentUser, isOwnPro
                     <button
                         onClick={() => setActiveTab('tagged')}
                         className={`flex-1 py-3 flex justify-center items-center gap-1 border-t-2 -mt-px transition-colors ${activeTab === 'tagged'
-                                ? 'border-gray-900 dark:border-white text-gray-900 dark:text-white'
-                                : 'border-transparent text-gray-400'
+                            ? 'border-gray-900 dark:border-white text-gray-900 dark:text-white'
+                            : 'border-transparent text-gray-400'
                             }`}
                     >
                         <UserSquare2 className="w-5 h-5" />

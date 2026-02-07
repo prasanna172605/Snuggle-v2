@@ -41,14 +41,14 @@ const GoogleUsernameSetup: React.FC<GoogleUsernameSetupProps> = ({ googleData, o
   };
 
   return (
-    <div className="min-h-screen bg-snuggle-50 flex flex-col items-center justify-center p-6 relative overflow-hidden">
+    <div className="min-h-screen bg-light-bg dark:bg-dark-bg flex flex-col items-center justify-center p-6 relative overflow-hidden">
       {/* Background blobs */}
-      <div className="absolute top-[-10%] right-[-20%] w-[500px] h-[500px] bg-emerald-200/50 rounded-full blur-[100px]" />
-      <div className="absolute bottom-[-20%] left-[-10%] w-[400px] h-[400px] bg-teal-200/50 rounded-full blur-[80px]" />
+      <div className="absolute top-[-10%] right-[-20%] w-[500px] h-[500px] bg-accent/20 rounded-full blur-[100px]" />
+      <div className="absolute bottom-[-20%] left-[-10%] w-[400px] h-[400px] bg-primary/20 rounded-full blur-[80px]" />
 
       <div className="w-full max-w-sm bg-white rounded-bento shadow-[0_20px_40px_rgba(0,0,0,0.05)] p-8 relative z-10 animate-in fade-in zoom-in-95">
         <div className="flex flex-col items-center mb-6">
-          <div className="w-20 h-20 rounded-full p-1 bg-gradient-to-tr from-snuggle-400 to-emerald-500 mb-4">
+          <div className="w-20 h-20 rounded-full p-1 bg-warm mb-4">
             <img src={googleData.avatar} alt="Avatar" className="w-full h-full rounded-full object-cover border-4 border-white" />
           </div>
           <h2 className="text-2xl font-black text-gray-900 tracking-tight text-center">One Last Step!</h2>
@@ -58,7 +58,7 @@ const GoogleUsernameSetup: React.FC<GoogleUsernameSetupProps> = ({ googleData, o
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="bg-gray-50 rounded-[20px] p-2 border-2 border-transparent focus-within:border-snuggle-100 focus-within:bg-white transition-all flex items-center">
+          <div className="bg-gray-50 dark:bg-dark-surface rounded-[20px] p-2 border-2 border-transparent focus-within:border-accent/30 focus-within:bg-white dark:focus-within:bg-dark-elevated transition-all flex items-center">
             <AtSign className="w-5 h-5 text-gray-400 ml-2" />
             <input
               type="text"

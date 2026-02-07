@@ -1,41 +1,51 @@
 import React, { useState, useEffect } from 'react';
 import { User, Post } from '../types';
 import { DBService } from '../services/database';
-import { ArrowLeft, Heart, MessageSquare, Reply, Star, ChevronRight } from 'lucide-react';
+import { ArrowLeft, Heart, MessageSquare, Reply, ChevronRight, Trash2, Loader2 } from 'lucide-react';
 import { formatRelativeTime } from '../utils/dateUtils';
+import { useNavigate } from 'react-router-dom';
 
 interface ActivitiesProps {
     currentUser: User;
     onBack?: () => void;
+    onPostClick?: (postId: string) => void;
 }
 
 type ActivityTab = 'likes' | 'comments' | 'replies';
 
-interface ActivityItem {
-    id: string;
-    postId: string;
-    postImage: string;
-    timestamp: Date;
-    type: 'like' | 'comment' | 'reply';
-}
-
-const Activities: React.FC<ActivitiesProps> = ({ currentUser, onBack }) => {
+const Activities: React.FC<ActivitiesProps> = ({ currentUser, onBack, onPostClick }) => {
+    const navigate = useNavigate();
     const [activeTab, setActiveTab] = useState<ActivityTab>('likes');
-    const [activities, setActivities] = useState<ActivityItem[]>([]);
+    const [likedPosts, setLikedPosts] = useState<Post[]>([]);
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
         loadActivities();
-    }, [activeTab]);
+    }, [activeTab, currentUser.id]);
 
     const loadActivities = async () => {
         setLoading(true);
-        // TODO: Implement DBService methods for getting user activities
-        // For now, using mock data
-        setTimeout(() => {
-            setActivities([]);
+        try {
+            if (activeTab === 'likes') {
+                const posts = await DBService.getLikedPosts(currentUser.id);
+                setLikedPosts(posts);
+            } else {
+                // TODO: Implement comments and replies fetching
+                setLikedPosts([]);
+            }
+        } catch (e) {
+            console.error('Error loading activities:', e);
+        } finally {
             setLoading(false);
-        }, 500);
+        }
+    };
+
+    const handlePostClick = (postId: string) => {
+        if (onPostClick) {
+            onPostClick(postId);
+        } else {
+            navigate(`/post/${postId}`);
+        }
     };
 
     const tabs = [
@@ -45,9 +55,10 @@ const Activities: React.FC<ActivitiesProps> = ({ currentUser, onBack }) => {
     ];
 
     const menuItems = [
-        { icon: ChevronRight, label: 'Interactions', desc: 'Review and delete likes, comments, and your other interactions' },
-        { icon: ChevronRight, label: 'Photos & Videos', desc: 'View, archive or delete photos and videos you\'ve shared.' },
-        { icon: ChevronRight, label: 'Account History', desc: 'Review changes you\'ve made to your account since you created it.' },
+        { icon: ChevronRight, label: 'Interactions', desc: 'Review and delete likes, comments, and your other interactions', action: () => { } },
+        { icon: ChevronRight, label: 'Photos & Videos', desc: 'View, archive or delete photos and videos you\'ve shared.', action: () => { } },
+        { icon: ChevronRight, label: 'Account History', desc: 'Review changes you\'ve made to your account since you created it.', action: () => { } },
+        { icon: Trash2, label: 'Recently Deleted', desc: 'View and restore or permanently delete your removed content.', action: () => navigate('/recently-deleted'), isHighlighted: true },
     ];
 
     return (
@@ -71,13 +82,15 @@ const Activities: React.FC<ActivitiesProps> = ({ currentUser, onBack }) => {
                         {menuItems.map((item, index) => (
                             <button
                                 key={index}
-                                className="w-full flex items-center gap-3 p-4 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-900 transition-colors text-left"
+                                onClick={item.action}
+                                className={`w-full flex items-center gap-3 p-4 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-900 transition-colors text-left ${item.isHighlighted ? 'bg-red-50 dark:bg-red-900/20' : ''
+                                    }`}
                             >
                                 <div className="flex-1">
-                                    <p className="font-semibold text-sm">{item.label}</p>
+                                    <p className={`font-semibold text-sm ${item.isHighlighted ? 'text-red-600 dark:text-red-400' : ''}`}>{item.label}</p>
                                     <p className="text-xs text-gray-500 dark:text-gray-400">{item.desc}</p>
                                 </div>
-                                <item.icon className="w-5 h-5 text-gray-400" />
+                                <item.icon className={`w-5 h-5 ${item.isHighlighted ? 'text-red-500' : 'text-gray-400'}`} />
                             </button>
                         ))}
                     </div>
@@ -92,8 +105,8 @@ const Activities: React.FC<ActivitiesProps> = ({ currentUser, onBack }) => {
                                 key={tab.id}
                                 onClick={() => setActiveTab(tab.id)}
                                 className={`flex-1 py-4 flex items-center justify-center gap-2 text-sm font-semibold transition-colors border-b-2 ${activeTab === tab.id
-                                        ? 'border-black dark:border-white text-black dark:text-white'
-                                        : 'border-transparent text-gray-400 hover:text-gray-600'
+                                    ? 'border-accent text-accent'
+                                    : 'border-transparent text-gray-400 hover:text-gray-600'
                                     }`}
                             >
                                 <tab.icon className="w-4 h-4" />
@@ -108,24 +121,30 @@ const Activities: React.FC<ActivitiesProps> = ({ currentUser, onBack }) => {
                             <button className="text-sm font-semibold">Newest to oldest</button>
                             <button className="text-sm font-semibold text-gray-400">Sort & filter</button>
                         </div>
-                        <button className="text-sm font-semibold text-snuggle-500">Select</button>
+                        <button className="text-sm font-semibold text-accent">Select</button>
                     </div>
 
                     {/* Content Grid */}
                     <div className="p-4">
                         {loading ? (
-                            <div className="grid grid-cols-3 gap-1">
-                                {[...Array(9)].map((_, i) => (
-                                    <div key={i} className="aspect-square bg-gray-200 dark:bg-gray-800 animate-pulse rounded-lg" />
-                                ))}
+                            <div className="flex justify-center py-12">
+                                <Loader2 className="w-8 h-8 animate-spin text-accent" />
                             </div>
-                        ) : activities.length > 0 ? (
+                        ) : activeTab === 'likes' && likedPosts.length > 0 ? (
                             <div className="grid grid-cols-3 gap-1">
-                                {activities.map(activity => (
-                                    <div key={activity.id} className="aspect-square relative group cursor-pointer">
-                                        <img src={activity.postImage} className="w-full h-full object-cover rounded-lg" alt="" />
+                                {likedPosts.map(post => (
+                                    <div
+                                        key={post.id}
+                                        onClick={() => handlePostClick(post.id)}
+                                        className="aspect-square relative group cursor-pointer"
+                                    >
+                                        {post.mediaType === 'video' ? (
+                                            <video src={post.imageUrl} className="w-full h-full object-cover rounded-lg" />
+                                        ) : (
+                                            <img src={post.imageUrl} className="w-full h-full object-cover rounded-lg" alt="" />
+                                        )}
                                         <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center rounded-lg">
-                                            <span className="text-white text-sm">{formatRelativeTime(activity.timestamp)}</span>
+                                            <Heart className="w-6 h-6 text-white fill-white" />
                                         </div>
                                     </div>
                                 ))}
