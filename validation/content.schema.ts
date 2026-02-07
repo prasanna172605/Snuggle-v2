@@ -37,7 +37,7 @@ export const CreateContentSchema = z.object({
         .optional()
         .default([]),
 
-    metadata: z.record(z.any()).optional().default({})
+    metadata: z.record(z.string(), z.any()).optional().default({})
 });
 
 // Schema for UPDATE (PUT) - all fields required
@@ -70,7 +70,7 @@ export const PatchContentSchema = z.object({
     ).max(10, 'Maximum 10 tags allowed')
         .optional(),
 
-    metadata: z.record(z.any()).optional()
+    metadata: z.record(z.string(), z.any()).optional()
 });
 
 // Type exports for TypeScript

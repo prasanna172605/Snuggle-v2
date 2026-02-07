@@ -3,6 +3,7 @@ import React, { useEffect, useState, useRef } from 'react';
 import { DBService } from '../services/database';
 import { User, Notification } from '../types';
 import { UserPlus, Heart, MessageCircle, Bell as BellIcon, UserCheck } from 'lucide-react';
+import { SkeletonList } from '../components/common/Skeleton';
 
 interface NotificationsProps {
     currentUser: User;
@@ -11,6 +12,8 @@ interface NotificationsProps {
 
 const Notifications: React.FC<NotificationsProps> = ({ currentUser, onUserClick }) => {
     const [notifications, setNotifications] = useState<Notification[]>([]);
+    const [loading, setLoading] = useState(true); // Added loading state for Skeleton
+
     const [senders, setSenders] = useState<Record<string, User>>({});
     const sendersRef = useRef<Record<string, User>>({});
 
@@ -22,6 +25,7 @@ const Notifications: React.FC<NotificationsProps> = ({ currentUser, onUserClick 
 
         const handleNotifsUpdate = async (notifs: Notification[]) => {
             setNotifications(notifs);
+            setLoading(false); // Stop loading
 
             if (notifs.some(n => !n.read)) {
                 DBService.markAllNotificationsRead();
@@ -107,7 +111,19 @@ const Notifications: React.FC<NotificationsProps> = ({ currentUser, onUserClick 
 
 
                 {/* Regular Notifications */}
-                {notifications.length === 0 ? (
+                {loading ? (
+                    <div className="pt-4">
+                        <SkeletonList count={6} itemComponent={() => (
+                            <div className="flex items-start px-4 py-4 gap-3 animate-pulse">
+                                <div className="w-10 h-10 bg-gray-200 rounded-full" />
+                                <div className="flex-1 space-y-2">
+                                    <div className="w-3/4 h-3 bg-gray-200 rounded" />
+                                    <div className="w-1/4 h-2 bg-gray-200 rounded" />
+                                </div>
+                            </div>
+                        )} />
+                    </div>
+                ) : notifications.length === 0 ? (
                     <div className="flex flex-col items-center justify-center py-20 text-gray-400">
                         <BellIcon className="w-12 h-12 mb-2 opacity-20" />
                         <p>No notifications yet</p>

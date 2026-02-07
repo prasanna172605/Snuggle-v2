@@ -67,27 +67,30 @@ export const SkeletonCard: React.FC<{ className?: string }> = ({ className }) =>
 
 export const SkeletonPost: React.FC = () => {
     return (
-        <div className="bg-white dark:bg-gray-800 rounded-lg p-4 space-y-4">
+        <div className="bg-white dark:bg-dark-card rounded-bento overflow-hidden pb-4 space-y-3 shadow-sm border border-transparent dark:border-dark-border">
             {/* Header */}
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-3 px-4 pt-4">
                 <SkeletonAvatar size="md" />
                 <div className="flex-1 space-y-2">
-                    <Skeleton className="h-4 w-32" />
-                    <Skeleton className="h-3 w-20" />
+                    <Skeleton className="h-3 w-24" />
+                    <Skeleton className="h-2 w-16" />
                 </div>
             </div>
 
-            {/* Content */}
-            <SkeletonText lines={3} />
-
-            {/* Image */}
-            <Skeleton className="h-64 w-full rounded-lg" />
+            {/* Image (Full Bleed) */}
+            <Skeleton className="h-80 w-full rounded-none" />
 
             {/* Actions */}
-            <div className="flex items-center gap-4">
-                <Skeleton className="h-8 w-16" />
-                <Skeleton className="h-8 w-16" />
-                <Skeleton className="h-8 w-16" />
+            <div className="flex items-center gap-4 px-4">
+                <Skeleton className="h-6 w-6 rounded-full" />
+                <Skeleton className="h-6 w-6 rounded-full" />
+                <Skeleton className="h-6 w-6 rounded-full" />
+            </div>
+
+            {/* Caption */}
+            <div className="px-4 space-y-2">
+                <Skeleton className="h-3 w-1/2" />
+                <Skeleton className="h-3 w-3/4" />
             </div>
         </div>
     );

@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { User, Post } from '../types';
 import { Settings, Grid, Edit3, Share2, MessageCircle, UserPlus, UserMinus, UserCheck, Camera, Save, X as XIcon, MapPin, Calendar, Link as LinkIcon, Phone } from 'lucide-react';
 import { DBService } from '../services/database';
+import { SkeletonProfile } from '../components/common/Skeleton';
 
 interface ProfileProps {
     user?: User;
@@ -162,13 +163,9 @@ const Profile: React.FC<ProfileProps> = ({ user: propUser, currentUser, isOwnPro
         }
     };
 
-    if (loading || !user) {
-        return (
-            <div className="flex justify-center p-10">
-                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-cyan-500" />
-            </div>
-        );
-    }
+    // ... (inside component)
+
+    if (loading || !user) return <div className="p-4 pt-10"><SkeletonProfile /></div>;
 
     // --- Edit Mode UI ---
     if (isEditing) {

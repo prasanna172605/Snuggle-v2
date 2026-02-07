@@ -9,6 +9,7 @@ import { DBService } from '../services/database';
 import { toast } from 'sonner';
 import ConfirmDialog from '../components/ConfirmDialog';
 import SessionCard from '../components/SessionCard';
+import { useTheme } from '../context/ThemeContext';
 
 interface SettingsProps {
   currentUser: User;
@@ -32,7 +33,6 @@ const Settings: React.FC<SettingsProps> = ({
   const [activeTab, setActiveTab] = useState<TabType>('profile');
   const [isLoading, setIsLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
-  const [isDarkMode, setIsDarkMode] = useState(false);
 
   // Profile State
   const [profileForm, setProfileForm] = useState({
@@ -76,10 +76,6 @@ const Settings: React.FC<SettingsProps> = ({
   }>({ isOpen: false, type: null });
 
   useEffect(() => {
-    // Initialize dark mode state
-    const theme = localStorage.getItem('snuggle_theme');
-    setIsDarkMode(theme === 'dark' || (!theme && window.matchMedia('(prefers-color-scheme: dark)').matches));
-
     // Load extra data based on tab
     if (activeTab === 'security') {
       loadSessions();
@@ -96,17 +92,8 @@ const Settings: React.FC<SettingsProps> = ({
     }
   };
 
-  const toggleTheme = () => {
-    const newMode = !isDarkMode;
-    setIsDarkMode(newMode);
-    if (newMode) {
-      document.documentElement.classList.add('dark');
-      localStorage.setItem('snuggle_theme', 'dark');
-    } else {
-      document.documentElement.classList.remove('dark');
-      localStorage.setItem('snuggle_theme', 'light');
-    }
-  };
+  const { effectiveTheme, toggleTheme } = useTheme();
+  const isDarkMode = effectiveTheme === 'dark';
 
   // --- Profile Handlers ---
   const handleProfileUpdate = async () => {

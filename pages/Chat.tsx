@@ -1,5 +1,6 @@
 
 import React, { useState, useEffect, useRef } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { User, Message } from '../types';
 import { DBService } from '../services/database';
 import { useCall } from '../context/CallContext';
@@ -7,6 +8,7 @@ import CameraCapture from '../components/CameraCapture';
 import CallButton from '../components/CallButton';
 import CallHistoryMessage from '../components/CallHistoryMessage';
 import { ArrowLeft, Phone, Video, Send, Image as ImageIcon, Smile, Check, CheckCheck, Mic, Trash2, Camera, Trash } from 'lucide-react';
+import { SkeletonChat } from '../components/common/Skeleton';
 
 interface ChatProps {
   currentUser: User;
@@ -129,7 +131,7 @@ const Chat: React.FC<ChatProps> = ({ currentUser, otherUser, onBack }) => {
         return;
       }
 
-      const unreadMessages = messages.filter(m => m.senderId === otherUser.id && m.status !== 'seen');
+      const unreadMessages = messages.filter(m => m.senderId === otherUser.id && (m.status as string) !== 'seen');
       if (unreadMessages.length > 0) {
         console.log(`[Chat] Found ${unreadMessages.length} unread messages, marking as read.`);
         const chatId = DBService.getChatId(currentUser.id, otherUser.id);
@@ -191,6 +193,7 @@ const Chat: React.FC<ChatProps> = ({ currentUser, otherUser, onBack }) => {
       timestamp: Date.now(),
       status: 'sent',
       type: 'text',
+      read: false, // Added missing property
     };
 
     try {
@@ -222,6 +225,7 @@ const Chat: React.FC<ChatProps> = ({ currentUser, otherUser, onBack }) => {
           timestamp: Date.now(),
           status: 'sent',
           type: 'image',
+          read: false, // Added missing property
         };
         DBService.sendMessage(newMessage);
       };
@@ -239,6 +243,7 @@ const Chat: React.FC<ChatProps> = ({ currentUser, otherUser, onBack }) => {
       timestamp: Date.now(),
       status: 'sent',
       type: type as any,
+      read: false, // Added missing property
     };
     DBService.sendMessage(newMessage);
     setShowCamera(false);
@@ -278,6 +283,7 @@ const Chat: React.FC<ChatProps> = ({ currentUser, otherUser, onBack }) => {
             timestamp: Date.now(),
             status: 'sent',
             type: 'audio',
+            read: false, // Added missing property
           };
           DBService.sendMessage(newMessage);
         };
@@ -374,7 +380,7 @@ const Chat: React.FC<ChatProps> = ({ currentUser, otherUser, onBack }) => {
 
   const getStatusIcon = (status: Message['status']) => {
     const iconClass = "w-3.5 h-3.5";
-    if (status === 'seen') return <CheckCheck className={`${iconClass} text-blue-500`} strokeWidth={2.5} />;
+    if ((status as string) === 'seen') return <CheckCheck className={`${iconClass} text-blue-500`} strokeWidth={2.5} />;
     if (status === 'delivered') return <CheckCheck className={`${iconClass} text-white/70`} />;
     return <Check className={`${iconClass} text-white/70`} />;
   };
@@ -409,181 +415,226 @@ const Chat: React.FC<ChatProps> = ({ currentUser, otherUser, onBack }) => {
         />
       </div>
 
+
+
       {/* Chat Area */}
       <div className="flex-1 overflow-y-auto p-4 space-y-4 no-scrollbar relative z-10" ref={chatContainerRef}>
         {loading ? (
-          <div className="absolute inset-0 flex items-center justify-center">
-            <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-emerald-500"></div>
+          <div className="pt-10 px-2">
+            <SkeletonChat />
           </div>
         ) : (
-          messages.map((msg, index) => {
-            const isMe = msg.senderId === currentUser.id;
-            const isLastInGroup = index === messages.length - 1 || messages[index + 1].senderId !== msg.senderId;
-            const isFirstInGroup = index === 0 || messages[index - 1].senderId !== msg.senderId;
-            const showTime = index === messages.length - 1 || (index < messages.length - 1 && messages[index + 1].timestamp - msg.timestamp > 300000);
+          <AnimatePresence initial={false}>
+            {messages.map((msg, index) => {
+              const isMe = msg.senderId === currentUser.id;
+              const isLastInGroup = index === messages.length - 1 || messages[index + 1].senderId !== msg.senderId;
+              const isFirstInGroup = index === 0 || messages[index - 1].senderId !== msg.senderId;
+              const showTime = index === messages.length - 1 || (index < messages.length - 1 && messages[index + 1].timestamp - msg.timestamp > 300000);
 
-            const roundedClass = isMe
-              ? `${isFirstInGroup ? 'rounded-tr-2xl' : 'rounded-tr-[4px]'} ${isLastInGroup ? 'rounded-br-2xl' : 'rounded-br-[4px]'} rounded-l-2xl`
-              : `${isFirstInGroup ? 'rounded-tl-2xl' : 'rounded-tl-[4px]'} ${isLastInGroup ? 'rounded-bl-2xl' : 'rounded-bl-[4px]'} rounded-r-2xl`;
+              const roundedClass = isMe
+                ? `${isFirstInGroup ? 'rounded-tr-2xl' : 'rounded-tr-[4px]'} ${isLastInGroup ? 'rounded-br-2xl' : 'rounded-br-[4px]'} rounded-l-2xl`
+                : `${isFirstInGroup ? 'rounded-tl-2xl' : 'rounded-tl-[4px]'} ${isLastInGroup ? 'rounded-bl-2xl' : 'rounded-bl-[4px]'} rounded-r-2xl`;
 
-            const showReactionMenu = reactingToMessageId === msg.id;
+              const showReactionMenu = reactingToMessageId === msg.id;
 
-            // Reaction Logic
-            const reactionCounts: Record<string, number> = {};
-            if (msg.reactions) {
-              Object.values(msg.reactions).forEach(r => {
-                reactionCounts[r] = (reactionCounts[r] || 0) + 1;
-              });
-            }
-            const reactionEntries = Object.entries(reactionCounts);
+              // Reaction Logic
+              const reactionCounts: Record<string, number> = {};
+              if (msg.reactions) {
+                Object.values(msg.reactions).forEach(r => {
+                  reactionCounts[r] = (reactionCounts[r] || 0) + 1;
+                });
+              }
+              const reactionEntries = Object.entries(reactionCounts);
 
-            // Render call history message if type is 'call' (BEFORE accessing msg.text)
-            if (msg.type === 'call') {
+              // Render call history message if type is 'call' (BEFORE accessing msg.text)
+              if ((msg.type as string) === 'call') {
+                return (
+                  <motion.div
+                    key={msg.id}
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, scale: 0.9 }}
+                    className="w-full my-1"
+                  >
+                    <CallHistoryMessage
+                      callType={msg.callType || 'audio'}
+                      duration={msg.callDuration || 0}
+                      timestamp={msg.timestamp}
+                      status={msg.callStatus === 'rejected' ? 'declined' : (msg.callStatus || 'completed') as any}
+                      isOutgoing={isMe}
+                      onCallBack={() => startCall(otherUser.id, msg.callType || 'audio')}
+                    />
+                  </motion.div>
+                );
+              }
+
+              const isVideo = msg.text.startsWith('data:video');
+
               return (
-                <div key={msg.id} className="w-full my-1">
-                  <CallHistoryMessage
-                    callType={msg.callType || 'audio'}
-                    duration={msg.callDuration || 0}
-                    timestamp={msg.timestamp}
-                    status={msg.callStatus || 'completed'}
-                    isOutgoing={isMe}
-                    onCallBack={() => startCall(otherUser.id, msg.callType || 'audio')}
-                  />
-                </div>
-              );
-            }
-
-            const isVideo = msg.text.startsWith('data:video');
-
-            return (
-              <div key={msg.id} className={`flex w-full ${isMe ? 'justify-end' : 'justify-start'} ${isFirstInGroup ? 'mt-3' : 'mt-1'} group`}>
-                {!isMe && (
-                  <div className="w-8 mr-2 flex-shrink-0 flex items-end">
-                    {isLastInGroup && <img src={otherUser.avatar} className="w-8 h-8 rounded-full shadow-sm" />}
-                  </div>
-                )}
-
-                <div
-                  className={`relative max-w-[75%] transition-all duration-200`}
-                  onTouchStart={() => handleTouchStart(msg.id)}
-                  onTouchEnd={handleTouchEnd}
-                  onMouseDown={() => handleTouchStart(msg.id)}
-                  onMouseUp={handleTouchEnd}
-                  onMouseLeave={handleTouchEnd}
-                  onContextMenu={(e) => {
-                    e.preventDefault();
-                    setReactingToMessageId(msg.id);
-                  }}
+                <motion.div
+                  key={msg.id}
+                  initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.9, transition: { duration: 0.2 } }}
+                  transition={{ type: "spring", stiffness: 500, damping: 30 }}
+                  className={`flex w-full ${isMe ? 'justify-end' : 'justify-start'} ${isFirstInGroup ? 'mt-3' : 'mt-1'} group`}
                 >
-                  {/* Reaction Menu */}
-                  {showReactionMenu && (
-                    <div className={`absolute bottom-full mb-2 ${isMe ? 'right-0' : 'left-0'} bg-white dark:bg-dark-border rounded-full shadow-xl p-1.5 flex gap-1 z-20 animate-in zoom-in-50 duration-200 reaction-menu items-center border border-gray-100 dark:border-gray-700`}>
-                      {REACTIONS.map(emoji => (
-                        <button
-                          key={emoji}
-                          onClick={(e) => { e.stopPropagation(); handleReact(msg.id, emoji); }}
-                          className="w-9 h-9 flex items-center justify-center text-xl hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full transition-colors active:scale-90"
-                        >
-                          {emoji}
-                        </button>
-                      ))}
-                      {/* Delete Option for own messages */}
-                      {isMe && (
-                        <div className="pl-1 ml-1 border-l border-gray-200 dark:border-gray-600">
-                          <button
-                            onClick={(e) => { e.stopPropagation(); handleDeleteMessage(msg.id); }}
-                            className="w-9 h-9 flex items-center justify-center text-red-500 hover:bg-red-50 dark:hover:bg-red-900/30 rounded-full transition-colors active:scale-90"
-                          >
-                            <Trash className="w-4 h-4" />
-                          </button>
-                        </div>
-                      )}
+                  {!isMe && (
+                    <div className="w-8 mr-2 flex-shrink-0 flex items-end">
+                      {isLastInGroup && <img src={otherUser.avatar} className="w-8 h-8 rounded-full shadow-sm" />}
                     </div>
                   )}
 
-                  <div className={`
-                    message-bubble px-3 py-2 shadow-sm relative z-10
-                    ${isMe
-                      ? `bg-gradient-to-br from-snuggle-500 to-snuggle-600 text-white ${roundedClass}`
-                      : `bg-gray-100 dark:bg-dark-border text-gray-900 dark:text-gray-100 border border-gray-100 dark:border-dark-border ${roundedClass}`
-                    }
-                  `}>
-                    <div className="flex flex-col">
-                      {msg.type === 'audio' ? (
-                        <div className="min-w-[200px] py-1 flex items-center">
-                          <audio
-                            controls
-                            src={msg.text}
-                            className={`h-8 w-full rounded-lg ${isMe ? 'opacity-90 invert brightness-0 grayscale contrast-200' : 'dark:invert dark:brightness-0 dark:contrast-200'}`}
-                            style={isMe ? { filter: 'invert(1) brightness(2)' } : {}}
-                          />
-                        </div>
-                      ) : msg.type === 'image' || isVideo ? (
-                        <div className="mb-1">
-                          {isVideo ? (
-                            <video
-                              src={msg.text}
-                              controls
-                              className="max-w-full rounded-lg object-cover max-h-[300px]"
-                              style={{ minWidth: '150px' }}
-                            />
-                          ) : (
-                            <img
-                              src={msg.text}
-                              alt="Shared photo"
-                              className="max-w-full rounded-lg object-cover max-h-[300px]"
-                              style={{ minWidth: '150px' }}
-                              onClick={() => window.open(msg.text, '_blank')}
-                            />
+                  <div
+                    className={`relative max-w-[75%] transition-all duration-200`}
+                    onTouchStart={() => handleTouchStart(msg.id)}
+                    onTouchEnd={handleTouchEnd}
+                    onMouseDown={() => handleTouchStart(msg.id)}
+                    onMouseUp={handleTouchEnd}
+                    onMouseLeave={handleTouchEnd}
+                    onContextMenu={(e) => {
+                      e.preventDefault();
+                      setReactingToMessageId(msg.id);
+                    }}
+                  >
+                    {/* Reaction Menu */}
+                    <AnimatePresence>
+                      {showReactionMenu && (
+                        <motion.div
+                          initial={{ opacity: 0, scale: 0.8, y: 10 }}
+                          animate={{ opacity: 1, scale: 1, y: 0 }}
+                          exit={{ opacity: 0, scale: 0.8, y: 10 }}
+                          className={`absolute bottom-full mb-2 ${isMe ? 'right-0' : 'left-0'} bg-white dark:bg-dark-border rounded-full shadow-xl p-1.5 flex gap-1 z-20 reaction-menu items-center border border-gray-100 dark:border-gray-700`}
+                        >
+                          {REACTIONS.map(emoji => (
+                            <button
+                              key={emoji}
+                              onClick={(e) => { e.stopPropagation(); handleReact(msg.id, emoji); }}
+                              className="w-9 h-9 flex items-center justify-center text-xl hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full transition-colors active:scale-90"
+                            >
+                              {emoji}
+                            </button>
+                          ))}
+                          {isMe && (
+                            <div className="pl-1 ml-1 border-l border-gray-200 dark:border-gray-600">
+                              <button
+                                onClick={(e) => { e.stopPropagation(); handleDeleteMessage(msg.id); }}
+                                className="w-9 h-9 flex items-center justify-center text-red-500 hover:bg-red-50 dark:hover:bg-red-900/30 rounded-full transition-colors active:scale-90"
+                              >
+                                <Trash className="w-4 h-4" />
+                              </button>
+                            </div>
                           )}
-                        </div>
-                      ) : (
-                        <span className="text-[15px] leading-relaxed break-words whitespace-pre-wrap font-medium">
-                          {msg.text}
-                          <span className="inline-block w-12 h-0"></span>
-                        </span>
+                        </motion.div>
                       )}
+                    </AnimatePresence>
 
-                      <div className={`flex items-center gap-1 self-end mt-1.5 ml-auto ${isMe ? 'text-snuggle-100' : 'text-gray-400 dark:text-gray-500'}`}>
-                        <span className="text-[10px] font-medium opacity-90">
-                          {formatTime(msg.timestamp)}
-                        </span>
-                        {isMe && (
-                          <span>
-                            {getStatusIcon(msg.status)}
+                    <div className={`
+                      message-bubble px-3 py-2 shadow-sm relative z-10
+                      ${isMe
+                        ? `bg-gradient-to-br from-snuggle-500 to-snuggle-600 text-white ${roundedClass}`
+                        : `bg-gray-100 dark:bg-dark-border text-gray-900 dark:text-gray-100 border border-gray-100 dark:border-dark-border ${roundedClass}`
+                      }
+                    `}>
+                      <div className="flex flex-col">
+                        {msg.type === 'audio' ? (
+                          <div className="min-w-[200px] py-1 flex items-center">
+                            <audio
+                              controls
+                              src={msg.text}
+                              className={`h-8 w-full rounded-lg ${isMe ? 'opacity-90 invert brightness-0 grayscale contrast-200' : 'dark:invert dark:brightness-0 dark:contrast-200'}`}
+                              style={isMe ? { filter: 'invert(1) brightness(2)' } : {}}
+                            />
+                          </div>
+                        ) : msg.type === 'image' || isVideo ? (
+                          <div className="mb-1">
+                            {isVideo ? (
+                              <video
+                                src={msg.text}
+                                controls
+                                className="max-w-full rounded-lg object-cover max-h-[300px]"
+                                style={{ minWidth: '150px' }}
+                              />
+                            ) : (
+                              <img
+                                src={msg.text}
+                                alt="Shared photo"
+                                className="max-w-full rounded-lg object-cover max-h-[300px]"
+                                style={{ minWidth: '150px' }}
+                                onClick={() => window.open(msg.text, '_blank')}
+                              />
+                            )}
+                          </div>
+                        ) : (
+                          <span className="text-[15px] leading-relaxed break-words whitespace-pre-wrap font-medium">
+                            {msg.text}
+                            <span className="inline-block w-12 h-0"></span>
                           </span>
                         )}
+
+                        <div className={`flex items-center gap-1 self-end mt-1.5 ml-auto ${isMe ? 'text-snuggle-100' : 'text-gray-400 dark:text-gray-500'}`}>
+                          <span className="text-[10px] font-medium opacity-90">
+                            {formatTime(msg.timestamp)}
+                          </span>
+                          {isMe && (
+                            <span>
+                              {getStatusIcon(msg.status)}
+                            </span>
+                          )}
+                        </div>
                       </div>
                     </div>
+
+                    {reactionEntries.length > 0 && (
+                      <motion.div
+                        initial={{ scale: 0 }}
+                        animate={{ scale: 1 }}
+                        className={`absolute -bottom-3 ${isMe ? 'right-0' : 'left-0'} flex gap-0.5 z-10`}
+                      >
+                        {reactionEntries.map(([emoji, count]) => (
+                          <div key={emoji} className="bg-white dark:bg-dark-border border border-gray-100 dark:border-gray-700 shadow-sm rounded-full px-1.5 py-0.5 text-[10px] flex items-center gap-0.5 text-gray-800 dark:text-gray-200">
+                            <span>{emoji}</span>
+                            {count > 1 && <span className="font-bold">{count}</span>}
+                          </div>
+                        ))}
+                      </motion.div>
+                    )}
                   </div>
-
-                  {reactionEntries.length > 0 && (
-                    <div className={`absolute -bottom-3 ${isMe ? 'right-0' : 'left-0'} flex gap-0.5 z-10`}>
-                      {reactionEntries.map(([emoji, count]) => (
-                        <div key={emoji} className="bg-white dark:bg-dark-border border border-gray-100 dark:border-gray-700 shadow-sm rounded-full px-1.5 py-0.5 text-[10px] flex items-center gap-0.5 text-gray-800 dark:text-gray-200">
-                          <span>{emoji}</span>
-                          {count > 1 && <span className="font-bold">{count}</span>}
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              </div>
-            );
-          }))}
-
-        {isOtherUserTyping && (
-          <div className="flex justify-start mt-2">
-            <div className="w-8 mr-2 flex-shrink-0 flex items-end">
-              <img src={otherUser.avatar} className="w-8 h-8 rounded-full shadow-sm" />
-            </div>
-            <div className="bg-white dark:bg-dark-border px-4 py-3 rounded-2xl rounded-tl-md shadow-sm flex items-center space-x-1 border border-gray-100 dark:border-gray-700">
-              <div className="w-1.5 h-1.5 bg-gray-400 rounded-full typing-dot"></div>
-              <div className="w-1.5 h-1.5 bg-gray-400 rounded-full typing-dot"></div>
-              <div className="w-1.5 h-1.5 bg-gray-400 rounded-full typing-dot"></div>
-            </div>
-          </div>
+                </motion.div>
+              );
+            })}
+          </AnimatePresence>
         )}
+
+        <AnimatePresence>
+          {isOtherUserTyping && (
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 10 }}
+              className="flex justify-start mt-2"
+            >
+              <div className="w-8 mr-2 flex-shrink-0 flex items-end">
+                <img src={otherUser.avatar} className="w-8 h-8 rounded-full shadow-sm" />
+              </div>
+              <div className="bg-white dark:bg-dark-border px-4 py-3 rounded-2xl rounded-tl-md shadow-sm flex items-center space-x-1.5 border border-gray-100 dark:border-gray-700">
+                {[0, 1, 2].map((i) => (
+                  <motion.div
+                    key={i}
+                    className="w-1.5 h-1.5 bg-gray-400 rounded-full"
+                    animate={{ y: [0, -5, 0] }}
+                    transition={{
+                      duration: 0.6,
+                      repeat: Infinity,
+                      delay: i * 0.2,
+                      ease: "easeInOut"
+                    }}
+                  />
+                ))}
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
         <div ref={messagesEndRef} />
       </div>
 

@@ -13,6 +13,7 @@ export interface FirebaseConfig {
     messagingSenderId: string;
     appId: string;
     measurementId?: string;
+    vapidKey: string;
 }
 
 export interface AppConfig {
@@ -64,6 +65,7 @@ export const config: AppConfig = {
         messagingSenderId: getEnvVar('VITE_FIREBASE_MESSAGING_SENDER_ID'),
         appId: getEnvVar('VITE_FIREBASE_APP_ID'),
         measurementId: getEnvVar('VITE_FIREBASE_MEASUREMENT_ID'),
+        vapidKey: getEnvVar('VITE_FIREBASE_VAPID_KEY', 'BOyF-_1NjdBf88a_C18C7wO_S8C8_0C8C8C8C8C8C8C8C8C8'), // Default fallback (likely invalid, user must replace)
     },
 
     useEmulators: parseBool(getEnvVar('VITE_USE_EMULATORS', 'false')),
@@ -80,7 +82,7 @@ export const config: AppConfig = {
     },
 
     api: {
-        baseUrl: getEnvVar('VITE_API_BASE_URL', 'http://localhost:5001'),
+        baseUrl: getEnvVar('VITE_API_BASE_URL', 'https://snuggle-seven.vercel.app'),
     },
 
     logging: {

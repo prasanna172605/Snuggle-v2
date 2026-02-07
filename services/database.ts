@@ -19,13 +19,13 @@ import {
     QueryConstraint,
     collectionGroup
 } from 'firebase/firestore';
+import config from '../config/environment';
 import { db, auth, storage, googleProvider, realtimeDb, messaging } from './firebase';
 import { ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage';
 import { getToken } from 'firebase/messaging';
 import { signInWithEmailAndPassword, signInWithPopup, onAuthStateChanged, signOut, deleteUser as deleteFirebaseUser, createUserWithEmailAndPassword, sendPasswordResetEmail } from 'firebase/auth';
 import { onSnapshot } from 'firebase/firestore';
 import { ref as rtdbRef, set, onDisconnect, serverTimestamp as rtdbServerTimestamp, onValue, off, child, get } from 'firebase/database';
-import { v4 as uuidv4 } from 'uuid';
 
 // Types
 
@@ -847,16 +847,17 @@ export class DBService {
 
     static async createPost(postData: Omit<Post, 'id' | 'likes' | 'commentCount' | 'createdAt'>): Promise<Post> {
         const postRef = doc(collection(db, 'posts'));
-        const newPost: Post = {
+        const newPost = {
             id: postRef.id,
             ...postData,
-            likes: [],
+            likes: 0,
+            likedBy: [] as string[], // Store user IDs who liked (for Firestore queries)
             commentCount: 0,
             createdAt: Timestamp.now()
         };
 
         await setDoc(postRef, newPost);
-        return newPost;
+        return newPost as unknown as Post;
     }
 
     static async getPost(postId: string): Promise<Post | null> {
@@ -1129,31 +1130,46 @@ export class DBService {
 
     static async requestNotificationPermission(userId: string): Promise<string | null> {
         try {
-            if (window.Notification.permission === 'granted') {
-                const token = await getToken(messaging, {
-                    vapidKey: "BOyF-_1NjdBf88a_C18C7wO_S8C8_0C8C8C8C8C8C8C8C8C8"
-                }).catch(async (err) => {
-                    console.log('getToken without VAPID failed, suggesting VAPID is needed potentially.', err);
-                    return null;
-                });
+            console.log('[DB] Requesting notification permission...');
+            if (!('Notification' in window)) {
+                console.error('This browser does not support notifications.');
+                alert('This browser does not support notifications.');
+                return null;
+            }
 
-                if (token) {
-                    await this.saveUserToken(userId, token);
-                    return token;
-                }
-            } else if (window.Notification.permission !== 'denied') {
-                const permission = await window.Notification.requestPermission();
-                if (permission === 'granted') {
-                    // Retry getting token
-                    const token = await getToken(messaging);
-                    if (token) {
-                        await this.saveUserToken(userId, token);
-                        return token;
-                    }
-                }
+            let permission = window.Notification.permission;
+            if (permission === 'default') {
+                permission = await window.Notification.requestPermission();
+            }
+
+            if (permission !== 'granted') {
+                console.warn('[DB] Notification permission denied or ignored.');
+                // alert('Notification permission was not granted.');
+                return null;
+            }
+
+            console.log('[DB] Permission granted, fetching token...', config.firebase.vapidKey);
+
+            // Get Token
+            const token = await getToken(messaging, {
+                vapidKey: config.firebase.vapidKey
+            }).catch((err) => {
+                console.error('[DB] getToken failed:', err);
+                // Fallback: try without VAPID key if the specific one fails (rare, but sometimes needed for legacy)
+                console.log('[DB] Retrying without VAPID key...');
+                return getToken(messaging);
+            });
+
+            if (token) {
+                await this.saveUserToken(userId, token);
+                return token;
+            } else {
+                console.error('[DB] No registration token available. Request permission to generate one.');
+                alert('Failed to generate push token. Check console for details.');
             }
         } catch (error) {
             console.error('Error requesting notification permission:', error);
+            alert(`Error: ${error instanceof Error ? error.message : 'Unknown error'}`);
         }
         return null;
     }
@@ -1175,8 +1191,9 @@ export class DBService {
             if (!user) return;
             const token = await user.getIdToken();
 
-            // Using relative URL '/api' which Vercel/Vite will proxy to the backend function
-            const response = await fetch('/api/send-push', {
+            // Using absolute URL from config to reach Vercel backend
+            const apiUrl = `${config.api.baseUrl}/api/send-push`;
+            const response = await fetch(apiUrl, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -1207,7 +1224,7 @@ export class DBService {
         // 1. Get or generate a persistent Device ID for this client
         let deviceId = localStorage.getItem('snuggle_device_id');
         if (!deviceId) {
-            deviceId = uuidv4();
+            deviceId = crypto.randomUUID();
             localStorage.setItem('snuggle_device_id', deviceId);
         }
 

@@ -14,6 +14,9 @@ export default defineConfig({
     outDir: 'dist',
     sourcemap: false,
     minify: false,
+    rollupOptions: {
+      treeshake: false,
+    },
   },
   server: {
     proxy: {

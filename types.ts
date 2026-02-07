@@ -57,6 +57,10 @@ export interface Message {
   status?: 'sent' | 'delivered' | 'read';
   type?: 'text' | 'image' | 'video' | 'audio';
   fileUrl?: string;
+  reactions?: Record<string, string>; // userId -> emoji
+  callType?: 'audio' | 'video';
+  callDuration?: number;
+  callStatus?: 'completed' | 'missed' | 'rejected' | 'ongoing';
 }
 
 export interface Chat {
@@ -73,15 +77,16 @@ export interface Chat {
 export interface Post {
   id: string;
   userId: string;
-  username?: string; // Optional in DB creation
+  username?: string;
   userAvatar?: string;
   caption: string;
   imageUrl?: string;
-  likes: string[] | number; // Can be array of IDs or count
-  comments?: Comment[] | number; // Can be comments or count
+  likes: number;
+  comments: number;
+  mediaType?: 'image' | 'video';
   commentCount?: number;
   createdAt?: any;
-  timestamp?: number; // DB uses timestamp
+  timestamp?: number;
 }
 
 export interface Story {
@@ -93,6 +98,7 @@ export interface Story {
   createdAt: any;
   expiresAt: any;
   viewers?: string[];
+  views?: string[]; // duplicate field used in code
 }
 
 export interface Notification {

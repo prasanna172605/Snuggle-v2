@@ -3,6 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { User, Message, Chat } from '../types';
 import { DBService } from '../services/database';
 import { Search, Edit, Users, Loader2, ChevronRight, UserPlus, X } from 'lucide-react';
+import { SkeletonList, SkeletonCard } from '../components/common/Skeleton';
 
 interface MessagesProps {
     currentUser: User;
@@ -157,7 +158,17 @@ const Messages: React.FC<MessagesProps> = ({ currentUser, onChatSelect, onUserCl
         }
     };
 
-    if (loading) return <div className="flex justify-center pt-20"><Loader2 className="animate-spin text-snuggle-500" /></div>;
+    // ...
+
+    if (loading) return <div className="p-4 pt-20"><SkeletonList count={5} itemComponent={() => (
+        <div className="flex items-center gap-3 mb-4">
+            <div className="w-14 h-14 rounded-[20px] bg-gray-200 dark:bg-gray-800 animate-pulse" />
+            <div className="flex-1 space-y-2">
+                <div className="h-4 w-1/3 bg-gray-200 dark:bg-gray-800 rounded animate-pulse" />
+                <div className="h-3 w-1/2 bg-gray-200 dark:bg-gray-800 rounded animate-pulse" />
+            </div>
+        </div>
+    )} /></div>;
 
     return (
         <div className="pb-24 pt-2 px-2 relative min-h-screen">

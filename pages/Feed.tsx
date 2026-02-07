@@ -4,6 +4,7 @@ import { User, Post, Story } from '../types';
 import { DBService } from '../services/database';
 import { Heart, MessageSquare, Send, MoreHorizontal, Loader2, Play } from 'lucide-react';
 import StoryViewer from '../components/StoryViewer';
+import { SkeletonPost, SkeletonAvatar } from '../components/common/Skeleton';
 
 interface FeedProps {
     currentUser: User;
@@ -133,7 +134,28 @@ const Feed: React.FC<FeedProps> = ({ currentUser, onUserClick }) => {
     }, {} as Record<string, Story[]>);
 
 
-    if (loading) return <div className="flex justify-center pt-20"><Loader2 className="animate-spin text-snuggle-500" /></div>;
+    if (loading) {
+        return (
+            <div className="pb-20 pt-0 px-2 space-y-4">
+                {/* Stories Skeleton */}
+                <div className="bg-white dark:bg-dark-card rounded-b-bento rounded-t-bento-sm shadow-sm p-4 mb-4 mt-2 border border-transparent dark:border-dark-border flex items-center gap-4 overflow-hidden">
+                    {[1, 2, 3, 4, 5].map(i => (
+                        <div key={i} className="flex flex-col items-center space-y-2 min-w-[72px]">
+                            <SkeletonAvatar size="lg" />
+                            <div className="h-3 w-12 bg-gray-200 dark:bg-gray-700 rounded animate-pulse" />
+                        </div>
+                    ))}
+                </div>
+
+                {/* Posts Skeleton */}
+                {[1, 2].map((i) => (
+                    <div key={i} className="bg-white dark:bg-dark-card rounded-bento p-4 shadow-sm">
+                        <SkeletonPost />
+                    </div>
+                ))}
+            </div>
+        );
+    }
 
     return (
         <div className="pb-20 pt-0">
@@ -161,61 +183,73 @@ const Feed: React.FC<FeedProps> = ({ currentUser, onUserClick }) => {
                     if (!user) return null;
 
                     return (
-                        <div key={post.id} className="bg-white dark:bg-dark-card rounded-bento p-4 shadow-sm transition-colors border border-transparent dark:border-dark-border">
+                        <div key={post.id} className="bg-white dark:bg-dark-card rounded-bento shadow-sm transition-colors border border-transparent dark:border-dark-border overflow-hidden pb-3 mb-4">
                             {/* Header */}
-                            <div className="flex items-center justify-between mb-3">
-                                <div className="flex items-center gap-3 cursor-pointer" onClick={() => onUserClick?.(user.id)}>
-                                    <img src={user.avatar} className="w-10 h-10 rounded-full object-cover border border-gray-100 dark:border-gray-700" alt="" />
-                                    <div>
-                                        <h3 className="font-bold text-sm text-gray-900 dark:text-gray-100">{user.username}</h3>
-                                        <p className="text-[10px] text-gray-400">2h ago</p>
+                            <div className="flex items-center justify-between px-4 pt-3 pb-3">
+                                <div className="flex items-center gap-2.5 cursor-pointer" onClick={() => onUserClick?.(user.id)}>
+                                    <div className="relative">
+                                        <img src={user.avatar} className="w-8 h-8 rounded-full object-cover border border-gray-100 dark:border-gray-800" alt="" />
+                                        {/* Optional story ring could go here */}
+                                    </div>
+                                    <div className="flex flex-col">
+                                        <h3 className="font-bold text-sm text-gray-900 dark:text-gray-100 leading-none">{user.username}</h3>
+                                        <p className="text-[10px] text-gray-400 font-medium">2h ago</p>
                                     </div>
                                 </div>
-                                <button className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200">
+                                <button className="text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors">
                                     <MoreHorizontal className="w-5 h-5" />
                                 </button>
                             </div>
 
-                            {/* Content */}
-                            <div className="rounded-[24px] overflow-hidden mb-3 bg-gray-100 dark:bg-black relative border border-gray-100 dark:border-dark-border">
+                            {/* Content (Full Bleed) */}
+                            <div className="w-full bg-gray-100 dark:bg-black relative aspect-square sm:aspect-auto">
                                 {post.mediaType === 'video' ? (
-                                    <div className="relative">
-                                        <video src={post.imageUrl} className="w-full h-auto max-h-[500px] object-cover" controls />
+                                    <div className="relative w-full h-full">
+                                        <video src={post.imageUrl} className="w-full h-full object-cover max-h-[600px]" controls />
                                     </div>
                                 ) : (
-                                    <img src={post.imageUrl} className="w-full h-auto object-cover" alt="Post" />
+                                    <img src={post.imageUrl} className="w-full h-full object-cover max-h-[600px]" alt="Post" />
                                 )}
                             </div>
 
                             {/* Actions */}
-                            <div className="flex items-center justify-between mb-3">
+                            <div className="flex items-center justify-between px-3 pt-3">
                                 <div className="flex items-center gap-4">
-                                    <button onClick={() => handleLike(post.id)} className="group flex items-center gap-1.5">
-                                        <div className="p-2 rounded-full hover:bg-red-50 dark:hover:bg-red-900/20 group-hover:text-red-500 transition-colors">
-                                            <Heart className={`w-6 h-6 ${post.likes > 0 ? 'fill-red-500 text-red-500' : 'text-gray-800 dark:text-gray-300'}`} />
-                                        </div>
-                                        <span className="font-bold text-sm text-gray-900 dark:text-gray-200">{post.likes}</span>
+                                    <button onClick={() => handleLike(post.id)} className="group flex items-center gap-1.5 focus:outline-none">
+                                        <Heart className={`w-6 h-6 transition-transform active:scale-90 ${post.likes > 0 ? 'fill-red-500 text-red-500' : 'text-gray-900 dark:text-white stroke-[1.5px]'}`} />
                                     </button>
 
-                                    <button className="group flex items-center gap-1.5">
-                                        <div className="p-2 rounded-full hover:bg-emerald-50 dark:hover:bg-emerald-900/20 group-hover:text-emerald-500 transition-colors">
-                                            <MessageSquare className="w-6 h-6 text-gray-800 dark:text-gray-300" />
-                                        </div>
-                                        <span className="font-bold text-sm text-gray-900 dark:text-gray-200">{post.comments}</span>
+                                    <button className="group flex items-center gap-1.5 focus:outline-none">
+                                        <MessageSquare className="w-6 h-6 text-gray-900 dark:text-white stroke-[1.5px] -rotate-90" style={{ transform: 'rotateY(180deg)' }} /> {/* Chat bubble style tweak */}
                                     </button>
 
-                                    <button className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-dark-bg transition-colors">
-                                        <Send className="w-6 h-6 text-gray-800 dark:text-gray-300" />
+                                    <button className="group focus:outline-none">
+                                        <Send className="w-6 h-6 text-gray-900 dark:text-white stroke-[1.5px] -mt-1" />
                                     </button>
                                 </div>
+
+                                {/* Bookmark/Save Placeholder */}
+                                {/* <button><Bookmark className="w-6 h-6..." /></button> */}
+                            </div>
+
+                            {/* Likes Text */}
+                            <div className="px-4 py-1">
+                                <p className="font-bold text-sm text-gray-900 dark:text-white">
+                                    {post.likes} likes
+                                </p>
                             </div>
 
                             {/* Caption */}
-                            <div className="px-1">
+                            <div className="px-4 pb-2">
                                 <p className="text-sm text-gray-800 dark:text-gray-300 leading-relaxed">
                                     <span className="font-bold mr-2 text-gray-900 dark:text-white">{user.username}</span>
                                     {post.caption}
                                 </p>
+                                {post.comments > 0 && (
+                                    <button className="text-gray-400 text-sm mt-1 font-medium">
+                                        View all {post.comments} comments
+                                    </button>
+                                )}
                             </div>
                         </div>
                     );

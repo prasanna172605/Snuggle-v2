@@ -27,6 +27,8 @@ const Notifications = React.lazy(() => import('./pages/Notifications'));
 const BottomNav = React.lazy(() => import('./components/BottomNav'));
 import CallOverlay from './components/CallOverlay';
 import { CallProvider } from './context/CallContext';
+import { AnimatePresence } from 'framer-motion';
+import PageTransition from './components/common/PageTransition';
 
 const LoadingFallback = () => (
   <div className="min-h-screen flex items-center justify-center bg-gray-50">
@@ -168,19 +170,21 @@ const AppContent = ({
         </div>
         <CallOverlay />
 
-        <Suspense fallback={<LoadingFallback />}>
-          <Routes>
-            <Route path="/" element={<Feed currentUser={currentUser} onUserClick={(userId) => navigate(`/profile/${userId}`)} />} />
-            <Route path="/messages" element={<Messages currentUser={currentUser} onChatSelect={(user) => navigate(`/chat/${user.id}`)} onUserClick={(userId) => navigate(`/profile/${userId}`)} />} />
-            <Route path="/chat/:userId" element={<ChatWrapper currentUser={currentUser} />} />
-            <Route path="/profile" element={<Profile user={currentUser} currentUser={currentUser} isOwnProfile={true} onLogout={onLogout} />} />
-            <Route path="/profile/:userId" element={<Profile currentUser={currentUser} isOwnProfile={false} />} />
-            <Route path="/create" element={<CreateWrapper currentUser={currentUser} />} />
-            <Route path="/notifications" element={<Notifications currentUser={currentUser} onUserClick={(userId) => navigate(`/profile/${userId}`)} />} />
-            <Route path="/settings" element={<SettingsWrapper currentUser={currentUser} onLogout={onLogout} onUpdateUser={onUpdateUser} onDeleteAccount={onDeleteAccount} onSwitchAccount={onSwitchAccount} onAddAccount={onAddAccount} />} />
-            <Route path="*" element={<Navigate to="/" replace />} />
-          </Routes>
-        </Suspense>
+        <AnimatePresence mode="wait" initial={false}>
+          <Suspense fallback={<LoadingFallback />}>
+            <Routes location={location} key={location.pathname}>
+              <Route path="/" element={<PageTransition><Feed currentUser={currentUser} onUserClick={(userId) => navigate(`/profile/${userId}`)} /></PageTransition>} />
+              <Route path="/messages" element={<PageTransition><Messages currentUser={currentUser} onChatSelect={(user) => navigate(`/chat/${user.id}`)} onUserClick={(userId) => navigate(`/profile/${userId}`)} /></PageTransition>} />
+              <Route path="/chat/:userId" element={<PageTransition><ChatWrapper currentUser={currentUser} /></PageTransition>} />
+              <Route path="/profile" element={<PageTransition><Profile user={currentUser} currentUser={currentUser} isOwnProfile={true} onLogout={onLogout} /></PageTransition>} />
+              <Route path="/profile/:userId" element={<PageTransition><Profile currentUser={currentUser} isOwnProfile={false} /></PageTransition>} />
+              <Route path="/create" element={<PageTransition><CreateWrapper currentUser={currentUser} /></PageTransition>} />
+              <Route path="/notifications" element={<PageTransition><Notifications currentUser={currentUser} onUserClick={(userId) => navigate(`/profile/${userId}`)} /></PageTransition>} />
+              <Route path="/settings" element={<PageTransition><SettingsWrapper currentUser={currentUser} onLogout={onLogout} onUpdateUser={onUpdateUser} onDeleteAccount={onDeleteAccount} onSwitchAccount={onSwitchAccount} onAddAccount={onAddAccount} /></PageTransition>} />
+              <Route path="*" element={<Navigate to="/" replace />} />
+            </Routes>
+          </Suspense>
+        </AnimatePresence>
 
         {!isFullScreen && (
           <BottomNav unreadCount={unreadCount} />

@@ -8,10 +8,7 @@
 # Firebase
 .firebase/
 .firebaserc
-<<<<<<< HEAD
-=======
 snuggle-73465-firebase-adminsdk-fbsvc-9296570032.json
->>>>>>> release/v2.0-fixes
 
 # Build outputs
 dist/
