@@ -134,7 +134,7 @@ const CallOverlay: React.FC = () => {
               ref={remoteVideoRef}
               autoPlay
               playsInline
-              // Do NOT mute - audio is part of video stream and must always play
+              // Do NOT mute
               className="w-full h-full object-cover"
             />
           )}
@@ -163,9 +163,10 @@ const CallOverlay: React.FC = () => {
               ref={audioRef}
               autoPlay
               playsInline
-            // IMPORTANT: Do NOT use muted here - audio must always play
-            // Speaker toggle in web browsers is just a UI indicator
-            // Real audio routing (earpiece/speaker) is controlled by the OS
+              controls={false}
+              // Audio Routing Hints
+              // @ts-ignore
+              x-webkit-airplay="allow"
             />
           )}
 
@@ -253,25 +254,33 @@ const CallOverlay: React.FC = () => {
             {/* Speaker Toggle */}
             <button
               onClick={toggleSpeaker}
-              className={`p-4 rounded-full shadow-lg transition-all transform hover:scale-105 ${!isSpeakerOn ? 'bg-red-500 text-white hover:bg-red-600' : 'bg-white text-gray-900 hover:bg-gray-100'
+              className={`p-4 rounded-full shadow-lg transition-all duration-200 border border-white/10 ${isSpeakerOn
+                ? 'bg-white text-gray-900 scale-105' // ON = Loudspeaker (White)
+                : 'bg-gray-800/60 text-white hover:bg-gray-700/60 backdrop-blur-md' // OFF = Earpiece (Dark)
                 }`}
             >
-              {isSpeakerOn ? <Volume2 className="w-6 h-6" /> : <VolumeX className="w-6 h-6" />}
+              {/* Always show Speaker icon, change style to indicate state */}
+              <Volume2 className="w-6 h-6" />
             </button>
 
             {/* Mic Toggle */}
             <button
               onClick={toggleMic}
-              className={`p-4 rounded-full shadow-lg transition-all transform hover:scale-105 ${isMicMuted ? 'bg-red-500 text-white hover:bg-red-600' : 'bg-white text-gray-900 hover:bg-gray-100'
+              className={`p-4 rounded-full shadow-lg transition-all duration-200 border border-white/10 ${isMicMuted
+                ? 'bg-white text-gray-900 scale-105' // Muted (White)
+                : 'bg-gray-800/60 text-white hover:bg-gray-700/60 backdrop-blur-md' // Unmuted (Dark)
                 }`}
             >
               {isMicMuted ? <MicOff className="w-6 h-6" /> : <Mic className="w-6 h-6" />}
             </button>
 
+            {/* Video Toggle */}
             {activeCall.type === 'video' && (
               <button
                 onClick={toggleCamera}
-                className={`p-4 rounded-full shadow-lg transition-all transform hover:scale-105 ${isCameraOff ? 'bg-red-500 text-white hover:bg-red-600' : 'bg-white text-gray-900 hover:bg-gray-100'
+                className={`p-4 rounded-full shadow-lg transition-all duration-200 border border-white/10 ${isCameraOff
+                  ? 'bg-white text-gray-900 scale-105'
+                  : 'bg-gray-800/60 text-white hover:bg-gray-700/60 backdrop-blur-md'
                   }`}
               >
                 {isCameraOff ? <VideoOff className="w-6 h-6" /> : <Video className="w-6 h-6" />}
@@ -282,7 +291,9 @@ const CallOverlay: React.FC = () => {
             {activeCall.type === 'video' && (
               <button
                 onClick={toggleScreenShare}
-                className={`p-4 rounded-full shadow-lg transition-all transform hover:scale-105 ${isScreenSharing ? 'bg-snuggle-500 text-white hover:bg-snuggle-600' : 'bg-white text-gray-900 hover:bg-gray-100'
+                className={`p-4 rounded-full shadow-lg transition-all duration-200 border border-white/10 ${isScreenSharing
+                  ? 'bg-white text-gray-900 scale-105'
+                  : 'bg-gray-800/60 text-white hover:bg-gray-700/60 backdrop-blur-md'
                   }`}
               >
                 <MonitorUp className="w-6 h-6" />
