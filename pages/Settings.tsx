@@ -28,7 +28,8 @@ const Settings: React.FC<SettingsProps> = ({
   onBack,
   onLogout,
   onUpdateUser,
-  onDeleteAccount
+  onDeleteAccount,
+  onSwitchAccount
 }) => {
   const [activeTab, setActiveTab] = useState<TabType>('profile');
   const [isLoading, setIsLoading] = useState(false);
