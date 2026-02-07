@@ -2,9 +2,11 @@
 import React, { useState, useEffect } from 'react';
 import { User, Post, Story } from '../types';
 import { DBService } from '../services/database';
-import { Heart, MessageSquare, Send, MoreHorizontal, Loader2, Play } from 'lucide-react';
+import { Heart, MessageSquare, Send, MoreHorizontal, Loader2, Play, Bookmark } from 'lucide-react';
 import StoryViewer from '../components/StoryViewer';
 import { SkeletonPost, SkeletonAvatar } from '../components/common/Skeleton';
+import { formatRelativeTime } from '../utils/dateUtils';
+import { toast } from 'sonner';
 
 interface FeedProps {
     currentUser: User;
@@ -100,8 +102,27 @@ const Feed: React.FC<FeedProps> = ({ currentUser, onUserClick }) => {
         }
     }, [currentUser]);
 
-    const handleLike = (postId: string) => {
-        console.log('Liked', postId);
+    const handleLike = async (postId: string) => {
+        await DBService.likePost(postId, currentUser.id);
+        // Re-fetch posts to update like count and state
+        const updatedPosts = await DBService.getFeed(currentUser.id, 50);
+        setPosts(updatedPosts);
+    };
+
+    const handleSave = async (postId: string) => {
+        toast.success('Post saved!');
+        // TODO: Implement save in DBService
+    };
+
+    const handleShare = async (postId: string) => {
+        const postUrl = `${window.location.origin}/post/${postId}`;
+        await navigator.clipboard.writeText(postUrl);
+        toast.success('Link copied to clipboard!');
+    };
+
+    const handleComment = (postId: string) => {
+        toast.info('Comments coming soon!');
+        // TODO: Open comment modal
     };
 
     const handleStoryClick = (userId: string) => {
@@ -176,8 +197,8 @@ const Feed: React.FC<FeedProps> = ({ currentUser, onUserClick }) => {
                 storiesByUser={storiesByUser}
                 currentUser={currentUser}
             />
-
-            <div className="space-y-4 px-2">
+            {/* Posts - Centered for Desktop */}
+            <div className="space-y-4 px-2 max-w-xl mx-auto">
                 {posts.map(post => {
                     const user = users[post.userId];
                     if (!user) return null;
@@ -193,7 +214,7 @@ const Feed: React.FC<FeedProps> = ({ currentUser, onUserClick }) => {
                                     </div>
                                     <div className="flex flex-col">
                                         <h3 className="font-bold text-sm text-gray-900 dark:text-gray-100 leading-none">{user.username}</h3>
-                                        <p className="text-[10px] text-gray-400 font-medium">2h ago</p>
+                                        <p className="text-[10px] text-gray-400 font-medium">{formatRelativeTime(post.createdAt)}</p>
                                     </div>
                                 </div>
                                 <button className="text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors">
@@ -219,17 +240,19 @@ const Feed: React.FC<FeedProps> = ({ currentUser, onUserClick }) => {
                                         <Heart className={`w-6 h-6 transition-transform active:scale-90 ${post.likes > 0 ? 'fill-red-500 text-red-500' : 'text-gray-900 dark:text-white stroke-[1.5px]'}`} />
                                     </button>
 
-                                    <button className="group flex items-center gap-1.5 focus:outline-none">
-                                        <MessageSquare className="w-6 h-6 text-gray-900 dark:text-white stroke-[1.5px] -rotate-90" style={{ transform: 'rotateY(180deg)' }} /> {/* Chat bubble style tweak */}
+                                    <button onClick={() => handleComment(post.id)} className="group flex items-center gap-1.5 focus:outline-none">
+                                        <MessageSquare className="w-6 h-6 text-gray-900 dark:text-white stroke-[1.5px]" />
                                     </button>
 
-                                    <button className="group focus:outline-none">
+                                    <button onClick={() => handleShare(post.id)} className="group focus:outline-none">
                                         <Send className="w-6 h-6 text-gray-900 dark:text-white stroke-[1.5px] -mt-1" />
                                     </button>
                                 </div>
 
-                                {/* Bookmark/Save Placeholder */}
-                                {/* <button><Bookmark className="w-6 h-6..." /></button> */}
+                                {/* Save/Bookmark */}
+                                <button onClick={() => handleSave(post.id)} className="group focus:outline-none">
+                                    <Bookmark className="w-6 h-6 text-gray-900 dark:text-white stroke-[1.5px]" />
+                                </button>
                             </div>
 
                             {/* Likes Text */}

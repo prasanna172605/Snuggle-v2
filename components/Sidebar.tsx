@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { NavLink } from 'react-router-dom';
-import { Home, MessageCircle, User, Plus, Bell, Settings, LogOut, Menu, Moon, Sun, Bookmark, Users } from 'lucide-react';
+import { Home, MessageCircle, User, Plus, Bell, Settings, LogOut, Menu, Moon, Sun, Bookmark, Users, Heart } from 'lucide-react';
 import { useTheme } from '../context/ThemeContext';
 
 interface SidebarProps {
@@ -72,6 +72,8 @@ const Sidebar: React.FC<SidebarProps> = ({ unreadCount, onLogout, onSwitchAccoun
                 <NavItem to="/notifications" icon={Bell} label="Notifications" />
                 <NavItem to="/profile" icon={User} label="Profile" />
                 <NavItem to="/create" icon={Plus} label="Create" />
+                <NavItem to="/activities" icon={Heart} label="Your Activity" />
+                <NavItem to="/saved" icon={Bookmark} label="Saved" />
             </nav>
 
             {/* Bottom Menu Area */}
