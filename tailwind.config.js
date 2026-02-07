@@ -10,22 +10,149 @@ export default {
   theme: {
     extend: {
       colors: {
-        snuggle: {
-          50: '#f0fdfa',
-          100: '#ccfbf1',
-          200: '#99f6e4',
-          300: '#5eead4',
-          400: '#2dd4bf',
-          500: '#14b8a6',
-          600: '#0d9488',
-          700: '#0f766e',
-          800: '#115e59',
-          900: '#134e4a',
+        // ==============================
+        // SNUGGLE BRAND COLORS
+        // ==============================
+
+        // Primary: Deep Blue - Trust, Calmness
+        primary: {
+          DEFAULT: '#1F3A5F',
+          light: '#2B4A73',
+          dark: '#162B47',
+          50: '#EEF2F7',
+          100: '#D5DEE9',
+          200: '#ABBDCE',
+          300: '#819CB2',
+          400: '#577B97',
+          500: '#1F3A5F',
+          600: '#1B3352',
+          700: '#162B47',
+          800: '#11223A',
+          900: '#0C192B',
         },
+
+        // Accent: Bright Blue - Connection, Action
+        accent: {
+          DEFAULT: '#4C9AFF',
+          light: '#6BABFF',
+          dark: '#2B7CE5',
+          50: '#EBF4FF',
+          100: '#D6E8FF',
+          200: '#ADD1FF',
+          300: '#85BAFF',
+          400: '#4C9AFF',
+          500: '#3385F0',
+          600: '#2B7CE5',
+          700: '#1F66CC',
+          800: '#1650A3',
+          900: '#0D3A7A',
+        },
+
+        // Warm Accent: Soft Orange - Warmth, Highlights
+        warm: {
+          DEFAULT: '#F4A261',
+          light: '#F6B379',
+          dark: '#E08C42',
+          50: '#FEF6EE',
+          100: '#FCEBDD',
+          200: '#F9D7BC',
+          300: '#F6C39A',
+          400: '#F4A261',
+          500: '#E08C42',
+          600: '#C87530',
+          700: '#A65E24',
+          800: '#854A1B',
+          900: '#633713',
+        },
+
+        // Semantic: Success
+        success: {
+          DEFAULT: '#2E7D32',
+          light: '#4CAF50',
+          dark: '#1B5E20',
+          bg: 'rgba(46, 125, 50, 0.1)',
+        },
+
+        // Semantic: Warning
+        warning: {
+          DEFAULT: '#F59E0B',
+          light: '#FBB12B',
+          dark: '#D97706',
+          bg: 'rgba(245, 158, 11, 0.1)',
+        },
+
+        // Semantic: Error
+        error: {
+          DEFAULT: '#D32F2F',
+          light: '#EF5350',
+          dark: '#C62828',
+          bg: 'rgba(211, 47, 47, 0.1)',
+        },
+
+        // ==============================
+        // LIGHT MODE SURFACES
+        // ==============================
+        light: {
+          bg: '#F7F9FC',
+          surface: '#FFFFFF',
+          elevated: '#FFFFFF',
+          overlay: 'rgba(255, 255, 255, 0.9)',
+          divider: '#E5E7EB',
+          border: '#E5E7EB',
+          hover: 'rgba(0, 0, 0, 0.04)',
+          pressed: 'rgba(0, 0, 0, 0.08)',
+          selected: 'rgba(76, 154, 255, 0.12)',
+        },
+
+        // Light mode text
+        'light-text': {
+          primary: '#111827',
+          secondary: '#6B7280',
+          tertiary: '#9CA3AF',
+          disabled: '#D1D5DB',
+          inverse: '#FFFFFF',
+        },
+
+        // ==============================
+        // DARK MODE SURFACES
+        // ==============================
         dark: {
-          bg: '#000000',
-          card: '#000000',
-          border: '#262626',
+          bg: '#0F172A',
+          surface: '#1E293B',
+          elevated: '#273449',
+          overlay: 'rgba(15, 23, 42, 0.95)',
+          divider: '#334155',
+          border: '#334155',
+          hover: 'rgba(255, 255, 255, 0.06)',
+          pressed: 'rgba(255, 255, 255, 0.12)',
+          selected: 'rgba(76, 154, 255, 0.2)',
+          // Legacy - kept for backward compatibility
+          card: '#1E293B',
+        },
+
+        // Dark mode text
+        'dark-text': {
+          primary: '#F9FAFB',
+          secondary: '#94A3B8',
+          tertiary: '#64748B',
+          disabled: '#475569',
+          inverse: '#111827',
+        },
+
+        // ==============================
+        // LEGACY COLORS (Backward Compatibility)
+        // ==============================
+        snuggle: {
+          50: '#EEF2F7',
+          100: '#D5DEE9',
+          200: '#ABBDCE',
+          300: '#819CB2',
+          400: '#577B97',
+          500: '#1F3A5F',
+          600: '#1B3352',
+          700: '#162B47',
+          800: '#11223A',
+          900: '#0C192B',
         },
         glass: {
           100: 'rgba(255, 255, 255, 0.1)',

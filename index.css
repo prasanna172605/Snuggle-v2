@@ -4,6 +4,9 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Import Theme Tokens */
+@import './src/styles/theme.css';
+
 /* Dark Mode Base Styles */
 @layer base {
 
@@ -14,12 +17,12 @@
 
   /* Light mode body */
   body {
-    @apply bg-white text-gray-900;
+    @apply bg-light-bg text-light-text-primary;
   }
 
   /* Dark mode body */
   .dark body {
-    @apply bg-black text-gray-100;
+    @apply bg-dark-bg text-dark-text-primary;
   }
 
   /* Prevent transition on theme change for specific elements */
@@ -54,13 +57,19 @@
 
 body {
   font-family: 'Plus Jakarta Sans', sans-serif;
-  background-color: #000000;
+  background-color: #F7F9FC;
+  /* Light mode default */
   -webkit-tap-highlight-color: transparent;
   margin: 0;
   padding: 0;
 }
 
-/* Global Animated Mesh Gradient Background */
+.dark body {
+  background-color: #0F172A;
+  /* Dark mode background */
+}
+
+/* Clean Background (No Gradients) */
 .mesh-bg {
   position: fixed;
   top: 0;
@@ -68,29 +77,28 @@ body {
   width: 100vw;
   height: 100vh;
   z-index: -1;
-  background-color: #ffdee9;
-  background-image: linear-gradient(0deg, #ffdee9 0%, #b5fffc 100%);
-  overflow: hidden;
+  background-color: #F7F9FC;
+  /* Light mode: clean surface */
 }
 
 .dark .mesh-bg {
-  background-color: #000000;
-  background-image: radial-gradient(at 0% 0%, hsla(253, 16%, 7%, 1) 0, transparent 50%),
-    radial-gradient(at 50% 0%, hsla(225, 39%, 30%, 1) 0, transparent 50%),
-    radial-gradient(at 100% 0%, hsla(339, 49%, 30%, 1) 0, transparent 50%);
+  background-color: #0F172A;
+  /* Dark mode: deep blue-slate */
 }
 
-/* Glassmorphism Utilities */
+/* Glassmorphism Utilities (Subtle for minimal design) */
 .glass-panel {
-  background: rgba(255, 255, 255, 0.65);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
-  border: 1px solid rgba(255, 255, 255, 0.5);
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(229, 231, 235, 0.8);
 }
 
 .dark .glass-panel {
-  background: rgba(0, 0, 0, 0.85);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(30, 41, 59, 0.9);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(51, 65, 85, 0.8);
 }
 
 .no-scrollbar::-webkit-scrollbar {
@@ -195,4 +203,126 @@ body {
 
 .typing-dot:nth-child(3) {
   animation-delay: 0.2s;
+}
+
+/* ============================================
+   SNUGGLE COMPONENT STYLES
+   ============================================ */
+
+/* Primary Action Button */
+.snuggle-btn-primary {
+  @apply bg-accent text-white font-semibold py-2.5 px-6 rounded-xl;
+  @apply hover:bg-accent-dark active:bg-accent-dark/90;
+  @apply transition-all duration-200;
+  @apply disabled:bg-light-text-disabled disabled:cursor-not-allowed;
+}
+
+.dark .snuggle-btn-primary {
+  @apply disabled:bg-dark-text-disabled;
+}
+
+/* Secondary Button */
+.snuggle-btn-secondary {
+  @apply bg-light-surface text-light-text-primary font-medium py-2.5 px-6 rounded-xl;
+  @apply border border-light-border;
+  @apply hover:bg-light-hover active:bg-light-pressed;
+  @apply transition-all duration-200;
+}
+
+.dark .snuggle-btn-secondary {
+  @apply bg-dark-surface text-dark-text-primary border-dark-border;
+  @apply hover:bg-dark-hover active:bg-dark-pressed;
+}
+
+/* Card Component */
+.snuggle-card {
+  @apply bg-light-surface rounded-2xl border border-light-border;
+  @apply shadow-sm;
+}
+
+.dark .snuggle-card {
+  @apply bg-dark-surface border-dark-border;
+}
+
+/* Input Field */
+.snuggle-input {
+  @apply bg-light-bg border border-light-border rounded-xl;
+  @apply text-light-text-primary placeholder:text-light-text-tertiary;
+  @apply focus:border-accent focus:ring-2 focus:ring-accent/20 focus:outline-none;
+  @apply transition-all duration-200;
+}
+
+.dark .snuggle-input {
+  @apply bg-dark-bg border-dark-border;
+  @apply text-dark-text-primary placeholder:text-dark-text-tertiary;
+}
+
+/* Navigation Item */
+.snuggle-nav-item {
+  @apply text-light-text-secondary;
+  @apply hover:text-light-text-primary hover:bg-light-hover;
+  @apply transition-all duration-200 rounded-xl;
+}
+
+.snuggle-nav-item.active {
+  @apply text-accent;
+}
+
+.dark .snuggle-nav-item {
+  @apply text-dark-text-secondary;
+  @apply hover:text-dark-text-primary hover:bg-dark-hover;
+}
+
+/* Chat Message Sent */
+.snuggle-message-sent {
+  @apply bg-primary text-white rounded-2xl rounded-br-md;
+}
+
+/* Chat Message Received */
+.snuggle-message-received {
+  @apply bg-light-surface text-light-text-primary;
+  @apply border border-light-border rounded-2xl rounded-bl-md;
+}
+
+.dark .snuggle-message-received {
+  @apply bg-dark-surface text-dark-text-primary border-dark-border;
+}
+
+/* Badge - Unread */
+.snuggle-badge {
+  @apply bg-accent text-white text-xs font-bold;
+  @apply px-2 py-0.5 rounded-full;
+}
+
+/* Badge - Notification (Warm) */
+.snuggle-badge-warm {
+  @apply bg-warm text-white text-xs font-bold;
+  @apply px-2 py-0.5 rounded-full;
+}
+
+/* Story Ring */
+.snuggle-story-ring {
+  @apply ring-2 ring-warm ring-offset-2 ring-offset-light-bg;
+}
+
+.dark .snuggle-story-ring {
+  @apply ring-offset-dark-bg;
+}
+
+/* Online Indicator */
+.snuggle-online {
+  @apply bg-success w-3 h-3 rounded-full border-2 border-light-surface;
+}
+
+.dark .snuggle-online {
+  @apply border-dark-surface;
+}
+
+/* Divider */
+.snuggle-divider {
+  @apply border-t border-light-divider;
+}
+
+.dark .snuggle-divider {
+  @apply border-dark-divider;
 }
