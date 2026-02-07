@@ -82,9 +82,9 @@ const Notifications: React.FC<NotificationsProps> = ({ currentUser, onUserClick 
     };
 
     return (
-        <div className="bg-white min-h-screen">
-            <div className="px-4 py-4 border-b border-gray-100 flex justify-between items-center">
-                <h2 className="text-xl font-bold text-gray-900">Notifications</h2>
+        <div className="bg-white dark:bg-black min-h-screen">
+            <div className="px-4 py-4 border-b border-gray-100 dark:border-dark-border flex justify-between items-center">
+                <h2 className="text-xl font-bold text-gray-900 dark:text-white">Notifications</h2>
                 <button
                     onClick={async () => {
                         if (!currentUser?.id) return; // toast.error('No User');
@@ -124,12 +124,12 @@ const Notifications: React.FC<NotificationsProps> = ({ currentUser, onUserClick 
                         )} />
                     </div>
                 ) : notifications.length === 0 ? (
-                    <div className="flex flex-col items-center justify-center py-20 text-gray-400">
+                    <div className="flex flex-col items-center justify-center py-20 text-gray-400 dark:text-gray-600">
                         <BellIcon className="w-12 h-12 mb-2 opacity-20" />
                         <p>No notifications yet</p>
                     </div>
                 ) : (
-                    <div className="divide-y divide-gray-50">
+                    <div className="divide-y divide-gray-50 dark:divide-dark-border">
                         {notifications.map(notif => {
                             if (!notif.senderId) return null;
                             const sender = senders[notif.senderId];
@@ -139,22 +139,22 @@ const Notifications: React.FC<NotificationsProps> = ({ currentUser, onUserClick 
                                 <div
                                     key={notif.id}
                                     onClick={() => notif.senderId && onUserClick?.(notif.senderId)}
-                                    className={`flex items-start px-4 py-4 hover:bg-gray-50 transition-colors cursor-pointer ${!notif.read ? 'bg-blue-50/30' : ''}`}
+                                    className={`flex items-start px-4 py-4 hover:bg-gray-50 dark:hover:bg-dark-card transition-colors cursor-pointer ${!notif.read ? 'bg-blue-50/30 dark:bg-blue-900/10' : ''}`}
                                 >
                                     <div className="relative">
-                                        <img src={sender.avatar} alt={sender.username} className="w-10 h-10 rounded-full object-cover border border-gray-100" />
-                                        <div className={`absolute -bottom-1 -right-1 w-5 h-5 rounded-full flex items-center justify-center border-2 border-white ${getBgColor(notif.type)}`}>
+                                        <img src={sender.avatar} alt={sender.username} className="w-10 h-10 rounded-full object-cover border border-gray-100 dark:border-gray-800" />
+                                        <div className={`absolute -bottom-1 -right-1 w-5 h-5 rounded-full flex items-center justify-center border-2 border-white dark:border-black ${getBgColor(notif.type)}`}>
                                             {getIcon(notif.type)}
                                         </div>
                                     </div>
                                     <div className="ml-3 flex-1">
-                                        <p className="text-sm text-gray-800">
+                                        <p className="text-sm text-gray-800 dark:text-gray-200">
                                             {notif.text || notif.message}
                                         </p>
                                         <p className="text-xs text-gray-400 mt-1">{formatTime(notif.createdAt?.toMillis ? notif.createdAt.toMillis() : (notif.createdAt || Date.now()))}</p>
                                     </div>
                                     {notif.type === 'follow' && (
-                                        <div className="bg-gray-100 text-xs font-semibold px-3 py-1.5 rounded-lg text-gray-600">
+                                        <div className="bg-gray-100 dark:bg-gray-800 text-xs font-semibold px-3 py-1.5 rounded-lg text-gray-600 dark:text-gray-300">
                                             Follower
                                         </div>
                                     )}

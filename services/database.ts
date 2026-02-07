@@ -17,8 +17,10 @@ import {
     increment,
     serverTimestamp,
     QueryConstraint,
-    collectionGroup
+    collectionGroup,
+    addDoc
 } from 'firebase/firestore';
+import { v4 as uuidv4 } from 'uuid';
 import config from '../config/environment';
 import { db, auth, storage, googleProvider, realtimeDb, messaging } from './firebase';
 import { ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage';
@@ -1939,6 +1941,24 @@ export class DBService {
             // Return empty array if index is still building
             return [];
         }
+    }
+
+    static async uploadStory(userId: string, file: File): Promise<void> {
+        const fileRef = ref(storage, `stories/${userId}/${uuidv4()}_${file.name}`);
+        await uploadBytes(fileRef, file);
+        const url = await getDownloadURL(fileRef);
+
+        const expiresAt = new Date();
+        expiresAt.setHours(expiresAt.getHours() + 24);
+
+        await addDoc(collection(db, 'stories'), {
+            userId,
+            imageUrl: url,
+            createdAt: serverTimestamp(),
+            expiresAt: Timestamp.fromDate(expiresAt),
+            views: [],
+            mediaType: file.type.startsWith('video') ? 'video' : 'image'
+        });
     }
 
     // DEPRECATED: Using Circles now

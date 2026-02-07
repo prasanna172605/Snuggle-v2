@@ -70,20 +70,34 @@ const Profile: React.FC<ProfileProps> = ({ user: propUser, currentUser, isOwnPro
 
     const handleFollowToggle = async () => {
         if (!currentUser || !user) return;
-        setFollowLoading(true);
+
+        // Optimistic Update
+        const previousIsFollowing = isFollowing;
+        const previousFollowers = user.followers || [];
+
+        setIsFollowing(!previousIsFollowing);
+
+        // Update local user state for followers count
+        setUser(prev => {
+            if (!prev) return null;
+            const newFollowers = !previousIsFollowing
+                ? [...(prev.followers || []), currentUser.id]
+                : (prev.followers || []).filter(id => id !== currentUser.id);
+            return { ...prev, followers: newFollowers };
+        });
+
         try {
-            if (isFollowing) {
+            if (previousIsFollowing) {
                 await DBService.unfollowUser(currentUser.id, user.id);
-                setIsFollowing(false);
             } else {
                 await DBService.followUser(currentUser.id, user.id);
-                setIsFollowing(true);
             }
         } catch (error: any) {
             console.error('Follow error:', error);
+            // Revert state on error
+            setIsFollowing(previousIsFollowing);
+            setUser(prev => prev ? { ...prev, followers: previousFollowers } : null);
             alert(error.message || 'Action failed');
-        } finally {
-            setFollowLoading(false);
         }
     };
 

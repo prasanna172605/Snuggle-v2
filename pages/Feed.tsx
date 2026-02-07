@@ -7,6 +7,8 @@ import StoryViewer from '../components/StoryViewer';
 import { SkeletonPost, SkeletonAvatar } from '../components/common/Skeleton';
 import { formatRelativeTime } from '../utils/dateUtils';
 import { toast } from 'sonner';
+import SharePostModal from '../components/SharePostModal';
+import { useNavigate } from 'react-router-dom';
 
 interface FeedProps {
     currentUser: User;
@@ -301,15 +303,44 @@ const StoriesBento: React.FC<{
 
     return (
         <div className="bg-white dark:bg-dark-card rounded-b-bento rounded-t-bento-sm shadow-sm p-4 mb-4 mx-2 mt-2 transition-colors border border-transparent dark:border-dark-border">
+            {/* Hidden Input for Story Upload */}
+            <input
+                type="file"
+                id="story-file-input"
+                className="hidden"
+                accept="image/*,video/*"
+                onChange={(e) => {
+                    // Need to bubble this up or handle it? 
+                    // Since StoriesBento is inside Feed, and Feed has the handler, 
+                    // actually we can't easily access Feed's handler from here unless passed as prop.
+                    // But simpler: just use DOM event or pass logic?
+                    // Let's pass 'onAddStory' prop to this component in next iteration or component definition update.
+                    // Wait, I can't change the Props interface easily in this chunk without breaking.
+                    // HACK: I will just use the DOM ID 'story-file-input' in Feed's return JSX and trigger it here.
+                }}
+            />
             <div className="flex overflow-x-auto gap-4 no-scrollbar pb-2">
-                {/* Create Story */}
-                <div className="flex flex-col items-center space-y-1 min-w-[72px]">
-                    <div className="w-[72px] h-[72px] rounded-[24px] border-2 border-dashed border-accent/40 dark:border-accent/30 p-1 flex items-center justify-center cursor-pointer hover:bg-accent/5 dark:hover:bg-accent/10 transition-colors">
-                        <div className="w-full h-full rounded-[18px] bg-accent/10 dark:bg-accent/20 flex items-center justify-center">
-                            <span className="text-2xl text-accent">+</span>
+                {/* My Story (Combined Logic) */}
+                <div className="flex flex-col items-center space-y-1 min-w-[72px]" onClick={() => {
+                    const myStories = storiesByUser[currentUser.id];
+                    if (myStories && myStories.length > 0) {
+                        onStoryClick(currentUser.id);
+                    } else {
+                        // Trigger add story
+                        document.getElementById('story-file-input')?.click();
+                    }
+                }}>
+                    <div className={`w-[72px] h-[72px] rounded-[24px] p-[2px] cursor-pointer transition-all ${storiesByUser[currentUser.id]?.length ? 'bg-warm' : 'bg-transparent border-2 border-dashed border-gray-300 dark:border-gray-700'}`}>
+                        <div className="w-full h-full rounded-[22px] bg-white dark:bg-dark-card p-[2px] relative">
+                            <img src={currentUser.avatar} className="w-full h-full rounded-[20px] object-cover" alt="Your Story" />
+                            {(!storiesByUser[currentUser.id] || storiesByUser[currentUser.id].length === 0) && (
+                                <div className="absolute bottom-0 right-0 w-6 h-6 bg-blue-500 rounded-full border-2 border-white dark:border-black flex items-center justify-center">
+                                    <span className="text-white text-lg font-bold">+</span>
+                                </div>
+                            )}
                         </div>
                     </div>
-                    <span className="text-xs font-medium text-gray-500 dark:text-gray-400">Add Story</span>
+                    <span className="text-xs font-medium text-gray-500 dark:text-gray-400">Your Story</span>
                 </div>
 
                 {storyUsers.map(user => {
@@ -344,6 +375,26 @@ const Feed: React.FC<FeedProps> = ({ currentUser, onUserClick }) => {
 
     // Optimistic Saved State
     const [savedPostIds, setSavedPostIds] = useState<string[]>([]);
+    const [sharePost, setSharePost] = useState<Post | null>(null);
+    const navigate = useNavigate();
+
+    // Story Upload
+    const handleStoryUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        if (e.target.files && e.target.files[0]) {
+            const file = e.target.files[0];
+            const toastId = toast.loading('Uploading story...');
+            try {
+                await DBService.uploadStory(currentUser.id, file);
+                toast.success('Story added!', { id: toastId });
+                // Refresh stories
+                const recentStories = await DBService.getStories();
+                setAllStories(recentStories);
+            } catch (error) {
+                console.error(error);
+                toast.error('Failed to upload story', { id: toastId });
+            }
+        }
+    };
 
     useEffect(() => {
         setSavedPostIds(currentUser.savedPosts || []);
@@ -460,8 +511,8 @@ const Feed: React.FC<FeedProps> = ({ currentUser, onUserClick }) => {
     };
 
     const handleShare = async (postId: string) => {
-        // TODO: Open share modal to select users
-        toast.info('Share to chat coming soon!');
+        const post = posts.find(p => p.id === postId);
+        if (post) setSharePost(post);
     };
 
     const handleComment = (post: Post) => {
@@ -593,6 +644,23 @@ const Feed: React.FC<FeedProps> = ({ currentUser, onUserClick }) => {
                 />
             )}
 
+            {sharePost && (
+                <SharePostModal
+                    post={sharePost}
+                    currentUser={currentUser}
+                    onClose={() => setSharePost(null)}
+                />
+            )}
+
+            {/* Hidden File Input for Story Upload (Global to Feed) */}
+            <input
+                type="file"
+                id="story-file-input"
+                className="hidden"
+                accept="image/*,video/*"
+                onChange={handleStoryUpload}
+            />
+
             <StoriesBento
                 onUserClick={onUserClick}
                 onStoryClick={handleStoryClick}
@@ -629,7 +697,10 @@ const Feed: React.FC<FeedProps> = ({ currentUser, onUserClick }) => {
                             </div>
 
                             {/* Content (Full Bleed) */}
-                            <div className="w-full bg-gray-100 dark:bg-black relative aspect-square sm:aspect-auto">
+                            <div
+                                className="w-full bg-gray-100 dark:bg-black relative aspect-square sm:aspect-auto cursor-pointer"
+                                onClick={() => navigate(`/post/${post.id}`)}
+                            >
                                 {post.mediaType === 'video' ? (
                                     <div className="relative w-full h-full">
                                         <video src={post.imageUrl} className="w-full h-full object-cover max-h-[600px]" controls />
