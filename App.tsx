@@ -27,6 +27,7 @@ const Notifications = React.lazy(() => import('./pages/Notifications'));
 const Activities = React.lazy(() => import('./pages/Activities'));
 const Saved = React.lazy(() => import('./pages/Saved'));
 const RecentlyDeleted = React.lazy(() => import('./pages/RecentlyDeleted'));
+const PostDetail = React.lazy(() => import('./pages/PostDetail'));
 const BottomNav = React.lazy(() => import('./components/BottomNav'));
 import Sidebar from './components/Sidebar';
 import CallOverlay from './components/CallOverlay';
@@ -173,8 +174,11 @@ const AppContent = ({
     return () => unsubscribe();
   }, [currentUser]);
 
-  const isFullScreen = location.pathname.includes('/chat') ||
+  const isBottomNavHidden = location.pathname.includes('/chat') ||
     location.pathname === '/settings' ||
+    location.pathname === '/create';
+
+  const isScrollLocked = location.pathname.includes('/chat') ||
     location.pathname === '/create';
 
   return (
@@ -197,7 +201,7 @@ const AppContent = ({
         />
 
         {/* Main Content */}
-        <div className={`flex-1 flex flex-col relative w-full h-full bg-gray-50 dark:bg-black/90 ${isFullScreen ? 'overflow-hidden' : 'overflow-y-auto'}`}>
+        <div className={`flex-1 flex flex-col relative w-full h-full bg-gray-50 dark:bg-black/90 ${isScrollLocked ? 'overflow-hidden' : 'overflow-y-auto'}`}>
           <AnimatePresence mode="wait" initial={false}>
             <Suspense fallback={<LoadingFallback />}>
               <Routes location={location} key={location.pathname}>
@@ -212,13 +216,14 @@ const AppContent = ({
                 <Route path="/activities" element={<PageTransition><Activities currentUser={currentUser} onBack={() => navigate(-1)} /></PageTransition>} />
                 <Route path="/saved" element={<PageTransition><Saved currentUser={currentUser} onBack={() => navigate(-1)} /></PageTransition>} />
                 <Route path="/recently-deleted" element={<PageTransition><RecentlyDeleted currentUser={currentUser} onBack={() => navigate(-1)} /></PageTransition>} />
+                <Route path="/post/:postId" element={<PageTransition><PostDetail currentUser={currentUser} /></PageTransition>} />
                 <Route path="*" element={<Navigate to="/" replace />} />
               </Routes>
             </Suspense>
           </AnimatePresence>
         </div>
 
-        {!isFullScreen && (
+        {!isBottomNavHidden && (
           <div className="md:hidden">
             <BottomNav unreadCount={unreadCount} />
           </div>

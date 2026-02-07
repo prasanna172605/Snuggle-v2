@@ -4,6 +4,7 @@ import { User, Post } from '../types';
 import { Settings, Grid, Edit3, Share2, MessageCircle, UserPlus, UserMinus, UserCheck, Camera, Save, X as XIcon, MapPin, Calendar, Link as LinkIcon, Phone, Bookmark, Play, Film, UserSquare2 } from 'lucide-react';
 import { DBService } from '../services/database';
 import { SkeletonProfile } from '../components/common/Skeleton';
+import PostDetailModal from '../components/PostDetailModal';
 
 interface ProfileProps {
     user?: User;
@@ -33,6 +34,7 @@ const Profile: React.FC<ProfileProps> = ({ user: propUser, currentUser, isOwnPro
     const [editError, setEditError] = useState('');
     const [activeTab, setActiveTab] = useState<'posts' | 'reels' | 'saved' | 'tagged'>('posts');
     const [savedPosts, setSavedPosts] = useState<Post[]>([]);
+    const [selectedPost, setSelectedPost] = useState<Post | null>(null);
 
     useEffect(() => {
         const loadProfile = async () => {
@@ -483,7 +485,11 @@ const Profile: React.FC<ProfileProps> = ({ user: propUser, currentUser, isOwnPro
                 {/* Posts Grid - 3 Columns */}
                 <div className="grid grid-cols-3 gap-0.5 md:gap-1">
                     {activeTab === 'posts' && userPosts.map(post => (
-                        <div key={post.id} className="aspect-square relative group cursor-pointer">
+                        <div
+                            key={post.id}
+                            onClick={() => setSelectedPost(post)}
+                            className="aspect-square relative group cursor-pointer"
+                        >
                             {post.mediaType === 'video' ? (
                                 <>
                                     <video src={post.imageUrl} className="w-full h-full object-cover" />
@@ -533,6 +539,28 @@ const Profile: React.FC<ProfileProps> = ({ user: propUser, currentUser, isOwnPro
                     )}
                 </div>
             </div>
+
+            {/* Post Detail Modal */}
+            {selectedPost && user && (
+                <PostDetailModal
+                    post={selectedPost}
+                    user={user}
+                    currentUser={currentUser}
+                    isOwner={isOwnProfile}
+                    onClose={() => setSelectedPost(null)}
+                    onPostUpdated={() => {
+                        // Refresh posts
+                        if (user) {
+                            DBService.getUserPosts(user.id).then(setUserPosts);
+                        }
+                    }}
+                    onPostDeleted={() => {
+                        // Remove from list and close
+                        setUserPosts(prev => prev.filter(p => p.id !== selectedPost.id));
+                        setSelectedPost(null);
+                    }}
+                />
+            )}
 
             {/* Follow List Modal */}
             {showFollowList && (
