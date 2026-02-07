@@ -303,13 +303,9 @@ export const CallProvider: React.FC<{ children: React.ReactNode; currentUser: Us
         receiverId: receiverId,
         title: senderName,
         body: `Incoming ${type} call...`,
-        url: '/call', // Or specific call URL/scheme
+        url: '/call',
         icon: currentUser.avatar,
-        type: 'call',
-        actions: [
-          { action: 'accept', title: 'Answer' },
-          { action: 'decline', title: 'Decline' }
-        ]
+        type: 'call'
       });
     } catch (err) {
       console.error('Error starting call:', err);

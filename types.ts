@@ -170,3 +170,20 @@ export enum ViewState {
   EDIT_PROFILE = 'EDIT_PROFILE',
   GOOGLE_USERNAME = 'GOOGLE_USERNAME'
 }
+
+// Call Types
+export type CallType = 'audio' | 'video';
+
+// WebRTC Signaling Message
+export interface SignalingMessage {
+  type: 'offer' | 'answer' | 'candidate' | 'end' | 'reject' | 'busy' | 'answered_elsewhere';
+  senderId: string;
+  receiverId: string;
+  timestamp: number;
+  sdp?: RTCSessionDescriptionInit;
+  candidate?: RTCIceCandidateInit;
+  callType?: CallType;
+  deviceId?: string;
+  answeringDeviceId?: string;
+  callerId?: string;
+}
