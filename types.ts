@@ -58,7 +58,12 @@ export interface Message {
   timestamp: number;
   read: boolean;
   status?: 'sent' | 'delivered' | 'read';
-  type?: 'text' | 'image' | 'video' | 'audio';
+  type?: 'text' | 'image' | 'video' | 'audio' | 'post' | 'call';
+  post?: {
+    id: string;
+    imageUrl?: string;
+    caption?: string;
+  };
   fileUrl?: string;
   reactions?: Record<string, string>; // userId -> emoji
   callType?: 'audio' | 'video';

@@ -54,11 +54,16 @@ const SharePostModal: React.FC<SharePostModalProps> = ({ post, currentUser, onCl
                     id: messageId,
                     senderId: currentUser.id,
                     receiverId: userId,
-                    text: `Check out this post: /post/${post.id}`,
-                    type: 'text',
+                    text: `Check out this post`, // Fallback text
+                    type: 'post',
                     timestamp: Date.now(),
                     read: false,
-                    status: 'sent'
+                    status: 'sent',
+                    post: {
+                        id: post.id,
+                        imageUrl: post.imageUrl,
+                        caption: post.caption
+                    }
                 });
             });
 

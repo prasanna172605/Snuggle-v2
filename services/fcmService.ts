@@ -2,7 +2,9 @@ import { getMessaging, getToken, onMessage, deleteToken } from 'firebase/messagi
 import { collection, addDoc, query, where, getDocs, deleteDoc, doc, updateDoc } from 'firebase/firestore';
 import { auth, db } from './firebase';
 
-const vapidKey = 'YOUR_VAPID_KEY'; // Replace with your VAPID key from Firebase Console
+import { config } from '../config/environment';
+
+const vapidKey = config.firebase.vapidKey;
 
 /**
  * Request notification permission from the user

@@ -1,5 +1,6 @@
 
 import React, { useState, useEffect, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { User, Message } from '../types';
 import { DBService } from '../services/database';
@@ -43,6 +44,7 @@ const Chat: React.FC<ChatProps> = ({ currentUser, otherUser, onBack }) => {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const chatContainerRef = useRef<HTMLDivElement>(null);
   const { startCall } = useCall();
+  const navigate = useNavigate();
   const typingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const isTypingRef = useRef(false);
   const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -579,6 +581,23 @@ const Chat: React.FC<ChatProps> = ({ currentUser, otherUser, onBack }) => {
                               />
                             )}
                           </div>
+                        ) : msg.type === 'post' && msg.post ? (
+                          <div
+                            className="bg-white dark:bg-dark-card rounded-xl overflow-hidden border border-gray-200 dark:border-dark-border cursor-pointer hover:opacity-95 transition-opacity max-w-[260px] my-1"
+                            onClick={() => navigate(`/post/${msg.post?.id}`)}
+                          >
+                            {msg.post.imageUrl && (
+                              <div className="w-full h-32 overflow-hidden bg-gray-100 dark:bg-dark-bg">
+                                <img src={msg.post.imageUrl} className="w-full h-full object-cover" alt="Post preview" />
+                              </div>
+                            )}
+                            <div className="p-3">
+                              <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Shared Post</p>
+                              <p className="text-sm font-medium text-gray-900 dark:text-white line-clamp-2 leading-snug">
+                                {msg.post.caption || 'Check out this post'}
+                              </p>
+                            </div>
+                          </div>
                         ) : (
                           <span className="text-[15px] leading-relaxed break-words whitespace-pre-wrap font-medium">
                             {msg.text}
@@ -757,7 +776,7 @@ const Chat: React.FC<ChatProps> = ({ currentUser, otherUser, onBack }) => {
           </button>
         )}
       </div>
-    </div>
+    </div >
   );
 };
 
