@@ -139,6 +139,17 @@ const PostDetailContent: React.FC<PostDetailContentProps> = ({
         }
     };
 
+    const handleDeleteComment = async (commentId: string) => {
+        if (!confirm('Delete this comment?')) return;
+        try {
+            await DBService.deleteComment(commentId, post.id);
+            setComments(prev => prev.filter(c => c.id !== commentId));
+            toast.success('Comment deleted');
+        } catch (e) {
+            toast.error('Failed to delete comment');
+        }
+    };
+
     return (
         <div className="bg-white dark:bg-dark-surface w-full h-full flex flex-col md:flex-row rounded-lg overflow-hidden shadow-2xl relative">
             {/* Left Side - Media */}
@@ -208,6 +219,14 @@ const PostDetailContent: React.FC<PostDetailContentProps> = ({
                                     <div className="flex gap-4 mt-1">
                                         <span className="text-xs text-gray-400">{formatRelativeTime(comment.createdAt)}</span>
                                         <button className="text-xs text-gray-400 font-semibold hover:text-gray-600">Reply</button>
+                                        {(comment.userId === currentUser.id || isOwner) && (
+                                            <button
+                                                onClick={() => handleDeleteComment(comment.id)}
+                                                className="text-xs text-red-400 font-semibold hover:text-red-600"
+                                            >
+                                                Delete
+                                            </button>
+                                        )}
                                     </div>
                                 </div>
                                 <button className="p-1 hover:text-red-500">

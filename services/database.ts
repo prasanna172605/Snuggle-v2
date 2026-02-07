@@ -1239,6 +1239,16 @@ export class DBService {
         return newComment;
     }
 
+    static async deleteComment(commentId: string, postId: string): Promise<void> {
+        const commentRef = doc(db, 'comments', commentId);
+        await deleteDoc(commentRef);
+
+        const postRef = doc(db, 'posts', postId);
+        await updateDoc(postRef, {
+            commentCount: increment(-1)
+        });
+    }
+
     // Get comments for a post
     static async getComments(postId: string): Promise<AppComment[]> {
         const commentsQuery = query(

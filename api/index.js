@@ -9,7 +9,7 @@ import { dirname, join } from 'path';
 dotenv.config({ path: '.env.local' });
 
 // Initialize Firebase Admin (Global)
-import '../backend/config/firebase.js';
+import './backend/config/firebase.js';
 
 console.log('Environment check:');
 console.log('FIREBASE_PROJECT_ID:', process.env.FIREBASE_PROJECT_ID ? 'Set' : 'Missing');
@@ -43,18 +43,18 @@ app.options('*', (req, res) => {
 app.use(express.json());
 
 // Middleware Import (local file)
-import { verifyToken, requireRole } from '../middleware/auth.js';
-import AppError from '../utils/AppError.js';
-import catchAsync from '../utils/catchAsync.js';
+import { verifyToken, requireRole } from './backend/middleware/auth.js';
+import AppError from './backend/utils/AppError.js';
+import catchAsync from './backend/utils/catchAsync.js';
 // We define error handler inline to ensure it definitely runs and has access to res
 // import { globalErrorHandler } from '../middleware/error.js'; 
 
 // Route Imports
-import authRouter from '../backend/routes/auth.js';
-import userRouter from '../backend/routes/users.js';
-import contentRouter from '../backend/routes/content.js';
-import settingsRouter from '../backend/routes/settings.js';
-import notificationRouter from '../backend/routes/notifications.js';
+import authRouter from './backend/routes/auth.js';
+import userRouter from './backend/routes/users.js';
+import contentRouter from './backend/routes/content.js';
+import settingsRouter from './backend/routes/settings.js';
+import notificationRouter from './backend/routes/notifications.js';
 
 // Health Check
 app.get('/api/health', (req, res) => {

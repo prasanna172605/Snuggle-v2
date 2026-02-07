@@ -99,9 +99,27 @@ const CommentsModal: React.FC<{
                                         <span className="font-bold text-gray-900 dark:text-white mr-2">{comment.username}</span>
                                         <span className="text-gray-700 dark:text-gray-300">{comment.text}</span>
                                     </p>
-                                    <p className="text-xs text-gray-400 mt-1">
-                                        {formatRelativeTime(comment.createdAt)}
-                                    </p>
+                                    <div className="flex gap-4 mt-1">
+                                        <span className="text-xs text-gray-400">{formatRelativeTime(comment.createdAt)}</span>
+                                        <button className="text-xs text-gray-400 font-semibold hover:text-gray-600">Reply</button>
+                                        {(comment.userId === currentUser.id || user.id === currentUser.id) && (
+                                            <button
+                                                onClick={async () => {
+                                                    if (!confirm('Delete this comment?')) return;
+                                                    try {
+                                                        await DBService.deleteComment(comment.id, post.id);
+                                                        setComments(prev => prev.filter(c => c.id !== comment.id));
+                                                        toast.success('Comment deleted');
+                                                    } catch (e) {
+                                                        toast.error('Failed to delete comment');
+                                                    }
+                                                }}
+                                                className="text-xs text-red-400 font-semibold hover:text-red-600"
+                                            >
+                                                Delete
+                                            </button>
+                                        )}
+                                    </div>
                                 </div>
                             </div>
                         ))
@@ -324,6 +342,13 @@ const Feed: React.FC<FeedProps> = ({ currentUser, onUserClick }) => {
     const [storyUsers, setStoryUsers] = useState<User[]>([]);
     const [viewingStoryUserId, setViewingStoryUserId] = useState<string | null>(null);
 
+    // Optimistic Saved State
+    const [savedPostIds, setSavedPostIds] = useState<string[]>([]);
+
+    useEffect(() => {
+        setSavedPostIds(currentUser.savedPosts || []);
+    }, [currentUser.savedPosts]);
+
     // Modal State
     const [commentsPost, setCommentsPost] = useState<Post | null>(null);
     const [menuPost, setMenuPost] = useState<Post | null>(null);
@@ -378,26 +403,59 @@ const Feed: React.FC<FeedProps> = ({ currentUser, onUserClick }) => {
 
     const handleLike = async (postId: string) => {
         const post = posts.find(p => p.id === postId);
-        const likesArray = Array.isArray(post?.likes) ? post.likes : [];
+        if (!post) return;
+
+        const likesArray = Array.isArray(post.likes) ? post.likes : [];
         const isLiked = likesArray.includes(currentUser.id);
 
-        if (isLiked) {
-            await DBService.unlikePost(postId, currentUser.id);
-        } else {
-            await DBService.likePost(postId, currentUser.id);
+        // Optimistic Update
+        setPosts(current => current.map(p => {
+            if (p.id === postId) {
+                const currentLikes = Array.isArray(p.likes) ? [...p.likes] : [];
+                return {
+                    ...p,
+                    likes: isLiked
+                        ? currentLikes.filter(id => id !== currentUser.id)
+                        : [...currentLikes, currentUser.id]
+                };
+            }
+            return p;
+        }));
+
+        try {
+            if (isLiked) {
+                await DBService.unlikePost(postId, currentUser.id);
+            } else {
+                await DBService.likePost(postId, currentUser.id);
+            }
+        } catch (e) {
+            // Revert on error
+            setPosts(current => current.map(p => {
+                if (p.id === postId) return post; // Revert to original post object
+                return p;
+            }));
+            toast.error('Failed to update like');
         }
-        await refreshPosts();
     };
 
     const handleSave = async (postId: string) => {
-        const isSaved = currentUser.savedPosts?.includes(postId);
+        const isSaved = savedPostIds.includes(postId);
 
-        if (isSaved) {
-            await DBService.unsavePost(postId, currentUser.id);
-            toast.success('Removed from saved');
-        } else {
-            await DBService.savePost(postId, currentUser.id);
-            toast.success('Post saved!');
+        // Optimistic Update
+        setSavedPostIds(prev => isSaved ? prev.filter(id => id !== postId) : [...prev, postId]);
+
+        try {
+            if (isSaved) {
+                await DBService.unsavePost(postId, currentUser.id);
+                toast.success('Removed from saved');
+            } else {
+                await DBService.savePost(postId, currentUser.id);
+                toast.success('Post saved!');
+            }
+        } catch (e) {
+            // Revert
+            setSavedPostIds(prev => isSaved ? [...prev, postId] : prev.filter(id => id !== postId));
+            toast.error('Failed to update save');
         }
     };
 
