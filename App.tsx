@@ -25,6 +25,7 @@ const Settings = React.lazy(() => import('./pages/Settings'));
 const Create = React.lazy(() => import('./pages/Create'));
 const Notifications = React.lazy(() => import('./pages/Notifications'));
 const BottomNav = React.lazy(() => import('./components/BottomNav'));
+import Sidebar from './components/Sidebar';
 import CallOverlay from './components/CallOverlay';
 import { CallProvider } from './context/CallContext';
 import { AnimatePresence } from 'framer-motion';
@@ -177,30 +178,38 @@ const AppContent = ({
     <div className="min-h-screen bg-snuggle-50 dark:bg-black flex justify-center">
       {/* Toast Notifications */}
       <Toaster position="top-right" richColors closeButton />
-      <div className="w-full md:max-w-md lg:max-w-4xl xl:max-w-6xl bg-white dark:bg-dark-bg relative shadow-2xl min-h-screen flex flex-col">
-        <div className="bg-red-500 text-white text-center text-xs font-bold py-1 z-50 relative">
-          DEBUG MODE v3 - TEST PUSH ENABLED
+      <div className="w-full md:max-w-6xl xl:max-w-7xl bg-white dark:bg-dark-bg relative shadow-2xl min-h-screen flex flex-col md:flex-row overflow-hidden md:rounded-2xl md:my-4 md:border md:border-gray-200 dark:md:border-gray-800">
+        <div className="bg-red-500 text-white text-center text-xs font-bold py-1 z-50 absolute top-0 left-0 right-0 md:hidden">
+          DEBUG MODE v3
         </div>
         <CallOverlay />
 
-        <AnimatePresence mode="wait" initial={false}>
-          <Suspense fallback={<LoadingFallback />}>
-            <Routes location={location} key={location.pathname}>
-              <Route path="/" element={<PageTransition><Feed currentUser={currentUser} onUserClick={(userId) => navigate(`/profile/${userId}`)} /></PageTransition>} />
-              <Route path="/messages" element={<PageTransition><Messages currentUser={currentUser} onChatSelect={(user) => navigate(`/chat/${user.id}`)} onUserClick={(userId) => navigate(`/profile/${userId}`)} /></PageTransition>} />
-              <Route path="/chat/:userId" element={<PageTransition><ChatWrapper currentUser={currentUser} /></PageTransition>} />
-              <Route path="/profile" element={<PageTransition><Profile user={currentUser} currentUser={currentUser} isOwnProfile={true} onLogout={onLogout} /></PageTransition>} />
-              <Route path="/profile/:userId" element={<PageTransition><Profile currentUser={currentUser} isOwnProfile={false} /></PageTransition>} />
-              <Route path="/create" element={<PageTransition><CreateWrapper currentUser={currentUser} /></PageTransition>} />
-              <Route path="/notifications" element={<PageTransition><Notifications currentUser={currentUser} onUserClick={(userId) => navigate(`/profile/${userId}`)} /></PageTransition>} />
-              <Route path="/settings" element={<PageTransition><SettingsWrapper currentUser={currentUser} onLogout={onLogout} onUpdateUser={onUpdateUser} onDeleteAccount={onDeleteAccount} onSwitchAccount={onSwitchAccount} onAddAccount={onAddAccount} /></PageTransition>} />
-              <Route path="*" element={<Navigate to="/" replace />} />
-            </Routes>
-          </Suspense>
-        </AnimatePresence>
+        {/* Sidebar - Desktop Only */}
+        <Sidebar unreadCount={unreadCount} />
+
+        {/* Main Content */}
+        <div className="flex-1 flex flex-col relative w-full h-full overflow-hidden bg-gray-50 dark:bg-black/90 md:rounded-r-2xl">
+          <AnimatePresence mode="wait" initial={false}>
+            <Suspense fallback={<LoadingFallback />}>
+              <Routes location={location} key={location.pathname}>
+                <Route path="/" element={<PageTransition><Feed currentUser={currentUser} onUserClick={(userId) => navigate(`/profile/${userId}`)} /></PageTransition>} />
+                <Route path="/messages" element={<PageTransition><Messages currentUser={currentUser} onChatSelect={(user) => navigate(`/chat/${user.id}`)} onUserClick={(userId) => navigate(`/profile/${userId}`)} /></PageTransition>} />
+                <Route path="/chat/:userId" element={<PageTransition><ChatWrapper currentUser={currentUser} /></PageTransition>} />
+                <Route path="/profile" element={<PageTransition><Profile user={currentUser} currentUser={currentUser} isOwnProfile={true} onLogout={onLogout} /></PageTransition>} />
+                <Route path="/profile/:userId" element={<PageTransition><Profile currentUser={currentUser} isOwnProfile={false} /></PageTransition>} />
+                <Route path="/create" element={<PageTransition><CreateWrapper currentUser={currentUser} /></PageTransition>} />
+                <Route path="/notifications" element={<PageTransition><Notifications currentUser={currentUser} onUserClick={(userId) => navigate(`/profile/${userId}`)} /></PageTransition>} />
+                <Route path="/settings" element={<PageTransition><SettingsWrapper currentUser={currentUser} onLogout={onLogout} onUpdateUser={onUpdateUser} onDeleteAccount={onDeleteAccount} onSwitchAccount={onSwitchAccount} onAddAccount={onAddAccount} /></PageTransition>} />
+                <Route path="*" element={<Navigate to="/" replace />} />
+              </Routes>
+            </Suspense>
+          </AnimatePresence>
+        </div>
 
         {!isFullScreen && (
-          <BottomNav unreadCount={unreadCount} />
+          <div className="md:hidden">
+            <BottomNav unreadCount={unreadCount} />
+          </div>
         )}
       </div>
     </div>
