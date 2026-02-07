@@ -25,7 +25,7 @@ const CallOverlay: React.FC = () => {
 
   const [caller, setCaller] = useState<User | null>(null);
   const [activeUser, setActiveUser] = useState<User | null>(null);
-  const [isSpeakerOn, setIsSpeakerOn] = useState(true);
+  const [isSpeakerOn, setIsSpeakerOn] = useState(false); // Default to earpiece mode (speaker off)
 
   const localVideoRef = useRef<HTMLVideoElement>(null);
   const remoteVideoRef = useRef<HTMLVideoElement>(null);
@@ -69,16 +69,17 @@ const CallOverlay: React.FC = () => {
     }
   }, [remoteStream]);
 
-  // Speaker toggle function
+  // Speaker toggle function - controls audio output mode
+  // Speaker OFF = earpiece mode (default for phone calls)
+  // Speaker ON = loudspeaker mode
   const toggleSpeaker = () => {
-    if (audioRef.current) {
-      audioRef.current.muted = isSpeakerOn;
-      setIsSpeakerOn(!isSpeakerOn);
-    }
-    // Also toggle video element audio if present
-    if (remoteVideoRef.current) {
-      remoteVideoRef.current.muted = isSpeakerOn;
-    }
+    const newSpeakerState = !isSpeakerOn;
+    setIsSpeakerOn(newSpeakerState);
+
+    // Note: Web browsers don't have true earpiece vs speaker control
+    // This toggle primarily serves as a UI indicator
+    // On mobile, the audio routing is typically handled by the OS
+    console.log('[CallOverlay] Speaker toggled:', newSpeakerState ? 'Loudspeaker' : 'Earpiece');
   };
 
   if (incomingCall && caller) {
