@@ -5,7 +5,7 @@ import { signOut, onAuthStateChanged } from 'firebase/auth';
 import { messaging, auth } from './services/firebase';
 import { User, GoogleSetupData } from './types';
 import { DBService } from './services/database';
-import { Loader2 } from 'lucide-react';
+import { Loader2, Bell } from 'lucide-react';
 import { Toaster, toast } from 'sonner';
 import { errorHandler } from './services/globalErrorHandler';
 import { ThemeProvider } from './context/ThemeContext';
