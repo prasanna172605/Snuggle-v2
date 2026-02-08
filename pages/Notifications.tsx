@@ -87,23 +87,19 @@ const Notifications: React.FC<NotificationsProps> = ({ currentUser, onUserClick 
                 <h2 className="text-xl font-bold text-gray-900 dark:text-white">Notifications</h2>
                 <button
                     onClick={async () => {
-                        if (!currentUser?.id) return; // toast.error('No User');
-                        const token = await DBService.requestNotificationPermission(currentUser.id);
-                        if (!token) {
-                            alert('Permission denied or no token got.');
-                            return;
+                        if (!currentUser?.id) return;
+                        if (!confirm('Clear all notifications?')) return;
+                        try {
+                            await DBService.deleteAllNotifications(currentUser.id);
+                            setNotifications([]);
+                        } catch (err) {
+                            console.error('Failed to clear notifications:', err);
+                            alert('Failed to clear notifications');
                         }
-                        await DBService.sendPushNotification({
-                            receiverId: currentUser.id,
-                            title: 'Test Notification',
-                            body: 'This is a test push from the debug button.',
-                            type: 'system'
-                        });
-                        alert('Test push sent! Check console for [DB] logs.');
                     }}
-                    className="px-3 py-1 bg-gray-200 text-xs rounded hover:bg-gray-300"
+                    className="px-3 py-1 bg-gray-200 dark:bg-gray-800 text-xs rounded hover:bg-gray-300 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300"
                 >
-                    Test Push
+                    Clear All
                 </button>
             </div>
 

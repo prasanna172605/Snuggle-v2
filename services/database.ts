@@ -778,6 +778,17 @@ export class DBService {
         }
     }
 
+    static async deleteAllNotifications(userId: string): Promise<void> {
+        const token = await this.getCurrentToken();
+        // Use the notifications collection directly via Firestore
+        const notificationsRef = collection(db, 'notifications');
+        const q = query(notificationsRef, where('userId', '==', userId));
+        const snapshot = await getDocs(q);
+
+        const deletePromises = snapshot.docs.map(doc => deleteDoc(doc.ref));
+        await Promise.all(deletePromises);
+        console.log(`[DB] Deleted ${snapshot.docs.length} notifications for user ${userId}`);
+    }
 
 
 
