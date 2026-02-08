@@ -1,6 +1,6 @@
 
 import express from 'express';
-import { verifyToken } from '../../middleware/auth.js';
+import { verifyToken } from '../middleware/auth.js';
 import AppError from '../utils/AppError.js';
 
 const router = express.Router();

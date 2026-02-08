@@ -32,13 +32,13 @@ app.use(cors({
 }));
 
 // 2. Handle Preflight Requests Explicitly
-app.options('*', (req, res) => {
-    res.setHeader('Access-Control-Allow-Origin', 'https://snuggle-73465.web.app');
-    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS, PUT, PATCH, DELETE');
-    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With');
-    res.setHeader('Access-Control-Allow-Credentials', 'true');
-    res.status(200).send();
-});
+// app.options('*', (req, res) => {
+//     res.setHeader('Access-Control-Allow-Origin', 'https://snuggle-73465.web.app');
+//     res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS, PUT, PATCH, DELETE');
+//     res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With');
+//     res.setHeader('Access-Control-Allow-Credentials', 'true');
+//     res.status(200).send();
+// });
 
 app.use(express.json());
 
@@ -76,13 +76,16 @@ app.post('/api/send-push', verifyToken, catchAsync(async (req, res, next) => {
 }));
 
 // Handle 404
-app.all('*', (req, res, next) => {
+app.all(/(.*)/, (req, res, next) => {
     res.status(404).json({ status: 'fail', message: `Can't find ${req.originalUrl} on this server!` });
 });
 
 // 3. Global Error Handler (JSON Enforced)
 app.use((err, req, res, next) => {
     console.error('Global Error:', err);
+    import('fs').then(fs => {
+        fs.appendFileSync('error.log', `${new Date().toISOString()} - ${err.stack || err.message}\n`);
+    });
 
     // Ensure CORS headers are present even on error
     res.setHeader('Access-Control-Allow-Origin', 'https://snuggle-73465.web.app');

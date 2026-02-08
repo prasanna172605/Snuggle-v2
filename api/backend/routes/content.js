@@ -1,10 +1,10 @@
 import express from 'express';
 import admin from '../config/firebase.js';
-import { verifyToken } from '../../middleware/auth.js';
-import AppError from '../../utils/AppError.js';
-import catchAsync from '../../utils/catchAsync.js';
-import { CreateContentSchema } from '../../validation/content.schema.js'; // Assuming ES module for schema
-import { formatZodErrors } from '../../utils/validation.js'; // Assuming ES module for validation utility
+import { verifyToken } from '../middleware/auth.js';
+import AppError from '../utils/AppError.js';
+import catchAsync from '../utils/catchAsync.js';
+import { CreateContentSchema } from '../validation/content.schema.js'; // Assuming ES module for schema
+import { formatZodErrors } from '../utils/validation.js'; // Assuming ES module for validation utility
 
 const router = express.Router();
 

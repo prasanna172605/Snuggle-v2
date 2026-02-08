@@ -1,4 +1,4 @@
-const { z } = require('zod');
+import { z } from 'zod';
 
 // Content Type Enum
 const ContentTypeEnum = z.enum(['message', 'post', 'story']);
@@ -76,7 +76,7 @@ const PatchContentSchema = z.object({
     { message: 'At least one field must be provided for update' }
 );
 
-module.exports = {
+export {
     CreateContentSchema,
     UpdateContentSchema,
     PatchContentSchema
