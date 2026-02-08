@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { User, Post, Comment as AppComment } from '../types';
 import { DBService } from '../services/database';
 import { useInteractions } from '../context/InteractionContext';
@@ -29,6 +30,7 @@ const PostDetailContent: React.FC<PostDetailContentProps> = ({
     onPostDeleted,
     onClose
 }) => {
+    const navigate = useNavigate();
     const [comments, setComments] = useState<AppComment[]>([]);
     const [newComment, setNewComment] = useState('');
     const [loading, setLoading] = useState(true);
@@ -162,9 +164,9 @@ const PostDetailContent: React.FC<PostDetailContentProps> = ({
             <div className="md:w-[40%] flex flex-col h-full max-h-[60vh] md:max-h-full">
                 {/* Header */}
                 <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-dark-border">
-                    <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-3 cursor-pointer" onClick={() => navigate(`/profile/${user.id}`)}>
                         <img src={user.avatar} className="w-8 h-8 rounded-full object-cover" alt="" />
-                        <span className="font-bold text-sm text-gray-900 dark:text-white">{user.username}</span>
+                        <span className="font-bold text-sm text-gray-900 dark:text-white hover:underline">{user.username}</span>
                     </div>
                     <button
                         onClick={() => setShowOptionsMenu(true)}
@@ -178,10 +180,20 @@ const PostDetailContent: React.FC<PostDetailContentProps> = ({
                 <div className="flex-1 overflow-y-auto p-4 space-y-4">
                     {/* Caption */}
                     <div className="flex gap-3">
-                        <img src={user.avatar} className="w-8 h-8 rounded-full object-cover flex-shrink-0" alt="" />
+                        <img
+                            src={user.avatar}
+                            className="w-8 h-8 rounded-full object-cover flex-shrink-0 cursor-pointer"
+                            alt=""
+                            onClick={() => navigate(`/profile/${user.id}`)}
+                        />
                         <div>
                             <p className="text-sm">
-                                <span className="font-bold text-gray-900 dark:text-white mr-2">{user.username}</span>
+                                <span
+                                    className="font-bold text-gray-900 dark:text-white mr-2 cursor-pointer hover:underline"
+                                    onClick={() => navigate(`/profile/${user.id}`)}
+                                >
+                                    {user.username}
+                                </span>
                                 <span className="text-gray-700 dark:text-gray-300">{post.caption}</span>
                             </p>
                             <p className="text-xs text-gray-400 mt-1">{formatRelativeTime(post.createdAt)}</p>
@@ -196,12 +208,20 @@ const PostDetailContent: React.FC<PostDetailContentProps> = ({
                     ) : (
                         comments.map(comment => (
                             <div key={comment.id} className="flex gap-3">
-                                <div className="w-8 h-8 rounded-full bg-accent flex items-center justify-center text-white text-sm font-bold flex-shrink-0">
+                                <div
+                                    className="w-8 h-8 rounded-full bg-accent flex items-center justify-center text-white text-sm font-bold flex-shrink-0 cursor-pointer"
+                                    onClick={() => navigate(`/profile/${comment.userId}`)}
+                                >
                                     {comment.username?.charAt(0).toUpperCase() || 'U'}
                                 </div>
                                 <div className="flex-1">
                                     <p className="text-sm">
-                                        <span className="font-bold text-gray-900 dark:text-white mr-2">{comment.username}</span>
+                                        <span
+                                            className="font-bold text-gray-900 dark:text-white mr-2 cursor-pointer hover:underline"
+                                            onClick={() => navigate(`/profile/${comment.userId}`)}
+                                        >
+                                            {comment.username}
+                                        </span>
                                         <span className="text-gray-700 dark:text-gray-300">{comment.text}</span>
                                     </p>
                                     <div className="flex gap-4 mt-1">

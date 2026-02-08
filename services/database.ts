@@ -957,12 +957,13 @@ export class DBService {
                 const data = doc.data();
                 return {
                     id: doc.id,
+                    ...data, // Spread original data to catch any missing fields
                     userId: data.userId,
                     imageUrl: data.imageUrl || '',
                     caption: data.caption,
-                    likes: data.likes.length,
-                    comments: data.commentCount,
-                    timestamp: data.createdAt.toMillis(),
+                    likes: data.likeCount || 0, // Use likeCount property
+                    comments: data.commentCount || 0,
+                    timestamp: data.createdAt?.toMillis ? data.createdAt.toMillis() : Date.now(),
                     isDeleted: data.isDeleted
                 } as import('../types').Post;
             })
@@ -1113,8 +1114,12 @@ export class DBService {
                     userId: post.userId,
                     type: 'like',
                     senderId: userId,
-                    text: `${liker.username} liked your post`,
-                    postId: postId
+                    title: 'New Like',
+                    message: `${liker.username} liked your post`,
+                    data: {
+                        postId: postId,
+                        url: `/post/${postId}`
+                    }
                 }).catch(err => console.error('[toggleLike] Notification failed:', err));
             }
             return true; // now liked
