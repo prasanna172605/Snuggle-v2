@@ -880,20 +880,23 @@ export class DBService {
             limit(maxPosts)
         );
         const querySnapshot = await getDocs(q);
-        return querySnapshot.docs.map(doc => {
-            const data = doc.data() as Post;
-            return {
-                id: doc.id,
-                userId: data.userId,
-                username: data.username || 'Unknown',
-                imageUrl: data.imageUrl || '',
-                caption: data.caption,
-                likes: Array.isArray(data.likes) ? data.likes.length : (typeof data.likes === 'number' ? data.likes : 0),
-                commentCount: data.commentCount || 0, // Safely get comment count
-                createdAt: data.createdAt.toMillis(),
-                timestamp: data.createdAt.toMillis()
-            } as import('../types').Post;
-        });
+        return querySnapshot.docs
+            .map(doc => {
+                const data = doc.data() as Post;
+                return {
+                    id: doc.id,
+                    userId: data.userId,
+                    username: data.username || 'Unknown',
+                    imageUrl: data.imageUrl || '',
+                    caption: data.caption,
+                    likes: Array.isArray(data.likes) ? data.likes.length : (typeof data.likes === 'number' ? data.likes : 0),
+                    commentCount: data.commentCount || 0, // Safely get comment count
+                    createdAt: data.createdAt.toMillis(),
+                    timestamp: data.createdAt.toMillis(),
+                    isDeleted: data.isDeleted
+                } as import('../types').Post;
+            })
+            .filter(post => !post.isDeleted);
     }
 
     static async getUserPosts(userId: string, maxPosts: number = 20): Promise<import('../types').Post[]> {
@@ -905,18 +908,21 @@ export class DBService {
         );
 
         const querySnapshot = await getDocs(q);
-        return querySnapshot.docs.map(doc => {
-            const data = doc.data();
-            return {
-                id: doc.id,
-                userId: data.userId,
-                imageUrl: data.imageUrl || '',
-                caption: data.caption,
-                likes: data.likes.length,
-                comments: data.commentCount,
-                timestamp: data.createdAt.toMillis()
-            } as import('../types').Post;
-        });
+        return querySnapshot.docs
+            .map(doc => {
+                const data = doc.data();
+                return {
+                    id: doc.id,
+                    userId: data.userId,
+                    imageUrl: data.imageUrl || '',
+                    caption: data.caption,
+                    likes: data.likes.length,
+                    comments: data.commentCount,
+                    timestamp: data.createdAt.toMillis(),
+                    isDeleted: data.isDeleted
+                } as import('../types').Post;
+            })
+            .filter(post => !post.isDeleted);
     }
 
     // ==================== CORE CONTENT OPERATIONS ====================
@@ -1286,18 +1292,21 @@ export class DBService {
     static async getPosts(): Promise<import('../types').Post[]> {
         const q = query(collection(db, 'posts'), orderBy('createdAt', 'desc'), limit(100));
         const querySnapshot = await getDocs(q);
-        return querySnapshot.docs.map(doc => {
-            const data = doc.data() as Post;
-            return {
-                id: doc.id,
-                userId: data.userId,
-                imageUrl: data.imageUrl || '',
-                caption: data.caption,
-                likes: Array.isArray(data.likes) ? data.likes.length : (typeof data.likes === 'number' ? data.likes : 0),
-                comments: data.commentCount || 0,
-                timestamp: data.createdAt.toMillis()
-            } as import('../types').Post;
-        });
+        return querySnapshot.docs
+            .map(doc => {
+                const data = doc.data() as Post;
+                return {
+                    id: doc.id,
+                    userId: data.userId,
+                    imageUrl: data.imageUrl || '',
+                    caption: data.caption,
+                    likes: Array.isArray(data.likes) ? data.likes.length : (typeof data.likes === 'number' ? data.likes : 0),
+                    comments: data.commentCount || 0,
+                    timestamp: data.createdAt.toMillis(),
+                    isDeleted: data.isDeleted
+                } as import('../types').Post;
+            })
+            .filter(post => !post.isDeleted);
     }
 
     // ==================== MESSAGE OPERATIONS ====================

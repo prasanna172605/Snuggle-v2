@@ -48,7 +48,7 @@ const PostDetailContent: React.FC<PostDetailContentProps> = ({
         setIsLiked(likesArray.includes(currentUser.id));
         setLikeCount(likesArray.length);
         setIsSaved(currentUser.savedPosts?.includes(post.id) || false);
-    }, [post.id, currentUser.id]);
+    }, [post.id, currentUser.id, post.likes, currentUser.savedPosts]);
 
     const loadComments = async () => {
         setLoading(true);

@@ -131,14 +131,20 @@ const Notifications: React.FC<NotificationsProps> = ({ currentUser, onUserClick 
                 ) : (
                     <div className="divide-y divide-gray-50 dark:divide-dark-border">
                         {notifications.map(notif => {
-                            if (!notif.senderId) return null;
-                            const sender = senders[notif.senderId];
-                            if (!sender) return null;
+                            // Handle missing sender (deleted user)
+                            const sender = notif.senderId && senders[notif.senderId] ? senders[notif.senderId] : {
+                                id: 'deleted',
+                                username: 'Snuggle User',
+                                avatar: 'https://www.gravatar.com/avatar/00000000000000000000000000000000?d=mp&f=y', // Default placeholder
+                                fullName: 'Unknown User'
+                            } as User;
+
+                            if (!notif.senderId && notif.type !== 'system') return null;
 
                             return (
                                 <div
                                     key={notif.id}
-                                    onClick={() => notif.senderId && onUserClick?.(notif.senderId)}
+                                    onClick={() => notif.senderId && sender.id !== 'deleted' && onUserClick?.(notif.senderId)}
                                     className={`flex items-start px-4 py-4 hover:bg-gray-50 dark:hover:bg-dark-card transition-colors cursor-pointer ${!notif.read ? 'bg-blue-50/30 dark:bg-blue-900/10' : ''}`}
                                 >
                                     <div className="relative">
