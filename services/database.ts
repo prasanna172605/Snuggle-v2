@@ -767,17 +767,27 @@ export class DBService {
     }
 
     static async markAllNotificationsRead(): Promise<void> {
-        const token = await this.getCurrentToken();
-        const response = await fetch('/api/v1/notifications/read-all', {
-            method: 'PATCH',
-            headers: {
-                'Authorization': `Bearer ${token}`
-            }
-        });
+        const user = auth.currentUser;
+        if (!user) throw new Error('User not authenticated');
 
-        if (!response.ok) {
-            throw new Error('Failed to mark all notifications as read');
-        }
+        // Query all unread notifications for this user and mark them as read directly in Firestore
+        const notificationsRef = collection(db, 'notifications');
+        const q = query(
+            notificationsRef,
+            where('userId', '==', user.uid),
+            where('read', '==', false)
+        );
+
+        const snapshot = await getDocs(q);
+        const updatePromises = snapshot.docs.map(docSnapshot =>
+            updateDoc(doc(db, 'notifications', docSnapshot.id), {
+                read: true,
+                isRead: true
+            })
+        );
+
+        await Promise.all(updatePromises);
+        console.log('[DB] Marked', snapshot.docs.length, 'notifications as read');
     }
 
     static async deleteNotification(notificationId: string): Promise<void> {

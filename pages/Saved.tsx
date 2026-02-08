@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { User, Post } from '../types';
 import { DBService } from '../services/database';
+import { useInteractions } from '../context/InteractionContext';
 import { ArrowLeft, Bookmark, Grid, Play } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
@@ -12,6 +13,7 @@ interface SavedProps {
 
 const Saved: React.FC<SavedProps> = ({ currentUser, onBack, onPostClick }) => {
     const navigate = useNavigate();
+    const { savedPostIds } = useInteractions();
     const [savedPosts, setSavedPosts] = useState<Post[]>([]);
     const [loading, setLoading] = useState(true);
 
@@ -61,9 +63,9 @@ const Saved: React.FC<SavedProps> = ({ currentUser, onBack, onPostClick }) => {
                             <div key={i} className="aspect-square bg-gray-200 dark:bg-gray-800 animate-pulse rounded-lg" />
                         ))}
                     </div>
-                ) : savedPosts.length > 0 ? (
+                ) : savedPosts.filter(p => savedPostIds.includes(p.id)).length > 0 ? (
                     <div className="grid grid-cols-3 gap-1">
-                        {savedPosts.map(post => (
+                        {savedPosts.filter(p => savedPostIds.includes(p.id)).map(post => (
                             <div
                                 key={post.id}
                                 onClick={() => handlePostClick(post.id)}

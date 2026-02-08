@@ -11,6 +11,7 @@ import { errorHandler } from './services/globalErrorHandler';
 import { ThemeProvider } from './context/ThemeContext';
 import { NotificationProvider } from './context/NotificationContext';
 import { AuthProvider } from './context/AuthContext';
+import { InteractionProvider } from './context/InteractionContext';
 
 
 // Lazy Load Pages
@@ -393,25 +394,27 @@ const App = () => {
     <ThemeProvider>
       <AuthProvider>
         <NotificationProvider>
-          <CallProvider currentUser={currentUser}>
-            <AppContent
-              currentUser={currentUser}
-              onLogout={onLogout}
-              onUpdateUser={(user) => {
-                setCurrentUser(user);
-                localStorage.setItem('currentUser', JSON.stringify(user));
-              }}
-              onDeleteAccount={onLogout}
-              onSwitchAccount={(userId) => {
-                // Switch account logic
-              }}
-              onAddAccount={() => {
-                // Add account logic
-              }}
-            />
+          <InteractionProvider>
+            <CallProvider currentUser={currentUser}>
+              <AppContent
+                currentUser={currentUser}
+                onLogout={onLogout}
+                onUpdateUser={(user) => {
+                  setCurrentUser(user);
+                  localStorage.setItem('currentUser', JSON.stringify(user));
+                }}
+                onDeleteAccount={onLogout}
+                onSwitchAccount={(userId) => {
+                  // Switch account logic
+                }}
+                onAddAccount={() => {
+                  // Add account logic
+                }}
+              />
 
-            <Toaster position="top-right" richColors closeButton />
-          </CallProvider>
+              <Toaster position="top-right" richColors closeButton />
+            </CallProvider>
+          </InteractionProvider>
         </NotificationProvider>
       </AuthProvider>
     </ThemeProvider>

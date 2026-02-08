@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { User, Post, Comment as AppComment } from '../types';
 import { DBService } from '../services/database';
+import { useInteractions } from '../context/InteractionContext';
 import {
     MoreHorizontal, Heart, MessageCircle, Send, Bookmark,
     Trash2, Loader2
@@ -36,19 +37,16 @@ const PostDetailContent: React.FC<PostDetailContentProps> = ({
     const [showEditModal, setShowEditModal] = useState(false);
     const [editCaption, setEditCaption] = useState(post.caption);
     const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
-    const [isLiked, setIsLiked] = useState(false);
-    const [isSaved, setIsSaved] = useState(false);
-    const [likeCount, setLikeCount] = useState(0);
+
+    // Interaction Context
+    const { isLiked: checkIsLiked, isSaved: checkIsSaved, toggleLike, toggleSave } = useInteractions();
+    const isLiked = checkIsLiked(post.id);
+    const isSaved = checkIsSaved(post.id);
+    const [likeCount, setLikeCount] = useState(post.likeCount || (Array.isArray(post.likes) ? post.likes.length : 0));
 
     useEffect(() => {
         loadComments();
-
-        // Check like/save status
-        const likesArray = Array.isArray(post.likes) ? post.likes : [];
-        setIsLiked(likesArray.includes(currentUser.id));
-        setLikeCount(likesArray.length);
-        setIsSaved(currentUser.savedPosts?.includes(post.id) || false);
-    }, [post.id, currentUser.id, post.likes, currentUser.savedPosts]);
+    }, [post.id]);
 
     const loadComments = async () => {
         setLoading(true);
@@ -63,32 +61,22 @@ const PostDetailContent: React.FC<PostDetailContentProps> = ({
     };
 
     const handleLike = async () => {
+        // Optimistic update
+        setLikeCount(prev => isLiked ? prev - 1 : prev + 1);
+
         try {
-            if (isLiked) {
-                await DBService.unlikePost(post.id, currentUser.id);
-                setIsLiked(false);
-                setLikeCount(prev => prev - 1);
-            } else {
-                await DBService.likePost(post.id, currentUser.id);
-                setIsLiked(true);
-                setLikeCount(prev => prev + 1);
-            }
+            await toggleLike(post.id);
         } catch (e) {
+            // Revert
+            setLikeCount(prev => isLiked ? prev + 1 : prev - 1);
             toast.error('Failed to update like');
         }
     };
 
     const handleSave = async () => {
         try {
-            if (isSaved) {
-                await DBService.unsavePost(post.id, currentUser.id);
-                setIsSaved(false);
-                toast.success('Removed from saved');
-            } else {
-                await DBService.savePost(post.id, currentUser.id);
-                setIsSaved(true);
-                toast.success('Post saved!');
-            }
+            const nowSaved = await toggleSave(post.id);
+            toast.success(nowSaved ? 'Post saved!' : 'Removed from saved');
         } catch (e) {
             toast.error('Failed to update save');
         }

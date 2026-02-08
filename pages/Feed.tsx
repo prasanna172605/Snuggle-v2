@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { User, Post, Story, Comment as AppComment } from '../types';
 import { DBService } from '../services/database';
+import { useInteractions } from '../context/InteractionContext';
 import { Heart, MessageSquare, Send, MoreHorizontal, Loader2, Play, Bookmark, X, Trash2, Edit3, Copy, Flag } from 'lucide-react';
 import StoryViewer from '../components/StoryViewer';
 import { SkeletonPost, SkeletonAvatar } from '../components/common/Skeleton';
@@ -368,9 +369,8 @@ const Feed: React.FC<FeedProps> = ({ currentUser, onUserClick }) => {
     const [storyUsers, setStoryUsers] = useState<User[]>([]);
     const [viewingStoryUserId, setViewingStoryUserId] = useState<string | null>(null);
 
-    // Optimistic Like/Saved State - loaded from database
-    const [likedPostIds, setLikedPostIds] = useState<string[]>([]);
-    const [savedPostIds, setSavedPostIds] = useState<string[]>([]);
+    // Interaction State from Context
+    const { likedPostIds, savedPostIds, toggleLike, toggleSave, loadInteractions } = useInteractions();
     const [sharePost, setSharePost] = useState<Post | null>(null);
     const navigate = useNavigate();
 
@@ -392,9 +392,7 @@ const Feed: React.FC<FeedProps> = ({ currentUser, onUserClick }) => {
         }
     };
 
-    useEffect(() => {
-        setSavedPostIds(currentUser.savedPosts || []);
-    }, [currentUser.savedPosts]);
+    // Saved posts are now handled by InteractionContext
 
     // Modal State
     const [commentsPost, setCommentsPost] = useState<Post | null>(null);
@@ -431,18 +429,10 @@ const Feed: React.FC<FeedProps> = ({ currentUser, onUserClick }) => {
                 const sUsers = allUsers.filter(u => userIdsWithStories.includes(u.id));
                 setStoryUsers(sUsers);
 
-                // Load interaction state from database (critical for UI persistence)
+                // Load interaction state from database via Context
                 if (activePosts.length > 0) {
                     const postIds = activePosts.map(p => p.id);
-                    const interactions = await DBService.checkBatchInteractions(postIds, currentUser.id);
-                    const liked: string[] = [];
-                    const saved: string[] = [];
-                    interactions.forEach((state, postId) => {
-                        if (state.isLiked) liked.push(postId);
-                        if (state.isSaved) saved.push(postId);
-                    });
-                    setLikedPostIds(liked);
-                    setSavedPostIds(saved);
+                    await loadInteractions(postIds);
                 }
             } catch (e) {
                 console.error("Error loading feed:", e);
@@ -465,13 +455,7 @@ const Feed: React.FC<FeedProps> = ({ currentUser, onUserClick }) => {
     const handleLike = async (postId: string) => {
         const isCurrentlyLiked = likedPostIds.includes(postId);
 
-        // Optimistic Update
-        setLikedPostIds(prev =>
-            isCurrentlyLiked
-                ? prev.filter(id => id !== postId)
-                : [...prev, postId]
-        );
-        // Also update post likeCount optimistically
+        // Optimistic Update for Like Count (InteractionContext handles isLiked state)
         setPosts(current => current.map(p => {
             if (p.id === postId) {
                 return {
@@ -483,20 +467,9 @@ const Feed: React.FC<FeedProps> = ({ currentUser, onUserClick }) => {
         }));
 
         try {
-            const nowLiked = await DBService.toggleLike(postId, currentUser.id);
-            // Sync state with server response
-            setLikedPostIds(prev =>
-                nowLiked
-                    ? (prev.includes(postId) ? prev : [...prev, postId])
-                    : prev.filter(id => id !== postId)
-            );
+            await toggleLike(postId);
         } catch (e) {
             // Revert on error
-            setLikedPostIds(prev =>
-                isCurrentlyLiked
-                    ? [...prev, postId]
-                    : prev.filter(id => id !== postId)
-            );
             setPosts(current => current.map(p => {
                 if (p.id === postId) {
                     return {
@@ -511,31 +484,10 @@ const Feed: React.FC<FeedProps> = ({ currentUser, onUserClick }) => {
     };
 
     const handleSave = async (postId: string) => {
-        const isCurrentlySaved = savedPostIds.includes(postId);
-
-        // Optimistic Update
-        setSavedPostIds(prev =>
-            isCurrentlySaved
-                ? prev.filter(id => id !== postId)
-                : [...prev, postId]
-        );
-
         try {
-            const nowSaved = await DBService.toggleSave(postId, currentUser.id);
-            // Sync state with server response
-            setSavedPostIds(prev =>
-                nowSaved
-                    ? (prev.includes(postId) ? prev : [...prev, postId])
-                    : prev.filter(id => id !== postId)
-            );
+            const nowSaved = await toggleSave(postId);
             toast.success(nowSaved ? 'Post saved!' : 'Removed from saved');
         } catch (e) {
-            // Revert
-            setSavedPostIds(prev =>
-                isCurrentlySaved
-                    ? [...prev, postId]
-                    : prev.filter(id => id !== postId)
-            );
             toast.error('Failed to update save');
         }
     };
