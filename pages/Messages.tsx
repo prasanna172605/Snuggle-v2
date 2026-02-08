@@ -204,20 +204,40 @@ const Messages: React.FC<MessagesProps> = ({ currentUser, onChatSelect, onUserCl
             )}
 
             {/* Header Block */}
-            <div className="bg-white dark:bg-dark-card rounded-bento p-6 mb-2 shadow-sm flex items-center justify-between border border-transparent dark:border-dark-border transition-colors">
+            <div className="px-6 py-4 flex items-center justify-between">
                 <div>
-                    <h2 className="text-2xl font-black text-gray-900 dark:text-white">Messages</h2>
-                    <p className="text-gray-400 font-medium text-xs mt-1">
-                        {isSearchOpen ? 'Search users...' : (chatUsers.length === 0 ? 'No conversations yet' : `${chatUsers.length} conversations`)}
-                    </p>
+                    <h2 className="text-4xl font-black text-gray-900 dark:text-white tracking-tight">Chats</h2>
                 </div>
                 <div className="flex gap-2">
                     <button
                         onClick={toggleSearch}
-                        className={`w-12 h-12 rounded-full flex items-center justify-center transition-all ${isSearchOpen ? 'bg-red-50 text-red-500' : 'bg-gray-100 dark:bg-dark-border text-gray-800 dark:text-gray-200'}`}
+                        className={`w-12 h-12 rounded-full flex items-center justify-center transition-all shadow-sm border border-white/50 dark:border-white/10 ${isSearchOpen ? 'bg-red-50 text-red-500' : 'bg-white/80 dark:bg-slate-800/80 backdrop-blur-md text-gray-800 dark:text-gray-200'}`}
                     >
-                        {isSearchOpen ? <X className="w-5 h-5" /> : <Search className="w-5 h-5" />}
+                        {isSearchOpen ? <X className="w-6 h-6" /> : <Search className="w-6 h-6" />}
                     </button>
+                    <button className="w-12 h-12 rounded-full flex items-center justify-center bg-white/80 dark:bg-slate-800/80 backdrop-blur-md shadow-sm border border-white/50 dark:border-white/10 text-gray-800 dark:text-gray-200">
+                        <Edit className="w-6 h-6" />
+                    </button>
+                </div>
+            </div>
+
+            {/* Stories / Online Row */}
+            <div className="px-4 mb-6 overflow-x-auto no-scrollbar">
+                <div className="flex gap-4">
+                    <div className="flex flex-col items-center gap-1">
+                        <div className="w-16 h-16 rounded-full bg-white/50 dark:bg-white/10 border-2 border-dashed border-gray-300 flex items-center justify-center">
+                            <span className="text-2xl">+</span>
+                        </div>
+                        <span className="text-xs font-medium text-gray-500">Your Story</span>
+                    </div>
+                    {chatUsers.map(user => (
+                        <div key={'story-' + user.id} className="flex flex-col items-center gap-1 shrink-0">
+                            <div className={`p-[3px] rounded-full ${user.isOnline ? 'bg-gradient-to-tr from-amber-400 to-fuchsia-600' : 'bg-transparent border-2 border-transparent'}`}>
+                                <img src={user.avatar} className="w-16 h-16 rounded-full border-2 border-white dark:border-black object-cover" />
+                            </div>
+                            <span className="text-xs font-medium text-gray-600 dark:text-gray-300 max-w-[64px] truncate">{user.username}</span>
+                        </div>
+                    ))}
                 </div>
             </div>
 
@@ -239,48 +259,46 @@ const Messages: React.FC<MessagesProps> = ({ currentUser, onChatSelect, onUserCl
             )}
 
             {/* Content Area */}
-            <div className="bg-white dark:bg-dark-card rounded-bento p-2 shadow-sm min-h-[400px] border border-transparent dark:border-dark-border transition-colors">
+            <div className="px-2 pb-24 space-y-2">
                 {isSearchOpen && searchTerm ? (
                     // --- SEARCH RESULTS VIEW ---
-                    searchResults.length === 0 ? (
-                        <div className="flex flex-col items-center justify-center py-16 px-6 text-center">
-                            <p className="text-gray-400 text-sm">No users found matching "{searchTerm}"</p>
-                        </div>
-                    ) : (
-                        <div className="space-y-1">
-                            <h3 className="px-4 py-2 text-xs font-bold text-gray-400 uppercase tracking-wider">Search Results</h3>
-                            {searchResults.map(user => {
-                                const isFriend = chatUsers.some(u => u.id === user.id);
-                                return (
+                    <div className="bg-white/80 dark:bg-slate-800/80 backdrop-blur-md rounded-[2rem] p-4 shadow-sm">
+                        {searchResults.length === 0 ? (
+                            <div className="flex flex-col items-center justify-center py-8 text-center">
+                                <p className="text-gray-400 text-sm">No users found matching "{searchTerm}"</p>
+                            </div>
+                        ) : (
+                            <div className="space-y-2">
+                                <h3 className="px-2 text-xs font-bold text-gray-400 uppercase tracking-wider">Search Results</h3>
+                                {/* ... existing search mapping ... */}
+                                {searchResults.map(user => (
                                     <div
                                         key={user.id}
                                         onClick={() => handleSearchResultClick(user)}
-                                        className="group flex items-center justify-between p-3 hover:bg-gray-50 dark:hover:bg-dark-border rounded-[24px] cursor-pointer transition-colors"
+                                        className="flex items-center justify-between p-3 hover:bg-black/5 dark:hover:bg-white/10 rounded-2xl cursor-pointer transition-colors"
                                     >
-                                        <div className="flex items-center gap-3 overflow-hidden">
-                                            <img src={user.avatar} alt={user.username} className="w-12 h-12 rounded-[18px] object-cover flex-shrink-0 border border-gray-100 dark:border-gray-700" />
-                                            <div className="overflow-hidden">
-                                                <p className="font-bold text-gray-900 dark:text-white truncate text-sm">{user.username}</p>
-                                                <p className="text-xs text-gray-500 truncate">{user.fullName}</p>
+                                        <div className="flex items-center gap-3">
+                                            <img src={user.avatar} className="w-12 h-12 rounded-xl object-cover" />
+                                            <div>
+                                                <p className="font-bold text-gray-900 dark:text-white">{user.username}</p>
+                                                <p className="text-xs text-gray-500">{user.fullName}</p>
                                             </div>
                                         </div>
-                                        <div className="w-8 h-8 rounded-full bg-snuggle-50 dark:bg-snuggle-900/30 flex items-center justify-center text-snuggle-500">
-                                            {isFriend ? <ChevronRight className="w-4 h-4" /> : <UserPlus className="w-4 h-4" />}
-                                        </div>
+                                        <ChevronRight className="w-5 h-5 text-gray-300" />
                                     </div>
-                                );
-                            })}
-                        </div>
-                    )
+                                ))}
+                            </div>
+                        )}
+                    </div>
                 ) : (
                     // --- EXISTING CHATS VIEW ---
                     chatUsers.length === 0 ? (
-                        <div className="flex flex-col items-center justify-center py-20 px-6 text-center">
-                            <div className="bg-gray-50 dark:bg-dark-border p-6 rounded-full mb-4">
-                                <Users className="w-12 h-12 text-gray-300 dark:text-gray-600" />
+                        <div className="flex flex-col items-center justify-center py-20 px-6 text-center bg-white/50 dark:bg-slate-800/50 backdrop-blur-sm rounded-[2.5rem]">
+                            <div className="bg-white/80 dark:bg-slate-700/80 p-6 rounded-full mb-4 shadow-sm">
+                                <Users className="w-12 h-12 text-gray-300 dark:text-gray-500" />
                             </div>
                             <h3 className="text-gray-900 dark:text-white font-bold mb-2">No Messages Yet</h3>
-                            <p className="text-gray-400 text-sm max-w-xs mx-auto">Tap the search button above to find friends and start chatting!</p>
+                            <p className="text-gray-400 text-sm max-w-xs mx-auto">Tap the search button above to find friends!</p>
                         </div>
                     ) : (
                         <div className="space-y-1">
@@ -297,43 +315,32 @@ const Messages: React.FC<MessagesProps> = ({ currentUser, onChatSelect, onUserCl
                                         key={user.id}
                                         onClick={() => onChatSelect(user)}
                                         onContextMenu={(e) => { e.preventDefault(); setChatToDelete(user); }}
-                                        onTouchStart={() => handleTouchStart(user)}
-                                        onTouchEnd={handleTouchEnd}
-                                        onMouseDown={() => handleTouchStart(user)}
-                                        onMouseUp={handleTouchEnd}
-                                        onMouseLeave={handleTouchEnd}
-                                        className={`group flex items-center p-3 hover:bg-gray-50 dark:hover:bg-dark-border rounded-[24px] cursor-pointer transition-colors relative ${isUnread ? 'bg-snuggle-50/50 dark:bg-snuggle-900/10' : ''}`}
+                                        className={`group flex items-center p-4 hover:bg-white/60 dark:hover:bg-slate-800/60 active:scale-[0.98] rounded-[2rem] cursor-pointer transition-all duration-200 relative ${isUnread ? 'bg-white/80 dark:bg-slate-800/80 shadow-sm border border-white/50' : 'bg-transparent'}`}
                                     >
                                         <div className="relative flex-shrink-0">
-                                            <img src={user.avatar} alt={user.username} className="w-14 h-14 rounded-[20px] object-cover border border-gray-100 dark:border-gray-700" />
+                                            <img src={user.avatar} alt={user.username} className="w-16 h-16 rounded-[1.2rem] object-cover shadow-sm bg-gray-100 dark:bg-gray-800" />
                                             {user.isOnline && (
-                                                <span className="absolute -bottom-1 -right-1 w-4 h-4 bg-green-500 border-[3px] border-white dark:border-dark-card rounded-full"></span>
+                                                <span className="absolute -bottom-1 -right-1 w-4 h-4 bg-emerald-400 border-[3px] border-white dark:border-black rounded-full"></span>
                                             )}
                                         </div>
 
                                         <div className="ml-4 flex-1 overflow-hidden pr-2">
                                             <div className="flex justify-between items-center mb-1">
-                                                <h3 className={`text-[15px] truncate ${isUnread ? 'font-black text-gray-900 dark:text-white' : 'font-bold text-gray-900 dark:text-white'}`}>{user.fullName}</h3>
-                                                <span className={`text-[11px] font-bold ${isUnread ? 'text-snuggle-500' : 'text-gray-400'}`}>{timeString}</span>
+                                                <h3 className={`text-[17px] truncate ${isUnread ? 'font-black text-gray-900 dark:text-white' : 'font-bold text-gray-900 dark:text-white'}`}>{user.fullName}</h3>
+                                                <span className={`text-[12px] font-medium ${isUnread ? 'text-amber-500' : 'text-gray-400'}`}>{timeString}</span>
                                             </div>
-                                            <p className={`text-sm truncate ${isUnread ? 'font-bold text-gray-900 dark:text-white' : 'text-gray-500 dark:text-gray-400'}`}>
+                                            <p className={`text-[15px] truncate leading-tight ${isUnread ? 'font-bold text-gray-800 dark:text-gray-100' : 'text-gray-500 dark:text-gray-400'}`}>
                                                 {isUnread && unreadCount > 1
-                                                    ? <span className="text-snuggle-500">{unreadCount > 4 ? '4+' : unreadCount} new messages</span>
+                                                    ? <span className="text-amber-600 dark:text-amber-400">{unreadCount > 4 ? '4+' : unreadCount} new messages</span>
                                                     : (lastMsg
                                                         ? (lastMsg.senderId === currentUser.id ? `You: ${lastMsg.text}` : lastMsg.text)
-                                                        : <span className="text-snuggle-400">Start chatting...</span>)
+                                                        : <span className="text-gray-400 opacity-60">Start chatting...</span>)
                                                 }
                                             </p>
                                         </div>
 
-                                        {isUnread ? (
-                                            <div className="w-6 h-6 rounded-full bg-snuggle-500 flex items-center justify-center flex-shrink-0 shadow-sm shadow-snuggle-200 ml-2">
-                                                <span className="text-white text-[10px] font-bold leading-none">
-                                                    {unreadCount > 4 ? '4+' : unreadCount}
-                                                </span>
-                                            </div>
-                                        ) : (
-                                            <ChevronRight className="w-5 h-5 text-gray-300 opacity-0 group-hover:opacity-100 transition-opacity ml-2" />
+                                        {isUnread && (
+                                            <div className="w-3 h-3 rounded-full bg-amber-500 flex-shrink-0 ml-2 shadow-[0_0_10px_rgba(245,158,11,0.5)]"></div>
                                         )}
                                     </div>
                                 );

@@ -308,12 +308,10 @@ const StoriesBento: React.FC<{
     };
 
     return (
-        <div className="bg-white dark:bg-dark-card rounded-b-bento rounded-t-bento-sm shadow-sm p-4 mb-4 mx-2 mt-2 transition-colors border border-transparent dark:border-dark-border">
-            {/* Hidden Input for Story Upload - Managed in Feed parent via ID ref */}
-
-            <div className="flex overflow-x-auto gap-4 no-scrollbar pb-2">
+        <div className="mb-6 mx-4 overflow-x-auto no-scrollbar pt-2">
+            <div className="flex gap-4">
                 {/* My Story (Combined Logic) */}
-                <div className="flex flex-col items-center space-y-1 min-w-[72px] relative" onClick={() => {
+                <div className="flex flex-col items-center space-y-1 min-w-[72px] relative group" onClick={() => {
                     const myStories = storiesByUser[currentUser.id];
                     if (myStories && myStories.length > 0) {
                         onStoryClick(currentUser.id);
@@ -321,36 +319,36 @@ const StoriesBento: React.FC<{
                         document.getElementById('story-file-input')?.click();
                     }
                 }}>
-                    <div className={`w-[72px] h-[72px] rounded-[24px] p-[2px] cursor-pointer transition-all ${storiesByUser[currentUser.id]?.length ? 'bg-warm' : 'bg-transparent border-2 border-dashed border-gray-300 dark:border-gray-700'}`}>
-                        <div className="w-full h-full rounded-[22px] bg-white dark:bg-dark-card p-[2px] relative group">
-                            <img src={currentUser.avatar} className="w-full h-full rounded-[20px] object-cover" alt="Your Story" />
+                    <div className={`w-[72px] h-[72px] rounded-full p-[3px] cursor-pointer transition-all ${storiesByUser[currentUser.id]?.length ? 'bg-gradient-to-tr from-amber-400 to-fuchsia-600' : 'bg-transparent border-2 border-dashed border-gray-300 dark:border-gray-600'}`}>
+                        <div className="w-full h-full rounded-full p-[2px] relative overflow-hidden">
+                            <img src={currentUser.avatar} className="w-full h-full rounded-full object-cover border-2 border-white dark:border-black" alt="Your Story" />
 
-                            {/* Plus Icon - Always Visible */}
+                            {/* Plus Icon */}
                             <div
                                 onClick={handleAddStory}
-                                className="absolute bottom-0 right-0 w-6 h-6 bg-blue-500 rounded-full border-2 border-white dark:border-black flex items-center justify-center hover:bg-blue-600 hover:scale-110 transition-transform cursor-pointer z-10"
+                                className="absolute bottom-0 right-0 w-6 h-6 bg-blue-500 rounded-full border-2 border-white dark:border-black flex items-center justify-center hover:bg-blue-600 transition-colors z-10"
                             >
                                 <span className="text-white text-lg font-bold pb-0.5">+</span>
                             </div>
                         </div>
                     </div>
-                    <span className="text-xs font-medium text-gray-500 dark:text-gray-400">Your Story</span>
+                    <span className="text-xs font-semibold text-gray-600 dark:text-gray-300 group-hover:text-gray-900 dark:group-hover:text-white transition-colors">Your Story</span>
                 </div>
 
                 {storyUsers
-                    .filter(u => u.id !== currentUser.id) // Filter out current user
+                    .filter(u => u.id !== currentUser.id)
                     .map(user => {
                         const userStories = storiesByUser[user.id] || [];
                         const allViewed = userStories.every(s => s.views && s.views.includes(currentUser.id));
 
                         return (
-                            <div key={user.id} className="flex flex-col items-center space-y-1 min-w-[72px]" onClick={() => onStoryClick(user.id)}>
-                                <div className={`w-[72px] h-[72px] rounded-[24px] p-[2px] cursor-pointer transition-all ${allViewed ? 'bg-gray-300 dark:bg-gray-600' : 'bg-warm'}`}>
-                                    <div className="w-full h-full rounded-[22px] bg-white dark:bg-dark-card p-[2px]">
-                                        <img src={user.avatar} className="w-full h-full rounded-[20px] object-cover" alt={user.username} />
+                            <div key={user.id} className="flex flex-col items-center space-y-1 min-w-[72px] group" onClick={() => onStoryClick(user.id)}>
+                                <div className={`w-[72px] h-[72px] rounded-full p-[3px] cursor-pointer transition-transform group-hover:scale-105 ${allViewed ? 'bg-gray-300 dark:bg-gray-700' : 'bg-gradient-to-tr from-amber-400 to-fuchsia-600'}`}>
+                                    <div className="w-full h-full rounded-full p-[2px] bg-white dark:bg-black">
+                                        <img src={user.avatar} className="w-full h-full rounded-full object-cover border-2 border-white dark:border-black" alt={user.username} />
                                     </div>
                                 </div>
-                                <span className="text-xs font-medium text-gray-900 dark:text-gray-300 truncate w-16 text-center">{user.username}</span>
+                                <span className="text-xs font-semibold text-gray-600 dark:text-gray-300 truncate w-20 text-center">{user.username}</span>
                             </div>
                         );
                     })}
@@ -657,7 +655,8 @@ const Feed: React.FC<FeedProps> = ({ currentUser, onUserClick }) => {
                     if (!user) return null;
 
                     return (
-                        <div key={post.id} className="bg-white dark:bg-dark-card rounded-bento shadow-sm transition-colors border border-transparent dark:border-dark-border overflow-hidden pb-3 mb-4">
+                    return (
+                        <div key={post.id} className="bg-white/80 dark:bg-slate-800/80 backdrop-blur-md rounded-[2.5rem] shadow-sm transition-all border border-white/50 dark:border-white/5 overflow-hidden pb-4 mb-6 hover:shadow-md">
                             {/* Header */}
                             <div className="flex items-center justify-between px-4 pt-3 pb-3">
                                 <div className="flex items-center gap-2.5 cursor-pointer" onClick={() => onUserClick?.(user.id)}>
@@ -729,7 +728,7 @@ const Feed: React.FC<FeedProps> = ({ currentUser, onUserClick }) => {
                             {/* Likes Text */}
                             <div className="px-4 py-1">
                                 <p className="font-bold text-sm text-gray-900 dark:text-white">
-                                    {post.likeCount ?? (Array.isArray(post.likes) ? post.likes.length : post.likes)} likes
+                                    {post.likeCount ?? (Array.isArray(post.likes) ? (post.likes as string[]).length : post.likes)} likes
                                 </p>
                             </div>
 

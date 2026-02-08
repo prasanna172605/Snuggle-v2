@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { User, Post } from '../types';
-import { Settings, Grid, Edit3, Share2, MessageCircle, UserPlus, UserMinus, UserCheck, Camera, Save, X as XIcon, MapPin, Calendar, Link as LinkIcon, Phone, Bookmark, Play, Film, UserSquare2 } from 'lucide-react';
+import { Settings, Grid, Edit3, Share2, MessageCircle, UserPlus, UserMinus, UserCheck, Camera, Save, X as XIcon, MapPin, Calendar, Link as LinkIcon, Phone, Bookmark, Play, Film, UserSquare2, Heart } from 'lucide-react';
 import { DBService } from '../services/database';
 import { SkeletonProfile } from '../components/common/Skeleton';
 import PostDetailModal from '../components/PostDetailModal';
@@ -312,12 +312,12 @@ const Profile: React.FC<ProfileProps> = ({ user: propUser, currentUser, isOwnPro
     return (
         <div className="pb-28 relative bg-white dark:bg-black min-h-screen">
             {/* Header with Settings */}
-            <div className="sticky top-0 z-20 bg-white/80 dark:bg-black/80 backdrop-blur-md border-b border-gray-100 dark:border-dark-border">
-                <div className="flex items-center justify-between px-4 py-3 max-w-4xl mx-auto">
-                    <h1 className="text-xl font-bold text-gray-900 dark:text-white">{user.username}</h1>
+            <div className="sticky top-0 z-20 bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl border-b border-white/20 dark:border-white/5 shadow-sm">
+                <div className="flex items-center justify-between px-6 py-4 max-w-4xl mx-auto">
+                    <h1 className="text-2xl font-black text-gray-900 dark:text-white tracking-tight">{user.username}</h1>
                     {isOwnProfile && (
-                        <button onClick={() => navigate('/settings')} className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-full transition-colors">
-                            <Settings className="w-6 h-6" />
+                        <button onClick={() => navigate('/settings')} className="p-3 bg-gray-50 dark:bg-white/5 hover:bg-gray-100 dark:hover:bg-white/10 rounded-full transition-colors">
+                            <Settings className="w-6 h-6 text-gray-700 dark:text-gray-200" />
                         </button>
                     )}
                 </div>
@@ -455,73 +455,73 @@ const Profile: React.FC<ProfileProps> = ({ user: propUser, currentUser, isOwnPro
                 </div>
 
                 {/* Tab Bar */}
-                <div className="flex border-t border-b border-gray-100 dark:border-dark-border">
+                <div className="flex border-t border-gray-100 dark:border-gray-800 mt-2">
                     <button
                         onClick={() => setActiveTab('posts')}
-                        className={`flex-1 py-3 flex justify-center items-center gap-1 border-t-2 -mt-px transition-colors ${activeTab === 'posts'
+                        className={`flex-1 py-4 flex justify-center items-center gap-2 border-t-2 -mt-[2px] transition-all ${activeTab === 'posts'
                             ? 'border-gray-900 dark:border-white text-gray-900 dark:text-white'
-                            : 'border-transparent text-gray-400'
+                            : 'border-transparent text-gray-400 hover:text-gray-600'
                             }`}
                     >
-                        <Grid className="w-5 h-5" />
+                        <Grid className={`w-5 h-5 ${activeTab === 'posts' ? 'stroke-[2.5px]' : ''}`} />
                     </button>
                     <button
                         onClick={() => setActiveTab('reels')}
-                        className={`flex-1 py-3 flex justify-center items-center gap-1 border-t-2 -mt-px transition-colors ${activeTab === 'reels'
+                        className={`flex-1 py-4 flex justify-center items-center gap-2 border-t-2 -mt-[2px] transition-all ${activeTab === 'reels'
                             ? 'border-gray-900 dark:border-white text-gray-900 dark:text-white'
-                            : 'border-transparent text-gray-400'
+                            : 'border-transparent text-gray-400 hover:text-gray-600'
                             }`}
                     >
-                        <Film className="w-5 h-5" />
+                        <Film className={`w-5 h-5 ${activeTab === 'reels' ? 'stroke-[2.5px]' : ''}`} />
                     </button>
                     {isOwnProfile && (
                         <button
                             onClick={() => setActiveTab('saved')}
-                            className={`flex-1 py-3 flex justify-center items-center gap-1 border-t-2 -mt-px transition-colors ${activeTab === 'saved'
+                            className={`flex-1 py-4 flex justify-center items-center gap-2 border-t-2 -mt-[2px] transition-all ${activeTab === 'saved'
                                 ? 'border-gray-900 dark:border-white text-gray-900 dark:text-white'
-                                : 'border-transparent text-gray-400'
+                                : 'border-transparent text-gray-400 hover:text-gray-600'
                                 }`}
                         >
-                            <Bookmark className="w-5 h-5" />
+                            <Bookmark className={`w-5 h-5 ${activeTab === 'saved' ? 'stroke-[2.5px]' : ''}`} />
                         </button>
                     )}
                     <button
                         onClick={() => setActiveTab('tagged')}
-                        className={`flex-1 py-3 flex justify-center items-center gap-1 border-t-2 -mt-px transition-colors ${activeTab === 'tagged'
+                        className={`flex-1 py-4 flex justify-center items-center gap-2 border-t-2 -mt-[2px] transition-all ${activeTab === 'tagged'
                             ? 'border-gray-900 dark:border-white text-gray-900 dark:text-white'
-                            : 'border-transparent text-gray-400'
+                            : 'border-transparent text-gray-400 hover:text-gray-600'
                             }`}
                     >
-                        <UserSquare2 className="w-5 h-5" />
+                        <UserSquare2 className={`w-5 h-5 ${activeTab === 'tagged' ? 'stroke-[2.5px]' : ''}`} />
                     </button>
                 </div>
 
-                {/* Posts Grid - 3 Columns */}
-                <div className="grid grid-cols-3 gap-0.5 md:gap-1">
+                {/* Posts Grid - 3 Columns with Gap */}
+                <div className="grid grid-cols-3 gap-1 pb-20">
                     {activeTab === 'posts' && userPosts.map(post => (
                         <div
                             key={post.id}
                             onClick={() => setSelectedPost(post)}
-                            className="aspect-square relative group cursor-pointer"
+                            className="aspect-square relative group cursor-pointer overflow-hidden bg-gray-100 dark:bg-gray-800 rounded-xl"
                         >
                             {post.mediaType === 'video' ? (
                                 <>
-                                    <video src={post.imageUrl} className="w-full h-full object-cover" />
+                                    <video src={post.imageUrl} className="w-full h-full object-cover transition-transform group-hover:scale-110 duration-500" />
                                     <div className="absolute top-2 right-2">
-                                        <Play className="w-5 h-5 text-white fill-white drop-shadow-lg" />
+                                        <Play className="w-5 h-5 text-white fill-white drop-shadow-md" />
                                     </div>
                                 </>
                             ) : (
-                                <img src={post.imageUrl} className="w-full h-full object-cover" alt="" />
+                                <img src={post.imageUrl} className="w-full h-full object-cover transition-transform group-hover:scale-110 duration-500" alt="" />
                             )}
-                            <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-6">
+                            <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-6 backdrop-blur-[2px]">
                                 <div className="flex items-center gap-1 text-white font-bold">
-                                    <span>❤️</span>
-                                    <span>{Array.isArray(post.likes) ? post.likes.length : post.likes}</span>
+                                    <Heart className="w-6 h-6 fill-white" />
+                                    <span className="text-lg">{Array.isArray(post.likes) ? post.likes.length : post.likes}</span>
                                 </div>
                                 <div className="flex items-center gap-1 text-white font-bold">
-                                    <span>💬</span>
-                                    <span>{post.comments}</span>
+                                    <MessageCircle className="w-6 h-6 fill-white" />
+                                    <span className="text-lg">{post.comments}</span>
                                 </div>
                             </div>
                         </div>

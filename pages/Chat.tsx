@@ -412,35 +412,37 @@ const Chat: React.FC<ChatProps> = ({ currentUser, otherUser, onBack }) => {
   };
 
   return (
-    <div className="flex flex-col h-full bg-[#0f1014] text-white overflow-hidden relative font-['Plus_Jakarta_Sans']">
+    <div className="flex flex-col h-full bg-gray-50 dark:bg-slate-900 text-gray-900 dark:text-white overflow-hidden relative font-['Plus_Jakarta_Sans']">
       {showCamera && <CameraCapture onCapture={handleCameraCapture} onClose={() => setShowCamera(false)} />}
 
-      {/* Header */}
-      <div className="flex-none px-4 py-3 flex items-center gap-3 backdrop-blur-xl bg-[#0f1014]/80 z-20 sticky top-0 border-b border-white/5">
-        <button onClick={onBack} className="p-2 -ml-2 rounded-full hover:bg-white/10 transition-colors">
-          <ArrowLeft className="w-5 h-5 text-white" />
+      {/* Floating Header */}
+      <div className="flex-none mx-4 mt-2 px-4 py-3 flex items-center gap-3 backdrop-blur-xl bg-white/70 dark:bg-slate-800/70 shadow-sm border border-white/50 dark:border-white/10 rounded-full z-20 absolute top-0 left-0 right-0">
+        <button onClick={onBack} className="p-2 -ml-2 rounded-full hover:bg-black/5 dark:hover:bg-white/10 transition-colors">
+          <ArrowLeft className="w-5 h-5 text-gray-700 dark:text-white" />
         </button>
         <div className="relative">
-          <img src={otherUser.avatar} className="w-9 h-9 rounded-full object-cover ring-2 ring-white/10" />
-          {isOtherUserOnline && <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-emerald-500 rounded-full border-2 border-[#0f1014]" />}
+          <img src={otherUser.avatar} className="w-10 h-10 rounded-full object-cover ring-2 ring-white dark:ring-slate-700" />
+          {isOtherUserOnline && <div className="absolute 1bottom-0 right-0 w-3 h-3 bg-emerald-500 rounded-full border-2 border-white dark:border-slate-800" />}
         </div>
-        <div className="flex-1 min-w-0">
-          <h2 className="font-semibold text-[15px] truncate">{otherUser.fullName}</h2>
-          <p className="text-xs text-white/40 truncate">
+        <div className="flex-1 min-w-0 ml-1">
+          <h2 className="font-bold text-[16px] truncate text-gray-900 dark:text-white">{otherUser.fullName}</h2>
+          <p className="text-xs text-gray-500 dark:text-gray-400 truncate font-medium">
             {isOtherUserTyping ? 'typing...' : (isOtherUserOnline ? 'Active now' : 'Offline')}
           </p>
         </div>
         {/* Call Buttons */}
-        <CallButton
-          onAudioCall={() => startCall(otherUser.id, 'audio')}
-          onVideoCall={() => startCall(otherUser.id, 'video')}
-        />
+        <div className="flex gap-1">
+          <CallButton
+            onAudioCall={() => startCall(otherUser.id, 'audio')}
+            onVideoCall={() => startCall(otherUser.id, 'video')}
+          />
+        </div>
       </div>
 
 
 
       {/* Chat Area */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-4 no-scrollbar relative z-10" ref={chatContainerRef} onScroll={handleChatScroll}>
+      <div className="flex-1 overflow-y-auto px-4 pt-24 pb-24 space-y-3 no-scrollbar relative z-10" ref={chatContainerRef} onScroll={handleChatScroll}>
         {loading ? (
           <div className="pt-10 px-2">
             <SkeletonChat />
@@ -677,11 +679,11 @@ const Chat: React.FC<ChatProps> = ({ currentUser, otherUser, onBack }) => {
         <div ref={messagesEndRef} />
       </div>
 
-      {/* Input Bento Island */}
-      <div className="bg-white dark:bg-dark-card rounded-bento px-3 py-2 flex items-end gap-2 shrink-0 shadow-sm relative z-20 border border-transparent dark:border-dark-border transition-colors">
+      {/* Floating Input Area */}
+      <div className="mx-4 mb-4 rounded-[2.5rem] p-2 flex items-end gap-2 shrink-0 shadow-[0_8px_30px_rgb(0,0,0,0.04)] relative z-20 border border-white/60 dark:border-white/10 bg-white/80 dark:bg-slate-800/80 backdrop-blur-xl transition-all">
         {showEmojiPicker && (
           <div
-            className="absolute bottom-full left-0 mb-2 w-full max-w-[320px] bg-white dark:bg-dark-card border border-gray-200 dark:border-dark-border rounded-2xl shadow-xl p-2 z-30 emoji-picker"
+            className="absolute bottom-full left-0 mb-4 w-full bg-white/90 dark:bg-slate-800/90 border border-white/50 dark:border-white/10 rounded-3xl shadow-xl p-3 z-30 emoji-picker backdrop-blur-xl"
             style={{ maxHeight: '40vh', overflowY: 'auto' }}
           >
             <div className="grid grid-cols-6 gap-2">
@@ -689,7 +691,7 @@ const Chat: React.FC<ChatProps> = ({ currentUser, otherUser, onBack }) => {
                 <button
                   key={emoji}
                   onClick={() => handleEmojiClick(emoji)}
-                  className="text-2xl hover:bg-gray-100 dark:hover:bg-gray-700 rounded p-1"
+                  className="text-2xl hover:bg-black/5 dark:hover:bg-white/10 rounded-xl p-2 transition-colors"
                 >
                   {emoji}
                 </button>
@@ -699,7 +701,7 @@ const Chat: React.FC<ChatProps> = ({ currentUser, otherUser, onBack }) => {
         )}
 
         {isRecording ? (
-          <div className="flex-1 bg-red-50/50 dark:bg-red-900/20 backdrop-blur-sm rounded-[24px] flex items-center justify-between px-4 py-2 mb-0.5 border border-red-100 dark:border-red-900 transition-all duration-200">
+          <div className="flex-1 bg-red-50/50 dark:bg-red-900/20 backdrop-blur-sm rounded-full flex items-center justify-between px-4 py-3 border border-red-100 dark:border-red-900 transition-all duration-200">
             <div className="flex items-center gap-3">
               <div className="relative flex items-center justify-center w-3 h-3">
                 <div className="absolute inset-0 bg-red-500 rounded-full animate-ping opacity-75" />
@@ -709,20 +711,20 @@ const Chat: React.FC<ChatProps> = ({ currentUser, otherUser, onBack }) => {
             </div>
 
             {/* Waveform */}
-            <div className="flex items-center justify-center gap-[2px] h-6 flex-1 mx-4">
+            <div className="flex items-center justify-center gap-[3px] h-8 flex-1 mx-4">
               {audioLevels.map((height, i) => (
                 <div
                   key={i}
-                  className="w-1 bg-red-400 rounded-full transition-all duration-150 ease-in-out"
-                  style={{ height: `${height}%`, opacity: Math.max(0.3, height / 100) }}
+                  className="w-1 bg-gradient-to-t from-red-400 to-orange-400 rounded-full transition-all duration-150 ease-in-out"
+                  style={{ height: `${height}%`, opacity: Math.max(0.4, height / 100) }}
                 />
               ))}
             </div>
           </div>
         ) : (
-          <div className="flex-1 bg-gray-100 dark:bg-dark-border rounded-[24px] flex items-center px-4 py-2 mb-0.5 border border-transparent focus-within:border-snuggle-300 focus-within:bg-white dark:focus-within:bg-black transition-all">
+          <div className="flex-1 bg-transparent flex items-center px-2 py-1">
             <button
-              className="mr-2 text-gray-400 hover:text-snuggle-500 transition-colors"
+              className="p-2 text-gray-400 hover:text-amber-500 hover:bg-amber-50 dark:hover:bg-amber-900/20 rounded-full transition-colors"
               onClick={() => setShowCamera(true)}
             >
               <Camera className="w-6 h-6" />
@@ -733,7 +735,7 @@ const Chat: React.FC<ChatProps> = ({ currentUser, otherUser, onBack }) => {
               onChange={handleInputChange}
               onKeyDown={handleKeyPress}
               placeholder="Message..."
-              className="bg-transparent flex-1 focus:outline-none text-[15px] text-gray-800 dark:text-gray-100 placeholder-gray-500 max-h-32"
+              className="bg-transparent flex-1 focus:outline-none text-[16px] text-gray-800 dark:text-gray-100 placeholder-gray-400 px-3 max-h-32"
             />
             <input
               type="file"
@@ -743,13 +745,13 @@ const Chat: React.FC<ChatProps> = ({ currentUser, otherUser, onBack }) => {
               onChange={handleFileSelect}
             />
             <button
-              className="ml-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200"
+              className="p-2 text-gray-400 hover:text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-full transition-colors"
               onClick={() => fileInputRef.current?.click()}
             >
               <ImageIcon className="w-6 h-6" />
             </button>
             <button
-              className={`ml-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 emoji-btn ${showEmojiPicker ? 'text-snuggle-500' : ''}`}
+              className={`p-2 rounded-full transition-colors ${showEmojiPicker ? 'text-amber-500 bg-amber-50 dark:bg-amber-900/20' : 'text-gray-400 hover:text-amber-500 hover:bg-amber-50 dark:hover:bg-amber-900/20'} emoji-btn`}
               onClick={() => setShowEmojiPicker(!showEmojiPicker)}
             >
               <Smile className="w-6 h-6" />
@@ -758,20 +760,20 @@ const Chat: React.FC<ChatProps> = ({ currentUser, otherUser, onBack }) => {
         )}
 
         {isRecording ? (
-          <div className="flex items-end gap-2 mb-0.5">
-            <button onClick={handleCancelRecording} className="p-3 bg-gray-200 dark:bg-gray-700 text-gray-500 dark:text-gray-300 hover:text-red-500 hover:bg-gray-300 rounded-full transition-colors">
-              <Trash2 className="w-5 h-5" />
+          <div className="flex items-end gap-2">
+            <button onClick={handleCancelRecording} className="p-3 bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-300 hover:text-red-500 hover:bg-red-50 rounded-full transition-colors">
+              <Trash2 className="w-6 h-6" />
             </button>
-            <button onClick={handleStopRecording} className="p-3 bg-snuggle-500 text-white rounded-full hover:bg-snuggle-600 shadow-md">
+            <button onClick={handleStopRecording} className="p-3 bg-red-500 text-white rounded-full hover:bg-red-600 shadow-md transform hover:scale-105 transition-all">
               <Send className="w-5 h-5 translate-x-0.5 translate-y-0.5" fill="currentColor" />
             </button>
           </div>
         ) : (
           <button
             onClick={inputText.trim() ? handleSend : handleStartRecording}
-            className={`p-3 rounded-full transition-all duration-200 mb-0.5 shadow-sm ${inputText.trim()
-              ? 'bg-snuggle-500 text-white hover:bg-snuggle-600 transform hover:scale-105'
-              : 'bg-snuggle-100 dark:bg-gray-700 text-snuggle-600 dark:text-snuggle-300 hover:bg-snuggle-200 dark:hover:bg-gray-600'
+            className={`p-3 rounded-full transition-all duration-300 shadow-md ${inputText.trim()
+              ? 'bg-amber-400 text-white hover:bg-amber-500 transform hover:scale-105'
+              : 'bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
               }`}
           >
             {inputText.trim() ? (

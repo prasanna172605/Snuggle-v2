@@ -47,6 +47,21 @@
     --color-error-bg: rgba(211, 47, 47, 0.1);
 
     /* ============================================
+     NEW DESIGN TOKENS (Glassy Pastel)
+     ============================================ */
+    
+    /* Chat (Pastel Scheme) */
+    --color-chat-sent-bg: #FEF3C7; /* Amber-100 */
+    --color-chat-sent-text: #78350F; /* Amber-900 */
+    --color-chat-received-bg: #FFFFFF;
+    --color-chat-received-text: #1F2937;
+    
+    /* Glass Surfaces */
+    --glass-background: rgba(255, 255, 255, 0.65);
+    --glass-border: rgba(255, 255, 255, 0.5);
+    --glass-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.1);
+
+    /* ============================================
      LIGHT MODE TOKENS
      ============================================ */
 
@@ -99,6 +114,10 @@
     --dark-hover: rgba(255, 255, 255, 0.06);
     --dark-pressed: rgba(255, 255, 255, 0.12);
     --dark-selected: rgba(76, 154, 255, 0.2);
+
+    /* Dark Mode Glass */
+    --dark-glass-background: rgba(30, 41, 59, 0.65);
+    --dark-glass-border: rgba(255, 255, 255, 0.1);
 }
 
 /* ============================================
@@ -293,31 +312,48 @@ body {
 
 /* Message Bubbles */
 .message-sent {
-    background-color: var(--color-primary);
-    color: white;
+    background-color: var(--color-chat-sent-bg);
+    color: var(--color-chat-sent-text);
+    border-radius: 1.5rem 1.5rem 0.2rem 1.5rem; /* Organic shape */
+    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
 }
 
 .message-received {
-    background-color: var(--surface);
-    color: var(--text-primary);
+    background-color: var(--color-chat-received-bg);
+    color: var(--color-chat-received-text);
     border: 1px solid var(--border);
+    border-radius: 1.5rem 1.5rem 1.5rem 0.2rem;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+}
+
+.dark .message-sent {
+    background-color: var(--color-primary); /* Keep deep blue for dark mode sent? Or maybe a soft dark purple? Let's stick to primary for dark mode consistency for now, or use a dark amber */
+    color: white;
+}
+
+.dark .message-received {
+    background-color: var(--dark-surface);
+    color: var(--dark-text-primary);
+    border: 1px solid var(--dark-border);
 }
 
 /* Chat Input */
 .chat-input-container {
-    background-color: var(--surface);
-    border-top: 1px solid var(--divider);
+    background-color: transparent; /* Floating style handled in component */
+    border: none;
 }
 
 .chat-input {
     background-color: var(--background);
     border: 1px solid var(--border);
     color: var(--text-primary);
+    border-radius: 9999px; /* Pill shape */
 }
 
 .chat-input:focus {
     border-color: var(--color-accent);
     outline: none;
+    box-shadow: 0 0 0 4px rgba(76, 154, 255, 0.1);
 }
 
 .chat-input::placeholder {
