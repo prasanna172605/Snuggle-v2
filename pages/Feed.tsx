@@ -655,7 +655,6 @@ const Feed: React.FC<FeedProps> = ({ currentUser, onUserClick }) => {
                     if (!user) return null;
 
                     return (
-                    return (
                         <div key={post.id} className="bg-white/80 dark:bg-slate-800/80 backdrop-blur-md rounded-[2.5rem] shadow-sm transition-all border border-white/50 dark:border-white/5 overflow-hidden pb-4 mb-6 hover:shadow-md">
                             {/* Header */}
                             <div className="flex items-center justify-between px-4 pt-3 pb-3">

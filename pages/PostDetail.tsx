@@ -55,7 +55,7 @@ const PostDetail: React.FC<PostDetailProps> = ({ currentUser }) => {
     }
 
     return (
-        <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 dark:from-slate-950 dark:to-black p-4 md:p-8 flex flex-col items-center justify-center">
+        <div className="min-h-screen bg-gray-100 dark:bg-black p-4 md:p-8 flex flex-col items-center justify-center">
             {/* Back Button */}
             <div className="w-full max-w-5xl mb-4">
                 <button
@@ -68,7 +68,7 @@ const PostDetail: React.FC<PostDetailProps> = ({ currentUser }) => {
             </div>
 
             {/* Post Content */}
-            <div className="w-full max-w-5xl h-[85vh] max-h-[800px] shadow-2xl rounded-[2.5rem] overflow-hidden bg-white/90 dark:bg-slate-900/90 backdrop-blur-md border border-white/50 dark:border-white/10">
+            <div className="w-full max-w-5xl h-[85vh] max-h-[800px] shadow-2xl rounded-2xl overflow-hidden bg-white dark:bg-dark-surface">
                 <PostDetailContent
                     post={post}
                     user={author}

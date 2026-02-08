@@ -98,8 +98,14 @@ const CameraCapture: React.FC<CameraCaptureProps> = ({ onCapture, onClose }) => 
     return (
         <div className="fixed inset-0 bg-black z-50 flex flex-col">
             <div className="relative flex-1 overflow-hidden bg-black flex items-center justify-center">
-                <video ref={videoRef} autoPlay playsInline muted className="w-full h-full object-cover" />
-                
+                <video
+                    ref={videoRef}
+                    autoPlay
+                    playsInline
+                    muted
+                    className={`w-full h-full object-cover ${facingMode === 'user' ? 'scale-x-[-1]' : ''}`}
+                />
+
                 <button onClick={onClose} className="absolute top-4 left-4 p-2 bg-black/50 rounded-full text-white hover:bg-black/70 transition-colors z-10">
                     <X className="w-6 h-6" />
                 </button>
@@ -107,24 +113,24 @@ const CameraCapture: React.FC<CameraCaptureProps> = ({ onCapture, onClose }) => 
 
             <div className="h-36 bg-black flex flex-col items-center justify-center pb-safe">
                 <div className="flex items-center justify-around w-full px-8">
-                     <button 
+                    <button
                         onClick={() => setMode(mode === 'photo' ? 'video' : 'photo')}
                         className="p-3 rounded-full bg-gray-800 text-white active:scale-95 transition-transform"
                         title="Switch Mode"
-                     >
-                         {mode === 'photo' ? <VideoIcon className="w-6 h-6" /> : <Camera className="w-6 h-6" />}
-                     </button>
+                    >
+                        {mode === 'photo' ? <VideoIcon className="w-6 h-6" /> : <Camera className="w-6 h-6" />}
+                    </button>
 
-                     <button 
+                    <button
                         onClick={handleCapture}
                         className={`w-20 h-20 rounded-full border-4 border-white flex items-center justify-center transition-all duration-200 ${isRecording ? 'bg-red-500 scale-110 border-red-300' : 'bg-white/20 hover:bg-white/30'}`}
-                     >
-                         <div className={`transition-all duration-200 ${mode === 'video' ? 'bg-red-500' : 'bg-white'} ${isRecording ? 'rounded-md w-8 h-8' : 'rounded-full w-16 h-16'}`} />
-                     </button>
+                    >
+                        <div className={`transition-all duration-200 ${mode === 'video' ? 'bg-red-500' : 'bg-white'} ${isRecording ? 'rounded-md w-8 h-8' : 'rounded-full w-16 h-16'}`} />
+                    </button>
 
-                     <button onClick={switchCamera} className="p-3 rounded-full bg-gray-800 text-white active:scale-95 transition-transform">
-                         <RefreshCw className="w-6 h-6" />
-                     </button>
+                    <button onClick={switchCamera} className="p-3 rounded-full bg-gray-800 text-white active:scale-95 transition-transform">
+                        <RefreshCw className="w-6 h-6" />
+                    </button>
                 </div>
                 <div className="mt-3 text-xs text-gray-400 font-medium uppercase tracking-widest">
                     {mode === 'video' ? (isRecording ? 'Recording...' : 'Video') : 'Photo'}

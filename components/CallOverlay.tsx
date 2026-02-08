@@ -180,7 +180,7 @@ const CallOverlay: React.FC = () => {
                 autoPlay
                 playsInline
                 muted
-                className={`w-full h-full object-cover ${isCameraOff ? 'hidden' : ''}`}
+                className={`w-full h-full object-cover scale-x-[-1] ${isCameraOff ? 'hidden' : ''}`}
               />
               {isCameraOff && (
                 <div className="w-full h-full flex items-center justify-center bg-gray-800 text-white/30">
