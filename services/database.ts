@@ -795,10 +795,10 @@ export class DBService {
             followers: arrayUnion(followerId)
         });
 
-        // Create notification
+        // Create notification (non-blocking to prevent API failures from affecting follows)
         const follower = await this.getUserById(followerId);
         if (follower) {
-            await this.createNotification({
+            this.createNotification({
                 userId: followingId,
                 type: 'follow',
                 senderId: followerId,
@@ -807,7 +807,7 @@ export class DBService {
                 data: {
                     url: `/profile/${followerId}`
                 }
-            });
+            }).catch(err => console.error('[followUser] Notification failed (non-blocking):', err));
         }
     }
 
@@ -1041,18 +1041,18 @@ export class DBService {
             likedPosts: arrayUnion(postId)
         });
 
-        // Create notification
+        // Create notification (non-blocking to prevent API failures from affecting likes)
         const post = await this.getPost(postId);
         const liker = await this.getUserById(userId);
         if (post && liker && post.userId !== userId) {
-            await this.createNotification({
+            this.createNotification({
                 userId: post.userId,
                 type: 'like',
                 senderId: userId,
                 text: `${liker.username} liked your post`,
                 // @ts-ignore - Extra fields for consistency if needed, but senderId/text are core
                 postId: postId
-            });
+            }).catch(err => console.error('[likePost] Notification failed (non-blocking):', err));
         }
     }
 
@@ -1479,6 +1479,14 @@ export class DBService {
         }
     }
 
+
+    // Upload media to Firebase Storage and return the download URL
+    static async uploadMediaToStorage(file: File | Blob, path: string): Promise<string> {
+        const storageRef = ref(storage, path);
+        await uploadBytes(storageRef, file);
+        const downloadUrl = await getDownloadURL(storageRef);
+        return downloadUrl;
+    }
 
     static async sendMessage(messageData: import('../types').Message): Promise<import('../types').Message> {
         if (!messageData.senderId || !messageData.receiverId) {

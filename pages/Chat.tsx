@@ -222,30 +222,36 @@ const Chat: React.FC<ChatProps> = ({ currentUser, otherUser, onBack }) => {
     setInputText('');
   };
 
-  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      if (file.size > 5 * 1024 * 1024) {
-        alert("Image too large. Please select an image under 5MB.");
+      // Allow larger files since we're using Storage now (10MB limit)
+      if (file.size > 10 * 1024 * 1024) {
+        alert("File too large. Please select a file under 10MB.");
         return;
       }
 
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        const base64Image = reader.result as string;
+      try {
+        // Upload to Firebase Storage
+        const path = `chat_media/${currentUser.id}/${Date.now()}_${file.name}`;
+        const downloadUrl = await DBService.uploadMediaToStorage(file, path);
+
+        const messageType = file.type.startsWith('video/') ? 'video' : 'image';
         const newMessage: Message = {
           id: Date.now().toString(),
           senderId: currentUser.id,
           receiverId: otherUser.id,
-          text: base64Image,
+          text: downloadUrl,
           timestamp: Date.now(),
           status: 'sent',
-          type: 'image',
-          read: false, // Added missing property
+          type: messageType,
+          read: false,
         };
-        DBService.sendMessage(newMessage);
-      };
-      reader.readAsDataURL(file);
+        await DBService.sendMessage(newMessage);
+      } catch (error) {
+        console.error('Error uploading file:', error);
+        alert('Failed to upload file. Please try again.');
+      }
     }
     if (fileInputRef.current) fileInputRef.current.value = '';
   };

@@ -732,7 +732,7 @@ const Feed: React.FC<FeedProps> = ({ currentUser, onUserClick }) => {
                                     const isSaved = currentUser.savedPosts?.includes(post.id);
                                     return (
                                         <button onClick={() => handleSave(post.id)} className="group focus:outline-none">
-                                            <Bookmark className={`w-6 h-6 ${isSaved ? 'fill-white text-white dark:fill-white dark:text-white' : 'text-gray-900 dark:text-white stroke-[1.5px]'}`} />
+                                            <Bookmark className={`w-6 h-6 transition-transform active:scale-90 ${isSaved ? 'fill-current text-gray-900 dark:text-white' : 'text-gray-900 dark:text-white stroke-[1.5px]'}`} />
                                         </button>
                                     );
                                 })()}
