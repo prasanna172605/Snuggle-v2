@@ -1069,7 +1069,13 @@ export class DBService {
         if (wasLiked) {
             // Unlike - remove the like document
             await deleteDoc(likeRef);
-            await updateDoc(postRef, { likeCount: increment(-1) });
+            // Try to update likeCount, but don't fail if it doesn't exist
+            try {
+                await updateDoc(postRef, { likeCount: increment(-1) });
+            } catch (e) {
+                // Fallback: also update the likes array for backwards compatibility
+                await updateDoc(postRef, { likes: arrayRemove(userId) });
+            }
             await updateDoc(userRef, { likedPosts: arrayRemove(postId) });
             console.log('[DB] Unliked post:', postId);
             return false; // now NOT liked
@@ -1079,7 +1085,13 @@ export class DBService {
                 userId,
                 timestamp: serverTimestamp()
             });
-            await updateDoc(postRef, { likeCount: increment(1) });
+            // Try to update likeCount, but don't fail if it doesn't exist
+            try {
+                await updateDoc(postRef, { likeCount: increment(1) });
+            } catch (e) {
+                // Fallback: also update the likes array for backwards compatibility
+                await updateDoc(postRef, { likes: arrayUnion(userId) });
+            }
             await updateDoc(userRef, { likedPosts: arrayUnion(postId) });
             console.log('[DB] Liked post:', postId);
 
@@ -1157,14 +1169,24 @@ export class DBService {
 
     // Check user interactions for a post (for UI state restoration)
     static async checkUserInteractions(postId: string, userId: string): Promise<{ isLiked: boolean; isSaved: boolean }> {
-        const [likeSnap, saveSnap] = await Promise.all([
-            getDoc(doc(db, 'posts', postId, 'likes', userId)),
-            getDoc(doc(db, 'posts', postId, 'saves', userId))
-        ]);
-        return {
-            isLiked: likeSnap.exists(),
-            isSaved: saveSnap.exists()
-        };
+        try {
+            const [likeSnap, saveSnap] = await Promise.all([
+                getDoc(doc(db, 'posts', postId, 'likes', userId)),
+                getDoc(doc(db, 'posts', postId, 'saves', userId))
+            ]);
+            return {
+                isLiked: likeSnap.exists(),
+                isSaved: saveSnap.exists()
+            };
+        } catch (e) {
+            // Fallback to checking user's likedPosts/savedPosts arrays
+            console.log('[DB] Subcollection check failed, using fallback:', e);
+            const user = await this.getUserById(userId);
+            return {
+                isLiked: user?.likedPosts?.includes(postId) || false,
+                isSaved: user?.savedPosts?.includes(postId) || false
+            };
+        }
     }
 
     // Batch check interactions for multiple posts

@@ -33,6 +33,18 @@ service cloud.firestore {
                       request.resource.data.userId == request.auth.uid;
       allow update: if isSignedIn();
       allow delete: if isOwner(resource.data.userId);
+      
+      // Likes subcollection - users can only manage their own likes
+      match /likes/{likeUserId} {
+        allow read: if isSignedIn();
+        allow create, delete: if isSignedIn() && request.auth.uid == likeUserId;
+      }
+      
+      // Saves subcollection - users can only manage their own saves
+      match /saves/{saveUserId} {
+        allow read: if isSignedIn();
+        allow create, delete: if isSignedIn() && request.auth.uid == saveUserId;
+      }
     }
     
     // Comments collection
