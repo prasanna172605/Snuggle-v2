@@ -5,13 +5,13 @@ import { useInteractions } from '../context/InteractionContext';
 import { ArrowLeft, Bookmark, Grid, Play } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
-interface SavedProps {
+interface FavouritesProps {
     currentUser: User;
     onBack?: () => void;
     onPostClick?: (postId: string) => void;
 }
 
-const Saved: React.FC<SavedProps> = ({ currentUser, onBack, onPostClick }) => {
+const Favourites: React.FC<FavouritesProps> = ({ currentUser, onBack, onPostClick }) => {
     const navigate = useNavigate();
     const { savedPostIds } = useInteractions();
     const [savedPosts, setSavedPosts] = useState<Post[]>([]);
@@ -51,7 +51,7 @@ const Saved: React.FC<SavedProps> = ({ currentUser, onBack, onPostClick }) => {
                             <ArrowLeft className="w-6 h-6" />
                         </button>
                     )}
-                    <h1 className="text-xl font-bold">Saved</h1>
+                    <h1 className="text-xl font-bold">Favourites</h1>
                 </div>
             </div>
 
@@ -87,11 +87,11 @@ const Saved: React.FC<SavedProps> = ({ currentUser, onBack, onPostClick }) => {
                 ) : (
                     <div className="text-center py-20 text-gray-400">
                         <div className="w-20 h-20 mx-auto mb-4 rounded-full border-2 border-gray-300 dark:border-gray-700 flex items-center justify-center">
-                            <Bookmark className="w-10 h-10" />
+                            <div className="w-10 h-10 flex items-center justify-center text-3xl">⭐</div>
                         </div>
-                        <h3 className="font-bold text-xl text-gray-900 dark:text-white mb-2">Save</h3>
+                        <h3 className="font-bold text-xl text-gray-900 dark:text-white mb-2">No Favourites Yet</h3>
                         <p className="text-sm max-w-xs mx-auto">
-                            Save photos and videos that you want to see again. No one is notified, and only you can see what you've saved.
+                            Save photos and videos that you want to see again. No one is notified, and only you can see what you've likely.
                         </p>
                     </div>
                 )}
@@ -100,4 +100,4 @@ const Saved: React.FC<SavedProps> = ({ currentUser, onBack, onPostClick }) => {
     );
 };
 
-export default Saved;
+export default Favourites;

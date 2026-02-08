@@ -31,10 +31,9 @@ export function formatRelativeTime(timestamp: Date | string | number | undefined
     if (diffSeconds < 60) return `${diffSeconds}s ago`;
     if (diffMinutes < 60) return `${diffMinutes}m ago`;
     if (diffHours < 24) return `${diffHours}h ago`;
-    if (diffDays < 7) return `${diffDays}d ago`;
-    if (diffWeeks < 4) return `${diffWeeks}w ago`;
-    if (diffMonths < 12) return `${diffMonths}mo ago`;
-    return `${diffYears}y ago`;
+
+    // If > 24 hours, return formatted date
+    return formatDate(date);
 }
 
 /**
@@ -52,4 +51,26 @@ export function formatDate(timestamp: Date | string | number | undefined): strin
         day: 'numeric',
         year: 'numeric'
     });
+}
+
+/**
+ * Formats a date for chat headers (Today, Yesterday, Date)
+ */
+export function formatDateHeader(timestamp: number): string {
+    const date = new Date(timestamp);
+    const now = new Date();
+    const yesterday = new Date(now);
+    yesterday.setDate(yesterday.getDate() - 1);
+
+    if (date.toDateString() === now.toDateString()) {
+        return 'Today';
+    } else if (date.toDateString() === yesterday.toDateString()) {
+        return 'Yesterday';
+    } else {
+        return date.toLocaleDateString('en-US', {
+            month: 'long',
+            day: 'numeric',
+            year: 'numeric'
+        });
+    }
 }

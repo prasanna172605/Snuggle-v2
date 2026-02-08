@@ -8,8 +8,9 @@ import { useCall } from '../context/CallContext';
 import CameraCapture from '../components/CameraCapture';
 import CallButton from '../components/CallButton';
 import CallHistoryMessage from '../components/CallHistoryMessage';
-import { ArrowLeft, Phone, Video, Send, Image as ImageIcon, Smile, Check, CheckCheck, Mic, Trash2, Camera, Trash } from 'lucide-react';
+import { ArrowLeft, Phone, Video, Send, Image as ImageIcon, Smile, Check, CheckCheck, Mic, Trash2, Camera, Trash, Plus } from 'lucide-react';
 import { SkeletonChat } from '../components/common/Skeleton';
+import { formatDateHeader } from '../utils/dateUtils';
 
 interface ChatProps {
   currentUser: User;
@@ -27,6 +28,7 @@ const Chat: React.FC<ChatProps> = ({ currentUser, otherUser, onBack }) => {
   const [isOtherUserOnline, setIsOtherUserOnline] = useState(otherUser.isOnline);
   const [reactingToMessageId, setReactingToMessageId] = useState<string | null>(null);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+  const [showAttachMenu, setShowAttachMenu] = useState(false);
   const [showCamera, setShowCamera] = useState(false);
   const [loading, setLoading] = useState(true);
 
@@ -412,7 +414,7 @@ const Chat: React.FC<ChatProps> = ({ currentUser, otherUser, onBack }) => {
   };
 
   return (
-    <div className="flex flex-col h-full bg-gray-50 dark:bg-slate-900 text-gray-900 dark:text-white overflow-hidden relative font-['Plus_Jakarta_Sans']">
+    <div className="flex flex-col h-full bg-light-background dark:bg-dark-background text-black dark:text-white overflow-hidden relative font-['Plus_Jakarta_Sans']">
       {showCamera && <CameraCapture onCapture={handleCameraCapture} onClose={() => setShowCamera(false)} />}
 
       {/* Floating Header */}
@@ -425,7 +427,7 @@ const Chat: React.FC<ChatProps> = ({ currentUser, otherUser, onBack }) => {
           {isOtherUserOnline && <div className="absolute 1bottom-0 right-0 w-3 h-3 bg-emerald-500 rounded-full border-2 border-white dark:border-slate-800" />}
         </div>
         <div className="flex-1 min-w-0 ml-1">
-          <h2 className="font-bold text-[16px] truncate text-gray-900 dark:text-white">{otherUser.fullName}</h2>
+          <h2 className="font-bold text-[16px] truncate text-black dark:text-white">{otherUser.fullName}</h2>
           <p className="text-xs text-gray-500 dark:text-gray-400 truncate font-medium">
             {isOtherUserTyping ? 'typing...' : (isOtherUserOnline ? 'Active now' : 'Offline')}
           </p>
@@ -450,6 +452,9 @@ const Chat: React.FC<ChatProps> = ({ currentUser, otherUser, onBack }) => {
         ) : (
           <AnimatePresence initial={false}>
             {messages.map((msg, index) => {
+              const dateHeader = formatDateHeader(msg.timestamp);
+              const showDate = index === 0 || formatDateHeader(messages[index - 1].timestamp) !== dateHeader;
+
               const isMe = msg.senderId === currentUser.id;
               const isLastInGroup = index === messages.length - 1 || messages[index + 1].senderId !== msg.senderId;
               const isFirstInGroup = index === 0 || messages[index - 1].senderId !== msg.senderId;
@@ -470,178 +475,180 @@ const Chat: React.FC<ChatProps> = ({ currentUser, otherUser, onBack }) => {
               }
               const reactionEntries = Object.entries(reactionCounts);
 
-              // Render call history message if type is 'call' (BEFORE accessing msg.text)
-              if ((msg.type as string) === 'call') {
-                return (
-                  <motion.div
-                    key={msg.id}
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, scale: 0.9 }}
-                    className="w-full my-1"
-                  >
-                    <CallHistoryMessage
-                      callType={msg.callType || 'audio'}
-                      duration={msg.callDuration || 0}
-                      timestamp={msg.timestamp}
-                      status={msg.callStatus === 'rejected' ? 'declined' : (msg.callStatus || 'completed') as any}
-                      isOutgoing={isMe}
-                      onCallBack={() => startCall(otherUser.id, msg.callType || 'audio')}
-                    />
-                  </motion.div>
-                );
-              }
-
-              const isVideo = msg.text.startsWith('data:video');
-
               return (
-                <motion.div
-                  key={msg.id}
-                  initial={{ opacity: 0, y: 10, scale: 0.95 }}
-                  animate={{ opacity: 1, y: 0, scale: 1 }}
-                  exit={{ opacity: 0, scale: 0.9, transition: { duration: 0.2 } }}
-                  transition={{ type: "spring", stiffness: 500, damping: 30 }}
-                  className={`flex w-full ${isMe ? 'justify-end' : 'justify-start'} ${isFirstInGroup ? 'mt-3' : 'mt-1'} group`}
-                >
-                  {!isMe && (
-                    <div className="w-8 mr-2 flex-shrink-0 flex items-end">
-                      {isLastInGroup && <img src={otherUser.avatar} className="w-8 h-8 rounded-full shadow-sm" />}
+                <React.Fragment key={msg.id}>
+                  {showDate && (
+                    <div className="flex justify-center my-4 sticky top-0 z-0">
+                      <span className="bg-gray-100 dark:bg-slate-800 text-xs px-3 py-1 rounded-full text-gray-500 dark:text-gray-400 font-medium border border-gray-200 dark:border-slate-700 shadow-sm">
+                        {dateHeader}
+                      </span>
                     </div>
                   )}
-
-                  <div
-                    className={`relative max-w-[75%] transition-all duration-200`}
-                    onTouchStart={() => handleTouchStart(msg.id)}
-                    onTouchEnd={handleTouchEnd}
-                    onMouseDown={() => handleTouchStart(msg.id)}
-                    onMouseUp={handleTouchEnd}
-                    onMouseLeave={handleTouchEnd}
-                    onContextMenu={(e) => {
-                      e.preventDefault();
-                      setReactingToMessageId(msg.id);
-                    }}
-                  >
-                    {/* Reaction Menu */}
-                    <AnimatePresence>
-                      {showReactionMenu && (
-                        <motion.div
-                          initial={{ opacity: 0, scale: 0.8, y: 10 }}
-                          animate={{ opacity: 1, scale: 1, y: 0 }}
-                          exit={{ opacity: 0, scale: 0.8, y: 10 }}
-                          className={`absolute bottom-full mb-2 ${isMe ? 'right-0' : 'left-0'} bg-white dark:bg-dark-border rounded-full shadow-xl p-1.5 flex gap-1 z-20 reaction-menu items-center border border-gray-100 dark:border-gray-700`}
-                        >
-                          {REACTIONS.map(emoji => (
-                            <button
-                              key={emoji}
-                              onClick={(e) => { e.stopPropagation(); handleReact(msg.id, emoji); }}
-                              className="w-9 h-9 flex items-center justify-center text-xl hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full transition-colors active:scale-90"
-                            >
-                              {emoji}
-                            </button>
-                          ))}
-                          {isMe && (
-                            <div className="pl-1 ml-1 border-l border-gray-200 dark:border-gray-600">
-                              <button
-                                onClick={(e) => { e.stopPropagation(); handleDeleteMessage(msg.id); }}
-                                className="w-9 h-9 flex items-center justify-center text-red-500 hover:bg-red-50 dark:hover:bg-red-900/30 rounded-full transition-colors active:scale-90"
-                              >
-                                <Trash className="w-4 h-4" />
-                              </button>
-                            </div>
-                          )}
-                        </motion.div>
-                      )}
-                    </AnimatePresence>
-
-                    <div className={`
-                      message-bubble px-3 py-2 shadow-sm relative z-10
-                      ${isMe
-                        ? `bg-primary text-white ${roundedClass}`
-                        : `bg-gray-100 dark:bg-dark-border text-gray-900 dark:text-gray-100 border border-gray-100 dark:border-dark-border ${roundedClass}`
-                      }
-                    `}>
-                      <div className="flex flex-col">
-                        {msg.type === 'audio' ? (
-                          <div className="min-w-[200px] py-1 flex items-center">
-                            <audio
-                              controls
-                              src={msg.text}
-                              className={`h-8 w-full rounded-lg ${isMe ? 'opacity-90 invert brightness-0 grayscale contrast-200' : 'dark:invert dark:brightness-0 dark:contrast-200'}`}
-                              style={isMe ? { filter: 'invert(1) brightness(2)' } : {}}
-                            />
-                          </div>
-                        ) : msg.type === 'image' || isVideo ? (
-                          <div className="mb-1">
-                            {isVideo ? (
-                              <video
-                                src={msg.text}
-                                controls
-                                className="max-w-full rounded-lg object-cover max-h-[300px]"
-                                style={{ minWidth: '150px' }}
-                              />
-                            ) : (
-                              <img
-                                src={msg.text}
-                                alt="Shared photo"
-                                className="max-w-full rounded-lg object-cover max-h-[300px]"
-                                style={{ minWidth: '150px' }}
-                                onClick={() => window.open(msg.text, '_blank')}
-                              />
-                            )}
-                          </div>
-                        ) : msg.type === 'post' && msg.post ? (
-                          <div
-                            className="bg-white dark:bg-dark-card rounded-xl overflow-hidden border border-gray-200 dark:border-dark-border cursor-pointer hover:opacity-95 transition-opacity max-w-[260px] my-1"
-                            onClick={() => navigate(`/post/${msg.post?.id}`)}
-                          >
-                            {msg.post.imageUrl && (
-                              <div className="w-full h-32 overflow-hidden bg-gray-100 dark:bg-dark-bg">
-                                <img src={msg.post.imageUrl} className="w-full h-full object-cover" alt="Post preview" />
-                              </div>
-                            )}
-                            <div className="p-3">
-                              <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Shared Post</p>
-                              <p className="text-sm font-medium text-gray-900 dark:text-white line-clamp-2 leading-snug">
-                                {msg.post.caption || 'Check out this post'}
-                              </p>
-                            </div>
-                          </div>
-                        ) : (
-                          <span className="text-[15px] leading-relaxed break-words whitespace-pre-wrap font-medium">
-                            {msg.text}
-                            <span className="inline-block w-12 h-0"></span>
-                          </span>
-                        )}
-
-                        <div className={`flex items-center gap-1 self-end mt-1.5 ml-auto ${isMe ? 'text-snuggle-100' : 'text-gray-400 dark:text-gray-500'}`}>
-                          <span className="text-[10px] font-medium opacity-90">
-                            {formatTime(msg.timestamp)}
-                          </span>
-                          {isMe && (
-                            <span>
-                              {getStatusIcon(msg.status)}
-                            </span>
-                          )}
+                  {(msg.type as string) === 'call' ? (
+                    <motion.div
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, scale: 0.9 }}
+                      className={`flex w-full my-1 ${isMe ? 'justify-end' : 'justify-start'}`}
+                    >
+                      <CallHistoryMessage
+                        callType={msg.callType || 'audio'}
+                        duration={msg.callDuration || 0}
+                        timestamp={msg.timestamp}
+                        status={msg.callStatus === 'rejected' ? 'declined' : (msg.callStatus || 'completed') as any}
+                        isOutgoing={isMe}
+                        onCallBack={() => startCall(otherUser.id, msg.callType || 'audio')}
+                      />
+                    </motion.div>
+                  ) : (
+                    <motion.div
+                      initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                      animate={{ opacity: 1, y: 0, scale: 1 }}
+                      exit={{ opacity: 0, scale: 0.9, transition: { duration: 0.2 } }}
+                      transition={{ type: "spring", stiffness: 500, damping: 30 }}
+                      className={`flex w-full ${isMe ? 'justify-end' : 'justify-start'} ${isFirstInGroup ? 'mt-3' : 'mt-1'} group`}
+                    >
+                      {!isMe && (
+                        <div className="w-8 mr-2 flex-shrink-0 flex items-end">
+                          {isLastInGroup && <img src={otherUser.avatar} className="w-8 h-8 rounded-full shadow-sm" />}
                         </div>
-                      </div>
-                    </div>
+                      )}
 
-                    {reactionEntries.length > 0 && (
-                      <motion.div
-                        initial={{ scale: 0 }}
-                        animate={{ scale: 1 }}
-                        className={`absolute -bottom-3 ${isMe ? 'right-0' : 'left-0'} flex gap-0.5 z-10`}
+                      <div
+                        className={`relative max-w-[75%] transition-all duration-200`}
+                        onTouchStart={() => handleTouchStart(msg.id)}
+                        onTouchEnd={handleTouchEnd}
+                        onMouseDown={() => handleTouchStart(msg.id)}
+                        onMouseUp={handleTouchEnd}
+                        onMouseLeave={handleTouchEnd}
+                        onContextMenu={(e) => {
+                          e.preventDefault();
+                          setReactingToMessageId(msg.id);
+                        }}
                       >
-                        {reactionEntries.map(([emoji, count]) => (
-                          <div key={emoji} className="bg-white dark:bg-dark-border border border-gray-100 dark:border-gray-700 shadow-sm rounded-full px-1.5 py-0.5 text-[10px] flex items-center gap-0.5 text-gray-800 dark:text-gray-200">
-                            <span>{emoji}</span>
-                            {count > 1 && <span className="font-bold">{count}</span>}
+                        {/* Reaction Menu */}
+                        <AnimatePresence>
+                          {showReactionMenu && (
+                            <motion.div
+                              initial={{ opacity: 0, scale: 0.8, y: 10 }}
+                              animate={{ opacity: 1, scale: 1, y: 0 }}
+                              exit={{ opacity: 0, scale: 0.8, y: 10 }}
+                              className={`absolute bottom-full mb-2 ${isMe ? 'right-0' : 'left-0'} bg-white dark:bg-dark-border rounded-full shadow-xl p-1.5 flex gap-1 z-20 reaction-menu items-center border border-gray-100 dark:border-gray-700`}
+                            >
+                              {REACTIONS.map(emoji => (
+                                <button
+                                  key={emoji}
+                                  onClick={(e) => { e.stopPropagation(); handleReact(msg.id, emoji); }}
+                                  className="w-9 h-9 flex items-center justify-center text-xl hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full transition-colors active:scale-90"
+                                >
+                                  {emoji}
+                                </button>
+                              ))}
+                              {isMe && (
+                                <div className="pl-1 ml-1 border-l border-gray-200 dark:border-gray-600">
+                                  <button
+                                    onClick={(e) => { e.stopPropagation(); handleDeleteMessage(msg.id); }}
+                                    className="w-9 h-9 flex items-center justify-center text-red-500 hover:bg-red-50 dark:hover:bg-red-900/30 rounded-full transition-colors active:scale-90"
+                                  >
+                                    <Trash className="w-4 h-4" />
+                                  </button>
+                                </div>
+                              )}
+                            </motion.div>
+                          )}
+                        </AnimatePresence>
+
+                        <div className={`
+                            message-bubble px-3 py-2 shadow-sm relative z-10
+                            ${isMe
+                            ? `bg-gradient-to-tr from-warm-light to-warm text-black shadow-lg shadow-warm/20 ${roundedClass}`
+                            : `bg-white dark:bg-dark-surface text-black dark:text-white border border-gray-100 dark:border-dark-border shadow-sm ${roundedClass}`
+                          }
+                            `}>
+                          <div className="flex flex-col">
+                            {msg.type === 'audio' ? (
+                              <div className="min-w-[200px] py-1 flex items-center">
+                                <audio
+                                  controls
+                                  src={msg.text}
+                                  className={`h-8 w-full rounded-lg ${isMe ? 'opacity-90 invert brightness-0 grayscale contrast-200' : 'dark:invert dark:brightness-0 dark:contrast-200'}`}
+                                  style={isMe ? { filter: 'invert(1) brightness(2)' } : {}}
+                                />
+                              </div>
+                            ) : (msg.type === 'image' || (msg.text && msg.text.startsWith('data:video'))) ? (
+                              <div className="mb-1">
+                                {(msg.text && msg.text.startsWith('data:video')) ? (
+                                  <video
+                                    src={msg.text}
+                                    controls
+                                    className="max-w-full rounded-lg object-cover max-h-[300px]"
+                                    style={{ minWidth: '150px' }}
+                                  />
+                                ) : (
+                                  <img
+                                    src={msg.text}
+                                    alt="Shared photo"
+                                    className="max-w-full rounded-lg object-cover max-h-[300px]"
+                                    style={{ minWidth: '150px' }}
+                                    onClick={() => window.open(msg.text, '_blank')}
+                                  />
+                                )}
+                              </div>
+                            ) : msg.type === 'post' && msg.post ? (
+                              <div
+                                className="bg-white dark:bg-dark-card rounded-xl overflow-hidden border border-gray-200 dark:border-dark-border cursor-pointer hover:opacity-95 transition-opacity max-w-[260px] my-1"
+                                onClick={() => navigate(`/post/${msg.post?.id}`)}
+                              >
+                                {msg.post.imageUrl && (
+                                  <div className="w-full h-32 overflow-hidden bg-gray-100 dark:bg-dark-bg">
+                                    <img src={msg.post.imageUrl} className="w-full h-full object-cover" alt="Post preview" />
+                                  </div>
+                                )}
+                                <div className="p-3">
+                                  <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Shared Post</p>
+                                  <p className="text-sm font-medium text-black dark:text-white line-clamp-2 leading-snug">
+                                    {msg.post.caption || 'Check out this post'}
+                                  </p>
+                                </div>
+                              </div>
+                            ) : (
+                              <span className="text-[15px] leading-relaxed break-words whitespace-pre-wrap font-medium">
+                                {msg.text}
+                                <span className="inline-block w-12 h-0"></span>
+                              </span>
+                            )}
+
+                            <div className={`flex items-center gap-1 self-end mt-1.5 ml-auto ${isMe ? 'text-amber-100' : 'text-gray-400 dark:text-gray-500'}`}>
+                              <span className="text-[10px] font-medium opacity-90">
+                                {formatTime(msg.timestamp)}
+                              </span>
+                              {isMe && (
+                                <span>
+                                  {getStatusIcon(msg.status)}
+                                </span>
+                              )}
+                            </div>
                           </div>
-                        ))}
-                      </motion.div>
-                    )}
-                  </div>
-                </motion.div>
+                        </div>
+
+                        {reactionEntries.length > 0 && (
+                          <motion.div
+                            initial={{ scale: 0 }}
+                            animate={{ scale: 1 }}
+                            className={`absolute -bottom-3 ${isMe ? 'right-0' : 'left-0'} flex gap-0.5 z-10`}
+                          >
+                            {reactionEntries.map(([emoji, count]) => (
+                              <div key={emoji} className="bg-white dark:bg-dark-border border border-gray-100 dark:border-gray-700 shadow-sm rounded-full px-1.5 py-0.5 text-[10px] flex items-center gap-0.5 text-gray-800 dark:text-gray-200">
+                                <span>{emoji}</span>
+                                {count > 1 && <span className="font-bold">{count}</span>}
+                              </div>
+                            ))}
+                          </motion.div>
+                        )}
+                      </div>
+                    </motion.div>
+                  )}
+                </React.Fragment>
               );
             })}
           </AnimatePresence>
@@ -679,64 +686,105 @@ const Chat: React.FC<ChatProps> = ({ currentUser, otherUser, onBack }) => {
         <div ref={messagesEndRef} />
       </div>
 
-      {/* Floating Input Area */}
-      <div className="mx-4 mb-4 rounded-[2.5rem] p-2 flex items-end gap-2 shrink-0 shadow-[0_8px_30px_rgb(0,0,0,0.04)] relative z-20 border border-white/60 dark:border-white/10 bg-white/80 dark:bg-slate-800/80 backdrop-blur-xl transition-all">
-        {showEmojiPicker && (
-          <div
-            className="absolute bottom-full left-0 mb-4 w-full bg-white/90 dark:bg-slate-800/90 border border-white/50 dark:border-white/10 rounded-3xl shadow-xl p-3 z-30 emoji-picker backdrop-blur-xl"
-            style={{ maxHeight: '40vh', overflowY: 'auto' }}
-          >
-            <div className="grid grid-cols-6 gap-2">
-              {EMOJIS.map(emoji => (
-                <button
-                  key={emoji}
-                  onClick={() => handleEmojiClick(emoji)}
-                  className="text-2xl hover:bg-black/5 dark:hover:bg-white/10 rounded-xl p-2 transition-colors"
-                >
-                  {emoji}
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
+      {/* Chat Footer - 3-Box Layout */}
+      <div className="sticky bottom-0 w-full bg-white/90 dark:bg-slate-900/90 backdrop-blur-xl border-t border-gray-100 dark:border-slate-800 p-4 z-20">
+
+        {/* Emoji Picker */}
+        <AnimatePresence>
+          {showEmojiPicker && (
+            <motion.div
+              initial={{ opacity: 0, y: 10, scale: 0.95 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: 10, scale: 0.95 }}
+              className="absolute bottom-full left-4 right-4 mb-2 bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-3xl shadow-2xl p-4 z-30"
+              style={{ maxHeight: '40vh', overflowY: 'auto' }}
+            >
+              <div className="grid grid-cols-6 gap-2">
+                {EMOJIS.map(emoji => (
+                  <button
+                    key={emoji}
+                    onClick={() => handleEmojiClick(emoji)}
+                    className="text-2xl hover:bg-black/5 dark:hover:bg-white/10 rounded-xl p-2 transition-colors aspect-square flex items-center justify-center"
+                  >
+                    {emoji}
+                  </button>
+                ))}
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
 
         {isRecording ? (
-          <div className="flex-1 bg-red-50/50 dark:bg-red-900/20 backdrop-blur-sm rounded-full flex items-center justify-between px-4 py-3 border border-red-100 dark:border-red-900 transition-all duration-200">
-            <div className="flex items-center gap-3">
-              <div className="relative flex items-center justify-center w-3 h-3">
-                <div className="absolute inset-0 bg-red-500 rounded-full animate-ping opacity-75" />
-                <div className="relative w-2 h-2 bg-red-600 rounded-full" />
+          <div className="h-[52px] flex items-center gap-2 w-full">
+            <button onClick={handleCancelRecording} className="h-[52px] w-[52px] shrink-0 flex items-center justify-center bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-2xl transition-colors">
+              <Trash2 className="w-6 h-6" />
+            </button>
+            <div className="flex-1 h-[52px] bg-red-50/50 dark:bg-red-900/20 rounded-2xl flex items-center justify-between px-4 border border-red-100 dark:border-red-900/50 transition-all duration-200">
+              <div className="flex items-center gap-3">
+                <div className="relative flex items-center justify-center w-3 h-3">
+                  <div className="absolute inset-0 bg-red-500 rounded-full animate-ping opacity-75" />
+                  <div className="relative w-2 h-2 bg-red-600 rounded-full" />
+                </div>
+                <span className="text-red-600 dark:text-red-400 font-mono font-bold text-sm min-w-[40px]">{formatDuration(recordingDuration)}</span>
               </div>
-              <span className="text-red-600 dark:text-red-400 font-mono font-bold text-sm min-w-[40px]">{formatDuration(recordingDuration)}</span>
+              {/* Waveform */}
+              <div className="flex items-center justify-center gap-[3px] h-8 flex-1 mx-4">
+                {audioLevels.map((height, i) => (
+                  <div
+                    key={i}
+                    className="w-1 bg-gradient-to-t from-red-400 to-orange-400 rounded-full transition-all duration-150 ease-in-out"
+                    style={{ height: `${height}%`, opacity: Math.max(0.4, height / 100) }}
+                  />
+                ))}
+              </div>
             </div>
-
-            {/* Waveform */}
-            <div className="flex items-center justify-center gap-[3px] h-8 flex-1 mx-4">
-              {audioLevels.map((height, i) => (
-                <div
-                  key={i}
-                  className="w-1 bg-gradient-to-t from-red-400 to-orange-400 rounded-full transition-all duration-150 ease-in-out"
-                  style={{ height: `${height}%`, opacity: Math.max(0.4, height / 100) }}
-                />
-              ))}
-            </div>
+            <button onClick={handleStopRecording} className="h-[52px] w-[52px] shrink-0 flex items-center justify-center bg-red-500 text-white rounded-2xl hover:bg-red-600 shadow-md transform hover:scale-105 transition-all">
+              <Send className="w-6 h-6 translate-x-0.5 translate-y-0.5" fill="currentColor" />
+            </button>
           </div>
         ) : (
-          <div className="flex-1 bg-transparent flex items-center px-2 py-1">
-            <button
-              className="p-2 text-gray-400 hover:text-amber-500 hover:bg-amber-50 dark:hover:bg-amber-900/20 rounded-full transition-colors"
-              onClick={() => setShowCamera(true)}
-            >
-              <Camera className="w-6 h-6" />
-            </button>
-            <input
-              type="text"
-              value={inputText}
-              onChange={handleInputChange}
-              onKeyDown={handleKeyPress}
-              placeholder="Message..."
-              className="bg-transparent flex-1 focus:outline-none text-[16px] text-gray-800 dark:text-gray-100 placeholder-gray-400 px-3 max-h-32"
-            />
+          <div className="flex items-end gap-2 w-full">
+
+            {/* Box 1: Plus Dropdown (Square) */}
+            <div className="relative shrink-0">
+              <button
+                className={`h-[52px] w-[52px] flex items-center justify-center rounded-2xl transition-colors shadow-sm ${showAttachMenu ? 'bg-gray-200 dark:bg-gray-700 text-black dark:text-white' : 'bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700'}`}
+                onClick={() => setShowAttachMenu(!showAttachMenu)}
+              >
+                <Plus className={`w-6 h-6 transition-transform ${showAttachMenu ? 'rotate-45' : ''}`} />
+              </button>
+
+              {/* Dropdown Menu */}
+              {showAttachMenu && (
+                <div className="absolute bottom-16 left-0 bg-white dark:bg-slate-800 rounded-2xl shadow-xl border border-gray-100 dark:border-slate-700 p-2 min-w-[160px] animate-in slide-in-from-bottom-2 fade-in duration-200 z-30">
+                  <button
+                    className="w-full flex items-center gap-3 p-3 hover:bg-gray-50 dark:hover:bg-slate-700/50 rounded-xl text-black dark:text-gray-200 transition-colors"
+                    onClick={() => {
+                      setShowCamera(true);
+                      setShowAttachMenu(false);
+                    }}
+                  >
+                    <div className="w-8 h-8 rounded-full bg-blue-50 dark:bg-blue-900/20 flex items-center justify-center text-blue-500">
+                      <Camera className="w-4 h-4" />
+                    </div>
+                    <span className="font-medium text-sm">Camera</span>
+                  </button>
+                  <button
+                    className="w-full flex items-center gap-3 p-3 hover:bg-gray-50 dark:hover:bg-slate-700/50 rounded-xl text-black dark:text-gray-200 transition-colors"
+                    onClick={() => {
+                      fileInputRef.current?.click();
+                      setShowAttachMenu(false);
+                    }}
+                  >
+                    <div className="w-8 h-8 rounded-full bg-purple-50 dark:bg-purple-900/20 flex items-center justify-center text-purple-500">
+                      <ImageIcon className="w-4 h-4" />
+                    </div>
+                    <span className="font-medium text-sm">Photos</span>
+                  </button>
+                </div>
+              )}
+            </div>
+
             <input
               type="file"
               ref={fileInputRef}
@@ -744,44 +792,40 @@ const Chat: React.FC<ChatProps> = ({ currentUser, otherUser, onBack }) => {
               accept="image/*"
               onChange={handleFileSelect}
             />
-            <button
-              className="p-2 text-gray-400 hover:text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-full transition-colors"
-              onClick={() => fileInputRef.current?.click()}
-            >
-              <ImageIcon className="w-6 h-6" />
-            </button>
-            <button
-              className={`p-2 rounded-full transition-colors ${showEmojiPicker ? 'text-amber-500 bg-amber-50 dark:bg-amber-900/20' : 'text-gray-400 hover:text-amber-500 hover:bg-amber-50 dark:hover:bg-amber-900/20'} emoji-btn`}
-              onClick={() => setShowEmojiPicker(!showEmojiPicker)}
-            >
-              <Smile className="w-6 h-6" />
-            </button>
-          </div>
-        )}
 
-        {isRecording ? (
-          <div className="flex items-end gap-2">
-            <button onClick={handleCancelRecording} className="p-3 bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-300 hover:text-red-500 hover:bg-red-50 rounded-full transition-colors">
-              <Trash2 className="w-6 h-6" />
-            </button>
-            <button onClick={handleStopRecording} className="p-3 bg-red-500 text-white rounded-full hover:bg-red-600 shadow-md transform hover:scale-105 transition-all">
-              <Send className="w-5 h-5 translate-x-0.5 translate-y-0.5" fill="currentColor" />
+            {/* Box 2: Input Field + Emoji (Rectangle) */}
+            <div className="flex-1 bg-gray-100 dark:bg-gray-800 rounded-[24px] flex items-center px-4 min-h-[52px] shadow-sm focus-within:ring-2 focus-within:ring-accent/20 transition-all">
+              <input
+                type="text"
+                value={inputText}
+                onChange={handleInputChange}
+                onKeyDown={handleKeyPress}
+                placeholder="Message..."
+                className="bg-transparent flex-1 focus:outline-none text-[16px] text-black dark:text-white placeholder-gray-500 dark:placeholder-gray-400 py-3"
+              />
+              <button
+                className={`ml-2 p-2 rounded-full transition-colors ${showEmojiPicker ? 'text-amber-500 bg-amber-100/50' : 'text-gray-400 hover:text-gray-600 dark:hover:text-gray-300'}`}
+                onClick={() => setShowEmojiPicker(!showEmojiPicker)}
+              >
+                <Smile className="w-6 h-6" />
+              </button>
+            </div>
+
+            {/* Box 3: Mic/Send Button (Square) */}
+            <button
+              className={`h-[52px] w-[52px] shrink-0 flex items-center justify-center rounded-2xl transition-all duration-300 shadow-sm ${inputText.trim()
+                ? 'bg-gradient-to-tr from-warm-light to-warm text-white transform hover:scale-105 shadow-warm/30'
+                : 'bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700'
+                }`}
+              onClick={inputText.trim() ? handleSend : handleStartRecording}
+            >
+              {inputText.trim() ? (
+                <Send className="w-6 h-6 translate-x-0.5 translate-y-0.5" fill="currentColor" />
+              ) : (
+                <Mic className="w-6 h-6" />
+              )}
             </button>
           </div>
-        ) : (
-          <button
-            onClick={inputText.trim() ? handleSend : handleStartRecording}
-            className={`p-3 rounded-full transition-all duration-300 shadow-md ${inputText.trim()
-              ? 'bg-amber-400 text-white hover:bg-amber-500 transform hover:scale-105'
-              : 'bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
-              }`}
-          >
-            {inputText.trim() ? (
-              <Send className="w-5 h-5 translate-x-0.5 translate-y-0.5" fill="currentColor" />
-            ) : (
-              <Mic className="w-5 h-5" />
-            )}
-          </button>
         )}
       </div>
     </div >

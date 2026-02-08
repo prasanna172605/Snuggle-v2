@@ -1,11 +1,11 @@
+/* Import Theme Tokens */
+@import './src/styles/theme.css';
+
 /* Standard CSS Only - Tailwind is handled via CDN in index.html */
 
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
-
-/* Import Theme Tokens */
-@import './src/styles/theme.css';
 
 /* Dark Mode Base Styles */
 @layer base {
@@ -18,11 +18,13 @@
   /* Light mode body */
   body {
     @apply bg-light-bg text-light-text-primary;
+    background-color: #9AD3DA !important;
   }
 
   /* Dark mode body */
   .dark body {
     @apply bg-dark-bg text-dark-text-primary;
+    background-color: #000000 !important;
   }
 
   /* Prevent transition on theme change for specific elements */

@@ -5,27 +5,27 @@
 
 :root {
     /* ============================================
-     BRAND COLORS
+     BRAND COLORS (New Palette)
      ============================================ */
 
-    /* Primary: Deep Blue - Trust, Calmness */
-    --color-primary: #1F3A5F;
-    --color-primary-light: #2B4A73;
-    --color-primary-dark: #162B47;
-    --color-primary-hover: #2B4A73;
-    --color-primary-active: #162B47;
+    /* Primary: Midnight Green - Deep, Rich Base */
+    --color-primary: #03444A;
+    --color-primary-light: #00A8A8; /* Teal */
+    --color-primary-dark: #022E33;
+    --color-primary-hover: #045D66;
+    --color-primary-active: #012023;
 
-    /* Accent: Bright Blue - Connection, Action */
-    --color-accent: #4C9AFF;
-    --color-accent-light: #6BABFF;
-    --color-accent-dark: #2B7CE5;
-    --color-accent-hover: #6BABFF;
-    --color-accent-active: #2B7CE5;
+    /* Accent: Teal - Vibrant, Fresh */
+    --color-accent: #00A8A8;
+    --color-accent-light: #9AD3DA; /* Light Blue from palette */
+    --color-accent-dark: #007A7A;
+    --color-accent-hover: #26BDBD;
+    --color-accent-active: #007A7A;
 
-    /* Warm Accent: Soft Orange - Warmth, Highlights */
-    --color-warm: #F4A261;
-    --color-warm-light: #F6B379;
-    --color-warm-dark: #E08C42;
+    /* Warm Accent: Spanish Orange - Energetic */
+    --color-warm: #E66414;
+    --color-warm-light: #FF924C; /* Peach/Light Orange from palette */
+    --color-warm-dark: #BF500F;
 
     /* ============================================
      SEMANTIC COLORS
@@ -37,9 +37,9 @@
     --color-success-bg: rgba(46, 125, 50, 0.1);
 
     /* Warning */
-    --color-warning: #F59E0B;
-    --color-warning-light: #FBB12B;
-    --color-warning-bg: rgba(245, 158, 11, 0.1);
+    --color-warning: #FF924C; /* Using Peach as warning too? Or stick to standard? Let's keep standard or map to Peach */
+    --color-warning-light: #FFB078;
+    --color-warning-bg: rgba(255, 146, 76, 0.1);
 
     /* Error */
     --color-error: #D32F2F;
@@ -50,30 +50,30 @@
      NEW DESIGN TOKENS (Glassy Pastel)
      ============================================ */
     
-    /* Chat (Pastel Scheme) */
-    --color-chat-sent-bg: #FEF3C7; /* Amber-100 */
-    --color-chat-sent-text: #78350F; /* Amber-900 */
-    --color-chat-received-bg: #FFFFFF;
-    --color-chat-received-text: #1F2937;
+    /* Chat (Theme Scheme) */
+    --color-chat-sent-bg: #FF924C; /* Peach for bubble background */
+    --color-chat-sent-text: #FFFFFF; /* White text on orange */
+    --color-chat-received-bg: #F0FDFD; /* Very light teal tint */
+    --color-chat-received-text: #03444A; /* Midnight green text */
     
     /* Glass Surfaces */
     --glass-background: rgba(255, 255, 255, 0.65);
     --glass-border: rgba(255, 255, 255, 0.5);
-    --glass-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.1);
+    --glass-shadow: 0 8px 32px 0 rgba(3, 68, 74, 0.1); /* Shadow using primary color */
 
     /* ============================================
      LIGHT MODE TOKENS
      ============================================ */
 
     /* Surfaces (70% of UI) */
-    --light-background: #F7F9FC;
+    --light-background: #9AD3DA; /* Light Blue Background */
     --light-surface: #FFFFFF;
     --light-surface-elevated: #FFFFFF;
     --light-surface-overlay: rgba(255, 255, 255, 0.9);
 
     /* Text */
-    --light-text-primary: #111827;
-    --light-text-secondary: #6B7280;
+    --light-text-primary: #000000;
+    --light-text-secondary: #374151;
     --light-text-tertiary: #9CA3AF;
     --light-text-disabled: #D1D5DB;
     --light-text-inverse: #FFFFFF;
@@ -93,17 +93,17 @@
      ============================================ */
 
     /* Surfaces (70% of UI) */
-    --dark-background: #0F172A;
-    --dark-surface: #1E293B;
-    --dark-surface-elevated: #273449;
-    --dark-surface-overlay: rgba(15, 23, 42, 0.95);
+    --dark-background: #000000; /* Strict Black Background */
+    --dark-surface: #022E33; /* Deep Teal Surface to contrast with black bg */
+    --dark-surface-elevated: #03444A;
+    --dark-surface-overlay: rgba(0, 0, 0, 0.95);
 
     /* Text */
-    --dark-text-primary: #F9FAFB;
-    --dark-text-secondary: #94A3B8;
-    --dark-text-tertiary: #64748B;
-    --dark-text-disabled: #475569;
-    --dark-text-inverse: #111827;
+    --dark-text-primary: #FFFFFF;
+    --dark-text-secondary: #E2E8F0;
+    --dark-text-tertiary: #94A3B8;
+    --dark-text-disabled: #64748B;
+    --dark-text-inverse: #000000;
 
     /* Borders & Dividers */
     --dark-divider: #334155;

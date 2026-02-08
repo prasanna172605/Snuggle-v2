@@ -1,155 +1,24 @@
 
+
 import React, { useState, useEffect } from 'react';
 import { User, Post, Story, Comment as AppComment } from '../types';
 import { DBService } from '../services/database';
 import { useInteractions } from '../context/InteractionContext';
-import { Heart, MessageSquare, Send, MoreHorizontal, Loader2, Play, Bookmark, X, Trash2, Edit3, Copy, Flag } from 'lucide-react';
+import { Heart, MessageSquare, Send, MoreHorizontal, Loader2, Play, Bookmark, X, Trash2, Edit3, Copy, Flag, Star } from 'lucide-react';
 import StoryViewer from '../components/StoryViewer';
 import { SkeletonPost, SkeletonAvatar } from '../components/common/Skeleton';
 import { formatRelativeTime } from '../utils/dateUtils';
 import { toast } from 'sonner';
 import SharePostModal from '../components/SharePostModal';
 import { useNavigate } from 'react-router-dom';
+import CommentsSheet from '../components/CommentsSheet';
+import LikesSheet from '../components/LikesSheet';
 
 interface FeedProps {
     currentUser: User;
     onUserClick?: (userId: string) => void;
 }
 
-// Comments Modal Component
-const CommentsModal: React.FC<{
-    post: Post;
-    user: User;
-    currentUser: User;
-    onClose: () => void;
-    onCommentAdded: () => void;
-}> = ({ post, user, currentUser, onClose, onCommentAdded }) => {
-    const [comments, setComments] = useState<AppComment[]>([]);
-    const [newComment, setNewComment] = useState('');
-    const [loading, setLoading] = useState(true);
-    const [submitting, setSubmitting] = useState(false);
-
-    useEffect(() => {
-        loadComments();
-    }, [post.id]);
-
-    const loadComments = async () => {
-        setLoading(true);
-        try {
-            const cmts = await DBService.getComments(post.id);
-            setComments(cmts);
-        } catch (e) {
-            console.error('Error loading comments:', e);
-        } finally {
-            setLoading(false);
-        }
-    };
-
-    const handleSubmit = async (e: React.FormEvent) => {
-        e.preventDefault();
-        if (!newComment.trim()) return;
-
-        setSubmitting(true);
-        try {
-            await DBService.addComment({
-                postId: post.id,
-                userId: currentUser.id,
-                text: newComment.trim(),
-                username: currentUser.username || 'user'
-            });
-            setNewComment('');
-            await loadComments();
-            onCommentAdded();
-            toast.success('Comment added!');
-        } catch (e) {
-            toast.error('Failed to add comment');
-        } finally {
-            setSubmitting(false);
-        }
-    };
-
-    return (
-        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center">
-            <div className="absolute inset-0 bg-black/60" onClick={onClose} />
-            <div className="relative w-full sm:max-w-lg bg-white dark:bg-dark-surface rounded-t-3xl sm:rounded-2xl max-h-[80vh] flex flex-col">
-                {/* Header */}
-                <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-dark-border">
-                    <h3 className="font-bold text-lg text-gray-900 dark:text-white">Comments</h3>
-                    <button onClick={onClose} className="p-2 hover:bg-gray-100 dark:hover:bg-dark-hover rounded-full">
-                        <X className="w-5 h-5" />
-                    </button>
-                </div>
-
-                {/* Comments List */}
-                <div className="flex-1 overflow-y-auto p-4 space-y-4">
-                    {loading ? (
-                        <div className="flex justify-center py-8">
-                            <Loader2 className="w-6 h-6 animate-spin text-accent" />
-                        </div>
-                    ) : comments.length === 0 ? (
-                        <div className="text-center py-8 text-gray-500">
-                            <MessageSquare className="w-12 h-12 mx-auto mb-2 opacity-50" />
-                            <p>No comments yet. Be the first!</p>
-                        </div>
-                    ) : (
-                        comments.map(comment => (
-                            <div key={comment.id} className="flex gap-3">
-                                <div className="w-8 h-8 rounded-full bg-accent flex items-center justify-center text-white text-sm font-bold flex-shrink-0">
-                                    {comment.username?.charAt(0).toUpperCase() || 'U'}
-                                </div>
-                                <div className="flex-1">
-                                    <p className="text-sm">
-                                        <span className="font-bold text-gray-900 dark:text-white mr-2">{comment.username}</span>
-                                        <span className="text-gray-700 dark:text-gray-300">{comment.text}</span>
-                                    </p>
-                                    <div className="flex gap-4 mt-1">
-                                        <span className="text-xs text-gray-400">{formatRelativeTime(comment.createdAt)}</span>
-                                        <button className="text-xs text-gray-400 font-semibold hover:text-gray-600">Reply</button>
-                                        {(comment.userId === currentUser.id || user.id === currentUser.id) && (
-                                            <button
-                                                onClick={async () => {
-                                                    if (!confirm('Delete this comment?')) return;
-                                                    try {
-                                                        await DBService.deleteComment(comment.id, post.id);
-                                                        setComments(prev => prev.filter(c => c.id !== comment.id));
-                                                        toast.success('Comment deleted');
-                                                    } catch (e) {
-                                                        toast.error('Failed to delete comment');
-                                                    }
-                                                }}
-                                                className="text-xs text-red-400 font-semibold hover:text-red-600"
-                                            >
-                                                Delete
-                                            </button>
-                                        )}
-                                    </div>
-                                </div>
-                            </div>
-                        ))
-                    )}
-                </div>
-
-                {/* Comment Input */}
-                <form onSubmit={handleSubmit} className="p-4 border-t border-gray-200 dark:border-dark-border flex gap-3">
-                    <input
-                        type="text"
-                        value={newComment}
-                        onChange={(e) => setNewComment(e.target.value)}
-                        placeholder="Add a comment..."
-                        className="flex-1 bg-gray-100 dark:bg-dark-bg border-none rounded-full px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-accent/30"
-                    />
-                    <button
-                        type="submit"
-                        disabled={!newComment.trim() || submitting}
-                        className="bg-accent text-white px-4 py-2 rounded-full font-medium text-sm disabled:opacity-50"
-                    >
-                        {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Post'}
-                    </button>
-                </form>
-            </div>
-        </div>
-    );
-};
 
 // Post Options Menu Component
 const PostOptionsMenu: React.FC<{
@@ -177,7 +46,7 @@ const PostOptionsMenu: React.FC<{
                                 className="w-full px-6 py-4 flex items-center gap-4 hover:bg-gray-50 dark:hover:bg-dark-hover"
                             >
                                 <Edit3 className="w-5 h-5 text-gray-600 dark:text-gray-400" />
-                                <span className="text-gray-900 dark:text-white font-medium">Edit Post</span>
+                                <span className="text-black dark:text-white font-medium">Edit Post</span>
                             </button>
                             <button
                                 onClick={() => { onDelete(); onClose(); }}
@@ -193,7 +62,7 @@ const PostOptionsMenu: React.FC<{
                         className="w-full px-6 py-4 flex items-center gap-4 hover:bg-gray-50 dark:hover:bg-dark-hover"
                     >
                         <Copy className="w-5 h-5 text-gray-600 dark:text-gray-400" />
-                        <span className="text-gray-900 dark:text-white font-medium">Copy Link</span>
+                        <span className="text-black dark:text-white font-medium">Copy Link</span>
                     </button>
                     {!isOwner && (
                         <button
@@ -201,7 +70,7 @@ const PostOptionsMenu: React.FC<{
                             className="w-full px-6 py-4 flex items-center gap-4 hover:bg-gray-50 dark:hover:bg-dark-hover"
                         >
                             <Flag className="w-5 h-5 text-gray-600 dark:text-gray-400" />
-                            <span className="text-gray-900 dark:text-white font-medium">Report</span>
+                            <span className="text-black dark:text-white font-medium">Report</span>
                         </button>
                     )}
                 </div>
@@ -237,7 +106,7 @@ const EditPostModal: React.FC<{
             <div className="relative w-full max-w-lg mx-4 bg-white dark:bg-dark-surface rounded-2xl overflow-hidden">
                 <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-dark-border">
                     <button onClick={onClose} className="text-gray-500 font-medium">Cancel</button>
-                    <h3 className="font-bold text-lg text-gray-900 dark:text-white">Edit Post</h3>
+                    <h3 className="font-bold text-lg text-black dark:text-white">Edit Post</h3>
                     <button
                         onClick={handleSave}
                         disabled={saving}
@@ -270,7 +139,7 @@ const DeleteConfirmModal: React.FC<{
             <div className="relative w-full max-w-sm mx-4 bg-white dark:bg-dark-surface rounded-2xl overflow-hidden text-center">
                 <div className="p-6">
                     <Trash2 className="w-12 h-12 text-red-500 mx-auto mb-4" />
-                    <h3 className="font-bold text-lg text-gray-900 dark:text-white mb-2">Delete Post?</h3>
+                    <h3 className="font-bold text-lg text-black dark:text-white mb-2">Delete Post?</h3>
                     <p className="text-sm text-gray-500 mb-6">
                         This post will be moved to Recently Deleted. You can restore it within 30 days.
                     </p>
@@ -332,7 +201,7 @@ const StoriesBento: React.FC<{
                             </div>
                         </div>
                     </div>
-                    <span className="text-xs font-semibold text-gray-600 dark:text-gray-300 group-hover:text-gray-900 dark:group-hover:text-white transition-colors">Your Story</span>
+                    <span className="text-xs font-semibold text-gray-600 dark:text-gray-300 group-hover:text-black dark:group-hover:text-white transition-colors">Your Story</span>
                 </div>
 
                 {storyUsers
@@ -372,223 +241,187 @@ const Feed: React.FC<FeedProps> = ({ currentUser, onUserClick }) => {
     const [sharePost, setSharePost] = useState<Post | null>(null);
     const navigate = useNavigate();
 
-    // Story Upload
-    const handleStoryUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-        if (e.target.files && e.target.files[0]) {
-            const file = e.target.files[0];
-            const toastId = toast.loading('Uploading story...');
-            try {
-                await DBService.uploadStory(currentUser.id, file);
-                toast.success('Story added!', { id: toastId });
-                // Refresh stories
-                const recentStories = await DBService.getStories();
-                setAllStories(recentStories);
-            } catch (error) {
-                console.error(error);
-                toast.error('Failed to upload story', { id: toastId });
-            }
-        }
-    };
-
-    // Saved posts are now handled by InteractionContext
-
-    // Modal State
+    // Modals
     const [commentsPost, setCommentsPost] = useState<Post | null>(null);
+    const [likesPost, setLikesPost] = useState<Post | null>(null);
     const [menuPost, setMenuPost] = useState<Post | null>(null);
     const [editPost, setEditPost] = useState<Post | null>(null);
     const [deletePost, setDeletePost] = useState<Post | null>(null);
 
-    useEffect(() => {
-        const loadFeed = async () => {
-            setLoading(true);
-            try {
-                // Use getFeed to fetch posts from followed users + self
-                const feedPosts = await DBService.getFeed(currentUser.id, 50);
-                // Filter out deleted posts
-                const activePosts = feedPosts.filter(p => !p.isDeleted);
-                setPosts(activePosts);
-
-                // Fetch users for posts
-                const uIds = new Set(activePosts.map(p => p.userId));
-                const allUsers = await DBService.getUsers();
-                const newUsers: Record<string, User> = {};
-                allUsers.forEach(u => {
-                    if (uIds.has(u.id)) {
-                        newUsers[u.id] = u;
-                    }
-                });
-                setUsers(newUsers);
-
-                // Load Stories
-                const s = await DBService.getStories();
-                setAllStories(s);
-
-                const userIdsWithStories = Array.from(new Set(s.map(story => story.userId)));
-                const sUsers = allUsers.filter(u => userIdsWithStories.includes(u.id));
-                setStoryUsers(sUsers);
-
-                // Load interaction state from database via Context
-                if (activePosts.length > 0) {
-                    const postIds = activePosts.map(p => p.id);
-                    await loadInteractions(postIds);
-                }
-            } catch (e) {
-                console.error("Error loading feed:", e);
-            } finally {
-                setLoading(false);
-            }
-        };
-
-        if (currentUser?.id) {
-            loadFeed();
-        }
-    }, [currentUser]);
-
+    // Load Feed
     const refreshPosts = async () => {
-        const updatedPosts = await DBService.getFeed(currentUser.id, 50);
-        const activePosts = updatedPosts.filter(p => !p.isDeleted);
-        setPosts(activePosts);
+        try {
+            const feedPosts = await DBService.getFeed(currentUser.id);
+            setPosts(feedPosts);
+
+            // Fetch users for posts
+            const userIds = new Set(feedPosts.map(p => p.userId));
+            const fetchedUsers = await DBService.getUsersByIds(Array.from(userIds));
+            const userMap: Record<string, User> = {};
+            fetchedUsers.forEach(u => userMap[u.id] = u);
+            setUsers(prev => ({ ...prev, ...userMap }));
+
+            // Load interactions
+            const postIds = feedPosts.map(p => p.id);
+            if (postIds.length > 0) {
+                await loadInteractions(postIds);
+            }
+        } catch (error) {
+            console.error("Error loading feed:", error);
+            toast.error("Failed to load feed");
+        } finally {
+            setLoading(false);
+        }
     };
 
-    const handleLike = async (postId: string) => {
-        const isCurrentlyLiked = likedPostIds.includes(postId);
+    useEffect(() => {
+        refreshPosts();
+        loadStories();
+    }, [currentUser.id]);
 
-        // Optimistic Update for Like Count (InteractionContext handles isLiked state)
-        setPosts(current => current.map(p => {
+    const loadStories = async () => {
+        try {
+            const stories = await DBService.getStories();
+            setAllStories(stories);
+            const userIds = Array.from(new Set(stories.map(s => s.userId)));
+            const users = await DBService.getUsersByIds(userIds);
+            setStoryUsers(users);
+        } catch (error) {
+            console.error("Error loading stories:", error);
+        }
+    };
+
+    // Handlers
+    const handleLike = async (postId: string) => {
+        const isLiked = likedPostIds.includes(postId);
+        await toggleLike(postId);
+        // Optimistically update count
+        setPosts(prev => prev.map(p => {
             if (p.id === postId) {
-                return {
-                    ...p,
-                    likeCount: (p.likeCount || 0) + (isCurrentlyLiked ? -1 : 1)
-                };
+                const currentLikes = Array.isArray(p.likes) ? p.likes.length : (p.likes || 0);
+                const newCount = isLiked ? Math.max(0, currentLikes - 1) : currentLikes + 1;
+                // We're not updating the array here, just the count for display if needed depending on logic
+                // Ideally backend handles the array. For UI count:
+                return { ...p, likeCount: newCount };
             }
             return p;
         }));
-
-        try {
-            await toggleLike(postId);
-        } catch (e) {
-            // Revert on error
-            setPosts(current => current.map(p => {
-                if (p.id === postId) {
-                    return {
-                        ...p,
-                        likeCount: (p.likeCount || 0) + (isCurrentlyLiked ? 1 : -1)
-                    };
-                }
-                return p;
-            }));
-            toast.error('Failed to update like');
-        }
     };
 
-    const handleSave = async (postId: string) => {
-        try {
-            const nowSaved = await toggleSave(postId);
-            toast.success(nowSaved ? 'Post saved!' : 'Removed from saved');
-        } catch (e) {
-            toast.error('Failed to update save');
-        }
+    const handleSave = async (post: Post) => {
+        await toggleSave(post.id);
+        toast.success(savedPostIds.includes(post.id) ? "Removed from favourites" : "Added to favourites");
     };
 
-    const handleShare = async (postId: string) => {
-        const post = posts.find(p => p.id === postId);
-        if (post) setSharePost(post);
-    };
-
-    const handleComment = (post: Post) => {
-        setCommentsPost(post);
-    };
-
-    const handleEditSave = async (caption: string) => {
-        if (!editPost) return;
-        try {
-            await DBService.updatePost(editPost.id, { caption });
-            toast.success('Post updated!');
-            setEditPost(null);
-            await refreshPosts();
-        } catch (e) {
-            toast.error('Failed to update post');
-        }
-    };
-
-    const handleDeleteConfirm = async () => {
+    const handleDelete = async () => {
         if (!deletePost) return;
         try {
-            await DBService.softDeletePost(deletePost.id, currentUser.id);
-            toast.success('Post moved to Recently Deleted');
+            await DBService.deletePost(deletePost.id); // Assuming hard delete or soft delete
+            toast.success("Post deleted");
+            setPosts(prev => prev.filter(p => p.id !== deletePost.id));
             setDeletePost(null);
-            await refreshPosts();
-        } catch (e) {
-            toast.error('Failed to delete post');
+        } catch (error) {
+            toast.error("Failed to delete post");
         }
     };
 
-    const handleStoryClick = (userId: string) => {
-        setViewingStoryUserId(userId);
-    };
-
-    const handleNextUserStory = () => {
-        if (!viewingStoryUserId) return;
-        const currentIndex = storyUsers.findIndex(u => u.id === viewingStoryUserId);
-        if (currentIndex !== -1 && currentIndex < storyUsers.length - 1) {
-            setViewingStoryUserId(storyUsers[currentIndex + 1].id);
-        } else {
-            setViewingStoryUserId(null); // Close if no more users
+    const handleStoryUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        if (e.target.files?.[0]) {
+            try {
+                await DBService.uploadStory(currentUser.id, e.target.files[0]);
+                toast.success("Story uploaded!");
+                loadStories();
+            } catch (error) {
+                toast.error("Failed to upload story");
+            }
         }
     };
 
-    const handlePrevUserStory = () => {
-        if (!viewingStoryUserId) return;
-        const currentIndex = storyUsers.findIndex(u => u.id === viewingStoryUserId);
-        if (currentIndex > 0) {
-            setViewingStoryUserId(storyUsers[currentIndex - 1].id);
-        }
-    };
-
-    // Group stories by User ID
+    // Group stories
     const storiesByUser = allStories.reduce((acc, story) => {
         if (!acc[story.userId]) acc[story.userId] = [];
         acc[story.userId].push(story);
         return acc;
     }, {} as Record<string, Story[]>);
 
-
     if (loading) {
         return (
-            <div className="pb-20 pt-0 px-2 space-y-4">
-                {/* Stories Skeleton */}
-                <div className="bg-white dark:bg-dark-card rounded-b-bento rounded-t-bento-sm shadow-sm p-4 mb-4 mt-2 border border-transparent dark:border-dark-border flex items-center gap-4 overflow-hidden">
-                    {[1, 2, 3, 4, 5].map(i => (
-                        <div key={i} className="flex flex-col items-center space-y-2 min-w-[72px]">
-                            <SkeletonAvatar size="lg" />
-                            <div className="h-3 w-12 bg-gray-200 dark:bg-gray-700 rounded animate-pulse" />
-                        </div>
-                    ))}
-                </div>
-
-                {/* Posts Skeleton */}
-                {[1, 2].map((i) => (
-                    <div key={i} className="bg-white dark:bg-dark-card rounded-bento p-4 shadow-sm">
-                        <SkeletonPost />
-                    </div>
-                ))}
+            <div className="flex justify-center pt-20">
+                <Loader2 className="w-8 h-8 animate-spin text-accent" />
             </div>
         );
     }
 
     return (
         <div className="pb-20 pt-0">
+            {/* Story Upload Input */}
+            <input
+                type="file"
+                id="story-file-input"
+                className="hidden"
+                accept="image/*,video/*"
+                onChange={handleStoryUpload}
+            />
+
+            <StoriesBento
+                currentUser={currentUser}
+                storyUsers={storyUsers}
+                storiesByUser={storiesByUser}
+                onStoryClick={setViewingStoryUserId}
+                onUserClick={onUserClick}
+            />
+
             {/* Modals */}
-            {commentsPost && users[commentsPost.userId] && (
-                <CommentsModal
+            {commentsPost && (
+                <CommentsSheet
                     post={commentsPost}
-                    user={users[commentsPost.userId]}
                     currentUser={currentUser}
                     onClose={() => setCommentsPost(null)}
                     onCommentAdded={refreshPosts}
                 />
             )}
-
+            {likesPost && (
+                <LikesSheet
+                    post={likesPost}
+                    currentUser={currentUser}
+                    onClose={() => setLikesPost(null)}
+                    onUserClick={(userId) => {
+                        setLikesPost(null);
+                        onUserClick?.(userId);
+                    }}
+                />
+            )}
+            {sharePost && (
+                <SharePostModal
+                    post={sharePost}
+                    currentUser={currentUser}
+                    onClose={() => setSharePost(null)}
+                />
+            )}
+            {deletePost && (
+                <DeleteConfirmModal
+                    onConfirm={handleDelete}
+                    onClose={() => setDeletePost(null)}
+                />
+            )}
+            {editPost && (
+                <EditPostModal
+                    post={editPost}
+                    onSave={async (caption) => {
+                        await DBService.updatePost(editPost.id, { caption });
+                        refreshPosts();
+                        setEditPost(null);
+                    }}
+                    onClose={() => setEditPost(null)}
+                />
+            )}
+            {viewingStoryUserId && (
+                <StoryViewer
+                    stories={storiesByUser[viewingStoryUserId] || []}
+                    user={users[viewingStoryUserId] || currentUser}
+                    onClose={() => setViewingStoryUserId(null)}
+                />
+            )}
             {menuPost && (
                 <PostOptionsMenu
                     post={menuPost}
@@ -599,148 +432,99 @@ const Feed: React.FC<FeedProps> = ({ currentUser, onUserClick }) => {
                 />
             )}
 
-            {editPost && (
-                <EditPostModal
-                    post={editPost}
-                    onSave={handleEditSave}
-                    onClose={() => setEditPost(null)}
-                />
-            )}
-
-            {deletePost && (
-                <DeleteConfirmModal
-                    onConfirm={handleDeleteConfirm}
-                    onClose={() => setDeletePost(null)}
-                />
-            )}
-
-            {viewingStoryUserId && users[viewingStoryUserId] && storiesByUser[viewingStoryUserId] && (
-                <StoryViewer
-                    stories={storiesByUser[viewingStoryUserId]}
-                    user={users[viewingStoryUserId]}
-                    onClose={() => setViewingStoryUserId(null)}
-                    onNextUser={handleNextUserStory}
-                    onPrevUser={handlePrevUserStory}
-                />
-            )}
-
-            {sharePost && (
-                <SharePostModal
-                    post={sharePost}
-                    currentUser={currentUser}
-                    onClose={() => setSharePost(null)}
-                />
-            )}
-
-            {/* Hidden File Input for Story Upload (Global to Feed) */}
-            <input
-                type="file"
-                id="story-file-input"
-                className="hidden"
-                accept="image/*,video/*"
-                onChange={handleStoryUpload}
-            />
-
-            <StoriesBento
-                onUserClick={onUserClick}
-                onStoryClick={handleStoryClick}
-                storyUsers={storyUsers}
-                storiesByUser={storiesByUser}
-                currentUser={currentUser}
-            />
-            {/* Posts - Centered for Desktop */}
-            <div className="space-y-4 px-2 max-w-xl mx-auto">
+            {/* Posts Feed */}
+            <div className="flex flex-col gap-6 px-4 max-w-xl mx-auto w-full">
                 {posts.map(post => {
-                    const user = users[post.userId];
-                    if (!user) return null;
+                    const user = users[post.userId] || { username: 'Unknown User', avatar: '', id: post.userId } as User;
+                    const isLiked = likedPostIds.includes(post.id);
+                    const isSaved = savedPostIds.includes(post.id);
 
                     return (
-                        <div key={post.id} className="bg-white/80 dark:bg-slate-800/80 backdrop-blur-md rounded-[2.5rem] shadow-sm transition-all border border-white/50 dark:border-white/5 overflow-hidden pb-4 mb-6 hover:shadow-md">
+                        <div key={post.id} className="bg-white dark:bg-dark-card border-y border-gray-100 dark:border-dark-border sm:border sm:rounded-3xl overflow-hidden shadow-sm hover:shadow-md transition-shadow">
                             {/* Header */}
-                            <div className="flex items-center justify-between px-4 pt-3 pb-3">
-                                <div className="flex items-center gap-2.5 cursor-pointer" onClick={() => onUserClick?.(user.id)}>
-                                    <div className="relative">
-                                        <img src={user.avatar} className="w-8 h-8 rounded-full object-cover border border-gray-100 dark:border-gray-800" alt="" />
-                                        {/* Optional story ring could go here */}
+                            <div className="flex items-center justify-between p-3">
+                                <div
+                                    className="flex items-center gap-3 cursor-pointer"
+                                    onClick={() => onUserClick?.(user.id)}
+                                >
+                                    <div className="w-10 h-10 rounded-full overflow-hidden border border-gray-100 dark:border-dark-border">
+                                        {/* Explicit Image instead of Skeleton for reliability if loaded */}
+                                        {user.avatar ? (
+                                            <img src={user.avatar} className="w-full h-full object-cover" alt={user.username} />
+                                        ) : (
+                                            <div className="w-full h-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center">
+                                                <span className="text-xs font-bold text-gray-400">{user.username.charAt(0).toUpperCase()}</span>
+                                            </div>
+                                        )}
                                     </div>
-                                    <div className="flex flex-col">
-                                        <h3 className="font-bold text-sm text-gray-900 dark:text-gray-100 leading-none">{user.username}</h3>
-                                        <p className="text-[10px] text-gray-400 font-medium">{formatRelativeTime(post.createdAt)}</p>
+                                    <div>
+                                        <h3 className="font-bold text-sm text-black dark:text-white">{user.username}</h3>
+                                        <p className="text-xs text-gray-500">{formatRelativeTime(post.createdAt)}</p>
                                     </div>
                                 </div>
-                                <button
-                                    onClick={() => setMenuPost(post)}
-                                    className="text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors"
-                                >
+                                <button onClick={() => setMenuPost(post)} className="text-gray-500 hover:text-black dark:hover:text-white transition-colors p-2">
                                     <MoreHorizontal className="w-5 h-5" />
                                 </button>
                             </div>
 
-                            {/* Content (Full Bleed) */}
-                            <div
-                                className="w-full bg-gray-100 dark:bg-black relative aspect-square sm:aspect-auto cursor-pointer"
-                                onClick={() => navigate(`/post/${post.id}`)}
-                            >
-                                {post.mediaType === 'video' ? (
-                                    <div className="relative w-full h-full">
-                                        <video src={post.imageUrl} className="w-full h-full object-cover max-h-[600px]" controls />
-                                    </div>
-                                ) : (
-                                    <img src={post.imageUrl} className="w-full h-full object-cover max-h-[600px]" alt="Post" />
-                                )}
+                            {/* Image */}
+                            <div className="relative aspect-square bg-gray-100 dark:bg-dark-bg cursor-pointer" onDoubleClick={() => handleLike(post.id)}>
+                                <img src={post.imageUrl} className="w-full h-full object-cover" alt="Post" loading="lazy" />
                             </div>
 
                             {/* Actions */}
-                            <div className="flex items-center justify-between px-3 pt-3">
+                            <div className="p-3 pb-1 flex items-center justify-between">
                                 <div className="flex items-center gap-4">
-                                    {(() => {
-                                        // Use likedPostIds from database for accurate state
-                                        const isLiked = likedPostIds.includes(post.id);
-                                        return (
-                                            <button onClick={() => handleLike(post.id)} className="group flex items-center gap-1.5 focus:outline-none">
-                                                <Heart className={`w-6 h-6 transition-transform active:scale-90 ${isLiked ? 'fill-red-500 text-red-500' : 'text-gray-900 dark:text-white stroke-[1.5px]'}`} />
-                                            </button>
-                                        );
-                                    })()}
-
-                                    <button onClick={() => handleComment(post)} className="group flex items-center gap-1.5 focus:outline-none">
-                                        <MessageSquare className="w-6 h-6 text-gray-900 dark:text-white stroke-[1.5px]" />
+                                    <button
+                                        onClick={() => handleLike(post.id)}
+                                        className="transition-transform active:scale-90"
+                                    >
+                                        <Heart
+                                            className={`w-7 h-7 ${isLiked ? 'fill-warm text-warm' : 'text-black dark:text-white stroke-[1.5px]'}`}
+                                        />
                                     </button>
-
-                                    <button onClick={() => handleShare(post.id)} className="group focus:outline-none">
-                                        <Send className="w-6 h-6 text-gray-900 dark:text-white stroke-[1.5px] -mt-1" />
+                                    <button
+                                        onClick={() => setCommentsPost(post)}
+                                        className="transition-transform active:scale-90"
+                                    >
+                                        <MessageSquare className="w-7 h-7 text-black dark:text-white stroke-[1.5px]" />
+                                    </button>
+                                    <button
+                                        onClick={() => setSharePost(post)}
+                                        className="transition-transform active:scale-90"
+                                    >
+                                        <Send className="w-7 h-7 text-black dark:text-white stroke-[1.5px]" />
                                     </button>
                                 </div>
-
-                                {/* Save/Bookmark */}
-                                {(() => {
-                                    // Use savedPostIds from database for accurate state
-                                    const isSaved = savedPostIds.includes(post.id);
-                                    return (
-                                        <button onClick={() => handleSave(post.id)} className="group focus:outline-none">
-                                            <Bookmark className={`w-6 h-6 transition-transform active:scale-90 ${isSaved ? 'fill-current text-gray-900 dark:text-white' : 'text-gray-900 dark:text-white stroke-[1.5px]'}`} />
-                                        </button>
-                                    );
-                                })()}
+                                <button
+                                    onClick={() => handleSave(post)}
+                                    className="transition-transform active:scale-90"
+                                >
+                                    <Star className={`w-7 h-7 ${isSaved ? 'fill-warm text-warm' : 'text-black dark:text-white stroke-[1.5px]'}`} />
+                                </button>
                             </div>
 
-                            {/* Likes Text */}
-                            <div className="px-4 py-1">
-                                <p className="font-bold text-sm text-gray-900 dark:text-white">
-                                    {post.likeCount ?? (Array.isArray(post.likes) ? (post.likes as string[]).length : post.likes)} likes
-                                </p>
-                            </div>
-
-                            {/* Caption */}
-                            <div className="px-4 pb-2">
-                                <p className="text-sm text-gray-800 dark:text-gray-300 leading-relaxed">
-                                    <span className="font-bold mr-2 text-gray-900 dark:text-white">{user.username}</span>
-                                    {post.caption}
-                                </p>
+                            {/* Likes & Caption */}
+                            <div className="px-3 pb-4">
+                                <button
+                                    onClick={() => setLikesPost(post)}
+                                    className="font-bold text-sm text-black dark:text-white hover:underline focus:outline-none block mb-1"
+                                >
+                                    {post.likeCount ?? (Array.isArray(post.likes) ? post.likes.length : post.likes || 0)} likes
+                                </button>
+                                <div className="text-sm leading-relaxed">
+                                    <span
+                                        className="font-bold mr-2 text-black dark:text-white cursor-pointer"
+                                        onClick={() => onUserClick?.(user.id)}
+                                    >
+                                        {user.username}
+                                    </span>
+                                    <span className="text-gray-800 dark:text-gray-300">{post.caption}</span>
+                                </div>
                                 {post.comments > 0 && (
                                     <button
-                                        onClick={() => handleComment(post)}
-                                        className="text-gray-400 text-sm mt-1 font-medium hover:text-gray-600 dark:hover:text-gray-300"
+                                        onClick={() => setCommentsPost(post)}
+                                        className="text-gray-500 text-sm mt-1.5 font-medium hover:text-black dark:hover:text-gray-300"
                                     >
                                         View all {post.comments} comments
                                     </button>
@@ -749,10 +533,10 @@ const Feed: React.FC<FeedProps> = ({ currentUser, onUserClick }) => {
                         </div>
                     );
                 })}
-
                 {posts.length === 0 && (
-                    <div className="text-center py-10 text-gray-400">
-                        <p>No posts yet. Follow some people!</p>
+                    <div className="text-center py-20 bg-white/50 dark:bg-dark-surface/50 rounded-3xl mx-4 border border-dashed border-gray-200 dark:border-dark-border">
+                        <p className="text-gray-500 font-medium">No posts here yet.</p>
+                        <p className="text-sm text-gray-400 mt-1">Follow people to see their snaps!</p>
                     </div>
                 )}
             </div>

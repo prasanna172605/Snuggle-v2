@@ -4,7 +4,7 @@ import { User, Post, Comment as AppComment } from '../types';
 import { DBService } from '../services/database';
 import { useInteractions } from '../context/InteractionContext';
 import {
-    MoreHorizontal, Heart, MessageCircle, Send, Bookmark,
+    MoreHorizontal, Heart, MessageCircle, Send, Star,
     Trash2, Loader2
 } from 'lucide-react';
 import { formatRelativeTime } from '../utils/dateUtils';
@@ -260,7 +260,7 @@ const PostDetailContent: React.FC<PostDetailContentProps> = ({
                             </button>
                         </div>
                         <button onClick={handleSave} className="hover:opacity-70 transition-opacity">
-                            <Bookmark className={`w-6 h-6 ${isSaved ? 'fill-current' : ''}`} />
+                            <Star className={`w-6 h-6 ${isSaved ? 'fill-warm text-warm' : 'text-black dark:text-white'}`} />
                         </button>
                     </div>
 

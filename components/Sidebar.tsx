@@ -33,8 +33,8 @@ const Sidebar: React.FC<SidebarProps> = ({ unreadCount, unreadMessagesCount = 0,
             to={to}
             className={({ isActive }) =>
                 `flex items-center gap-4 px-4 py-3 rounded-xl transition-all duration-200 group ${isActive
-                    ? 'bg-snuggle-900 text-white shadow-md'
-                    : 'text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800'
+                    ? 'bg-gradient-to-r from-snuggle-100 to-snuggle-50 dark:from-snuggle-900/30 dark:to-snuggle-800/20 text-snuggle-600 dark:text-snuggle-300 shadow-sm'
+                    : 'text-gray-500 dark:text-gray-400 hover:bg-white/50 dark:hover:bg-white/5'
                 }`
             }
         >
@@ -55,10 +55,10 @@ const Sidebar: React.FC<SidebarProps> = ({ unreadCount, unreadMessagesCount = 0,
 
 
     return (
-        <aside className="hidden md:flex flex-col w-64 h-full flex-shrink-0 bg-white dark:bg-black border-r border-gray-100 dark:border-dark-border py-6 px-4 z-40">
+        <aside className="hidden md:flex flex-col w-64 h-full flex-shrink-0 bg-white/60 dark:bg-black/60 backdrop-blur-xl border-r border-white/20 dark:border-white/10 py-6 px-4 z-40">
             {/* Brand */}
             <div className="flex items-center gap-3 px-4 mb-8">
-                <div className="w-10 h-10 bg-primary rounded-xl flex items-center justify-center shadow-lg shadow-primary/20">
+                <div className="w-10 h-10 bg-gradient-to-tr from-snuggle-400 to-snuggle-600 rounded-xl flex items-center justify-center shadow-lg shadow-snuggle-500/30">
                     <span className="text-white font-bold text-xl">S</span>
                 </div>
                 <h1 className="text-2xl font-bold bg-gradient-to-r from-gray-900 to-gray-600 dark:from-white dark:to-gray-400 bg-clip-text text-transparent">
@@ -88,9 +88,9 @@ const Sidebar: React.FC<SidebarProps> = ({ unreadCount, unreadMessagesCount = 0,
                             <Heart className="w-5 h-5" />
                             <span className="font-medium">Your Activity</span>
                         </NavLink>
-                        <NavLink to="/saved" className="flex items-center gap-3 px-4 py-3 hover:bg-gray-50 dark:hover:bg-dark-border transition-colors">
-                            <Bookmark className="w-5 h-5" />
-                            <span className="font-medium">Saved</span>
+                        <NavLink to="/favourites" className="flex items-center gap-3 px-4 py-3 hover:bg-gray-50 dark:hover:bg-dark-border transition-colors">
+                            <div className="w-5 h-5 flex items-center justify-center text-lg leading-none">⭐</div>
+                            <span className="font-medium">Favourites</span>
                         </NavLink>
                         <div className="flex items-center gap-3 px-4 py-3 hover:bg-gray-50 dark:hover:bg-dark-border transition-colors cursor-pointer" onClick={toggleTheme}>
                             {isDarkMode ? <Moon className="w-5 h-5" /> : <Sun className="w-5 h-5" />}

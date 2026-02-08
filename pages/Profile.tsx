@@ -32,7 +32,7 @@ const Profile: React.FC<ProfileProps> = ({ user: propUser, currentUser, isOwnPro
     const [avatarFile, setAvatarFile] = useState<File | null>(null);
     const [previewAvatar, setPreviewAvatar] = useState<string | null>(null);
     const [editError, setEditError] = useState('');
-    const [activeTab, setActiveTab] = useState<'posts' | 'reels' | 'saved' | 'tagged'>('posts');
+    const [activeTab, setActiveTab] = useState<'posts' | 'reels' | 'favourites' | 'tagged'>('posts');
     const [savedPosts, setSavedPosts] = useState<Post[]>([]);
     const [selectedPost, setSelectedPost] = useState<Post | null>(null);
 
@@ -476,13 +476,13 @@ const Profile: React.FC<ProfileProps> = ({ user: propUser, currentUser, isOwnPro
                     </button>
                     {isOwnProfile && (
                         <button
-                            onClick={() => setActiveTab('saved')}
-                            className={`flex-1 py-4 flex justify-center items-center gap-2 border-t-2 -mt-[2px] transition-all ${activeTab === 'saved'
+                            onClick={() => setActiveTab('favourites')}
+                            className={`flex-1 py-4 flex justify-center items-center gap-2 border-t-2 -mt-[2px] transition-all ${activeTab === 'favourites'
                                 ? 'border-gray-900 dark:border-white text-gray-900 dark:text-white'
                                 : 'border-transparent text-gray-400 hover:text-gray-600'
                                 }`}
                         >
-                            <Bookmark className={`w-5 h-5 ${activeTab === 'saved' ? 'stroke-[2.5px]' : ''}`} />
+                            <div className={`w-5 h-5 flex items-center justify-center text-lg leading-none ${activeTab === 'favourites' ? 'stroke-[2.5px]' : ''}`}>⭐</div>
                         </button>
                     )}
                     <button
@@ -532,10 +532,10 @@ const Profile: React.FC<ProfileProps> = ({ user: propUser, currentUser, isOwnPro
                             <p>No reels yet</p>
                         </div>
                     )}
-                    {activeTab === 'saved' && isOwnProfile && (
+                    {activeTab === 'favourites' && isOwnProfile && (
                         <div className="col-span-3 py-12 text-center text-gray-400">
-                            <Bookmark className="w-12 h-12 mx-auto mb-2 opacity-50" />
-                            <p>Only you can see what you've saved</p>
+                            <div className="w-12 h-12 mx-auto mb-2 opacity-50 flex items-center justify-center text-4xl">⭐</div>
+                            <p>Only you can see your favourites</p>
                         </div>
                     )}
                     {activeTab === 'tagged' && (
