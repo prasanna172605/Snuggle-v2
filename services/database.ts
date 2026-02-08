@@ -721,8 +721,15 @@ export class DBService {
         });
 
         if (!response.ok) {
-            const error = await response.json();
-            throw new Error(error.message || 'Failed to create notification');
+            const contentType = response.headers.get('content-type');
+            if (contentType && contentType.includes('application/json')) {
+                const error = await response.json();
+                throw new Error(error.message || 'Failed to create notification');
+            } else {
+                const text = await response.text();
+                console.error('API Error (Non-JSON):', text);
+                throw new Error(`API Error: ${response.status} ${response.statusText} - See console for details`);
+            }
         }
 
         const data = await response.json();

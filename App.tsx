@@ -142,7 +142,32 @@ const AppContent = ({
 
     if (!currentUser?.id) return;
     const unsubscribe = DBService.subscribeToNotifications(currentUser.id, (notifs: import('./types').Notification[]) => {
-      setUnreadCount(notifs.filter(n => !n.read).length);
+      const newUnreadCount = notifs.filter(n => !n.read).length;
+
+      // Check for strictly NEW notifications (created in last 5 seconds to avoid spam on load)
+      // and ensure we haven't shown them yet (simple check against previous unread count increasing)
+      if (newUnreadCount > unreadCount) {
+        const latestNotif = notifs[0]; // Assuming sorted by desc
+        const isRecent = latestNotif && (Date.now() - latestNotif.createdAt) < 5000;
+
+        if (latestNotif && !latestNotif.read && isRecent) {
+          toast.custom((t) => (
+            <div className="flex items-center gap-3 w-full bg-white dark:bg-zinc-900 border border-gray-100 dark:border-zinc-800 shadow-lg rounded-xl p-4 cursor-pointer" onClick={() => {
+              toast.dismiss(t);
+              navigate('/notifications');
+            }}>
+              <div className="w-10 h-10 rounded-full bg-snuggle-100 dark:bg-snuggle-900/30 flex items-center justify-center text-snuggle-500">
+                <Bell className="w-5 h-5" />
+              </div>
+              <div className="flex-1">
+                <p className="font-semibold text-sm text-gray-900 dark:text-gray-100 line-clamp-1">{latestNotif.title || 'New Notification'}</p>
+                <p className="text-xs text-gray-500 dark:text-gray-400 line-clamp-1">{latestNotif.message}</p>
+              </div>
+            </div>
+          ), { duration: 4000 });
+        }
+      }
+      setUnreadCount(newUnreadCount);
     });
 
     if (messaging) {

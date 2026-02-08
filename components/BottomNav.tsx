@@ -22,11 +22,9 @@ const BottomNav: React.FC<BottomNavProps> = ({ unreadCount }) => {
             <Icon className={`w-6 h-6 ${isActive ? 'stroke-2' : 'stroke-[1.5]'}`} />
             {to === '/notifications' && unreadCount > 0 && (
               <span
-                className="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 bg-red-500 text-white text-xs font-bold rounded-full border-2 border-white flex items-center justify-center"
-                aria-label={`${unreadCount} unread notifications`}
-              >
-                {unreadCount > 9 ? '9+' : unreadCount}
-              </span>
+                className="absolute top-0 right-0 w-3 h-3 bg-red-500 rounded-full border-2 border-white dark:border-dark-bg"
+                aria-label="Unread notifications"
+              />
             )}
           </div>
         )}
