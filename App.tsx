@@ -111,8 +111,16 @@ const AppContent = ({
   onAddAccount: () => void;
 }) => {
   const [unreadCount, setUnreadCount] = useState(0);
+  const [unreadMessagesCount, setUnreadMessagesCount] = useState(0);
   const location = useLocation();
   const navigate = useNavigate();
+
+  // Subscribe to unread messages count
+  useEffect(() => {
+    if (!currentUser?.id) return;
+    const unsubscribe = DBService.subscribeToUnreadChatsCount(currentUser.id, setUnreadMessagesCount);
+    return () => unsubscribe();
+  }, [currentUser?.id]);
 
   useEffect(() => {
     // Initialize global error handler
@@ -216,6 +224,7 @@ const AppContent = ({
         {/* Sidebar - Desktop Only */}
         <Sidebar
           unreadCount={unreadCount}
+          unreadMessagesCount={unreadMessagesCount}
           onLogout={onLogout}
           onSwitchAccount={(id) => {
             toast.info("Switching accounts coming soon!");
@@ -250,7 +259,7 @@ const AppContent = ({
 
         {!isBottomNavHidden && (
           <div className="md:hidden">
-            <BottomNav unreadCount={unreadCount} />
+            <BottomNav unreadCount={unreadCount} unreadMessagesCount={unreadMessagesCount} />
           </div>
         )}
       </div>

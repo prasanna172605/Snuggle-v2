@@ -5,12 +5,13 @@ import { useTheme } from '../context/ThemeContext';
 
 interface SidebarProps {
     unreadCount: number;
+    unreadMessagesCount?: number;
     onLogout: () => void;
     onSwitchAccount?: (userId: string) => void;
     onAddAccount?: () => void;
 }
 
-const Sidebar: React.FC<SidebarProps> = ({ unreadCount, onLogout, onSwitchAccount, onAddAccount }) => {
+const Sidebar: React.FC<SidebarProps> = ({ unreadCount, unreadMessagesCount = 0, onLogout, onSwitchAccount, onAddAccount }) => {
     const [showMenu, setShowMenu] = useState(false);
     const menuRef = useRef<HTMLDivElement>(null);
     const { effectiveTheme, toggleTheme } = useTheme();
@@ -41,6 +42,11 @@ const Sidebar: React.FC<SidebarProps> = ({ unreadCount, onLogout, onSwitchAccoun
                 <Icon className="w-6 h-6 group-hover:scale-110 transition-transform" />
                 {to === '/notifications' && unreadCount > 0 && (
                     <span className="absolute top-0 right-0 w-2.5 h-2.5 bg-red-500 rounded-full border-2 border-white dark:border-dark-bg" />
+                )}
+                {to === '/messages' && unreadMessagesCount > 0 && (
+                    <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] bg-red-500 rounded-full flex items-center justify-center text-[10px] font-bold text-white border-2 border-white dark:border-dark-bg">
+                        {unreadMessagesCount > 9 ? '9+' : unreadMessagesCount}
+                    </span>
                 )}
             </div>
             <span className="font-medium text-base">{label}</span>

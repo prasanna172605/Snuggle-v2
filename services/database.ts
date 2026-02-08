@@ -710,30 +710,46 @@ export class DBService {
     }
 
     static async createNotification(notificationData: Omit<import('../types').Notification, 'id' | 'read' | 'createdAt' | 'isRead'>): Promise<import('../types').Notification> {
-        const token = await this.getCurrentToken();
-        const response = await fetch('/api/v1/notifications', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${token}`
-            },
-            body: JSON.stringify(notificationData)
-        });
+        // Create notification directly in Firestore (bypassing API for reliability)
+        const notificationsRef = collection(db, 'notifications');
+        const notificationDoc = {
+            ...notificationData,
+            read: false,
+            isRead: false,
+            createdAt: serverTimestamp()
+        };
 
-        if (!response.ok) {
-            const contentType = response.headers.get('content-type');
-            if (contentType && contentType.includes('application/json')) {
-                const error = await response.json();
-                throw new Error(error.message || 'Failed to create notification');
-            } else {
-                const text = await response.text();
-                console.error('API Error (Non-JSON):', text);
-                throw new Error(`API Error: ${response.status} ${response.statusText} - See console for details`);
-            }
+        const docRef = await addDoc(notificationsRef, notificationDoc);
+        console.log('[DB] Created notification:', docRef.id, notificationData.type);
+
+        // Also trigger push notification for immediate mobile alert
+        if (notificationData.userId && notificationData.senderId) {
+            this.sendPushNotification({
+                receiverId: notificationData.userId,
+                title: notificationData.title || this.getNotificationTitle(notificationData.type),
+                body: notificationData.message || notificationData.text || '',
+                url: notificationData.data?.url || '/notifications',
+                type: notificationData.type
+            }).catch(err => console.error('[DB] Push notification failed:', err));
         }
 
-        const data = await response.json();
-        return data.data.notification || data.data;
+        return {
+            id: docRef.id,
+            ...notificationData,
+            read: false,
+            isRead: false,
+            createdAt: Date.now()
+        } as import('../types').Notification;
+    }
+
+    // Helper to get notification title based on type
+    private static getNotificationTitle(type: string): string {
+        switch (type) {
+            case 'like': return 'New Like';
+            case 'comment': return 'New Comment';
+            case 'follow': return 'New Follower';
+            default: return 'Notification';
+        }
     }
 
     static async markNotificationRead(notificationId: string): Promise<void> {
@@ -1100,7 +1116,8 @@ export class DBService {
         const posts: Post[] = [];
         for (const postId of user.savedPosts) {
             const post = await this.getPost(postId);
-            if (post) posts.push(post);
+            // Filter out deleted posts
+            if (post && !post.isDeleted) posts.push(post);
         }
         return posts;
     }
@@ -1112,7 +1129,8 @@ export class DBService {
         const posts: Post[] = [];
         for (const postId of user.likedPosts) {
             const post = await this.getPost(postId);
-            if (post) posts.push(post);
+            // Filter out deleted posts
+            if (post && !post.isDeleted) posts.push(post);
         }
         return posts;
     }
@@ -1699,6 +1717,27 @@ export class DBService {
         // 2. Delete the chat document itself
         const chatRef = doc(db, 'chats', chatId);
         await deleteDoc(chatRef);
+    }
+
+    // Subscribe to total unread chats count for badge
+    static subscribeToUnreadChatsCount(userId: string, callback: (count: number) => void): () => void {
+        const chatsRef = collection(db, 'chats');
+        const q = query(chatsRef, where('participants', 'array-contains', userId));
+
+        const unsubscribe = onSnapshot(q, (snapshot) => {
+            let totalUnread = 0;
+            snapshot.docs.forEach(doc => {
+                const data = doc.data();
+                const unreadForUser = data.unreadCounts?.[userId] || 0;
+                if (unreadForUser > 0) totalUnread++;
+            });
+            callback(totalUnread);
+        }, (error) => {
+            console.error('[DB] Error subscribing to unread chats:', error);
+            callback(0);
+        });
+
+        return unsubscribe;
     }
 
     static async sendTyping(senderId: string, receiverId: string, isTyping: boolean): Promise<void> {

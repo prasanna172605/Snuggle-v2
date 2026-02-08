@@ -4,9 +4,10 @@ import { Home, MessageCircle, User, Plus, Bell } from 'lucide-react';
 
 interface BottomNavProps {
   unreadCount: number;
+  unreadMessagesCount?: number;
 }
 
-const BottomNav: React.FC<BottomNavProps> = ({ unreadCount }) => {
+const BottomNav: React.FC<BottomNavProps> = ({ unreadCount, unreadMessagesCount = 0 }) => {
   const NavItem = ({ to, icon: Icon, label }: { to: string; icon: any; label: string }) => {
     return (
       <NavLink
@@ -25,6 +26,14 @@ const BottomNav: React.FC<BottomNavProps> = ({ unreadCount }) => {
                 className="absolute top-0 right-0 w-3 h-3 bg-red-500 rounded-full border-2 border-white dark:border-dark-bg"
                 aria-label="Unread notifications"
               />
+            )}
+            {to === '/messages' && unreadMessagesCount > 0 && (
+              <span
+                className="absolute -top-1 -right-1 min-w-[16px] h-[16px] bg-red-500 rounded-full flex items-center justify-center text-[9px] font-bold text-white border-2 border-white dark:border-dark-bg"
+                aria-label="Unread messages"
+              >
+                {unreadMessagesCount > 9 ? '9+' : unreadMessagesCount}
+              </span>
             )}
           </div>
         )}
