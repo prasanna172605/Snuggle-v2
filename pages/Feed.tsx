@@ -368,7 +368,8 @@ const Feed: React.FC<FeedProps> = ({ currentUser, onUserClick }) => {
     const [storyUsers, setStoryUsers] = useState<User[]>([]);
     const [viewingStoryUserId, setViewingStoryUserId] = useState<string | null>(null);
 
-    // Optimistic Saved State
+    // Optimistic Like/Saved State - loaded from database
+    const [likedPostIds, setLikedPostIds] = useState<string[]>([]);
     const [savedPostIds, setSavedPostIds] = useState<string[]>([]);
     const [sharePost, setSharePost] = useState<Post | null>(null);
     const navigate = useNavigate();
@@ -429,6 +430,20 @@ const Feed: React.FC<FeedProps> = ({ currentUser, onUserClick }) => {
                 const userIdsWithStories = Array.from(new Set(s.map(story => story.userId)));
                 const sUsers = allUsers.filter(u => userIdsWithStories.includes(u.id));
                 setStoryUsers(sUsers);
+
+                // Load interaction state from database (critical for UI persistence)
+                if (activePosts.length > 0) {
+                    const postIds = activePosts.map(p => p.id);
+                    const interactions = await DBService.checkBatchInteractions(postIds, currentUser.id);
+                    const liked: string[] = [];
+                    const saved: string[] = [];
+                    interactions.forEach((state, postId) => {
+                        if (state.isLiked) liked.push(postId);
+                        if (state.isSaved) saved.push(postId);
+                    });
+                    setLikedPostIds(liked);
+                    setSavedPostIds(saved);
+                }
             } catch (e) {
                 console.error("Error loading feed:", e);
             } finally {
@@ -448,36 +463,47 @@ const Feed: React.FC<FeedProps> = ({ currentUser, onUserClick }) => {
     };
 
     const handleLike = async (postId: string) => {
-        const post = posts.find(p => p.id === postId);
-        if (!post) return;
-
-        const likesArray = Array.isArray(post.likes) ? post.likes : [];
-        const isLiked = likesArray.includes(currentUser.id);
+        const isCurrentlyLiked = likedPostIds.includes(postId);
 
         // Optimistic Update
+        setLikedPostIds(prev =>
+            isCurrentlyLiked
+                ? prev.filter(id => id !== postId)
+                : [...prev, postId]
+        );
+        // Also update post likeCount optimistically
         setPosts(current => current.map(p => {
             if (p.id === postId) {
-                const currentLikes = Array.isArray(p.likes) ? [...p.likes] : [];
                 return {
                     ...p,
-                    likes: isLiked
-                        ? currentLikes.filter(id => id !== currentUser.id)
-                        : [...currentLikes, currentUser.id]
+                    likeCount: (p.likeCount || 0) + (isCurrentlyLiked ? -1 : 1)
                 };
             }
             return p;
         }));
 
         try {
-            if (isLiked) {
-                await DBService.unlikePost(postId, currentUser.id);
-            } else {
-                await DBService.likePost(postId, currentUser.id);
-            }
+            const nowLiked = await DBService.toggleLike(postId, currentUser.id);
+            // Sync state with server response
+            setLikedPostIds(prev =>
+                nowLiked
+                    ? (prev.includes(postId) ? prev : [...prev, postId])
+                    : prev.filter(id => id !== postId)
+            );
         } catch (e) {
             // Revert on error
+            setLikedPostIds(prev =>
+                isCurrentlyLiked
+                    ? [...prev, postId]
+                    : prev.filter(id => id !== postId)
+            );
             setPosts(current => current.map(p => {
-                if (p.id === postId) return post; // Revert to original post object
+                if (p.id === postId) {
+                    return {
+                        ...p,
+                        likeCount: (p.likeCount || 0) + (isCurrentlyLiked ? 1 : -1)
+                    };
+                }
                 return p;
             }));
             toast.error('Failed to update like');
@@ -485,22 +511,31 @@ const Feed: React.FC<FeedProps> = ({ currentUser, onUserClick }) => {
     };
 
     const handleSave = async (postId: string) => {
-        const isSaved = savedPostIds.includes(postId);
+        const isCurrentlySaved = savedPostIds.includes(postId);
 
         // Optimistic Update
-        setSavedPostIds(prev => isSaved ? prev.filter(id => id !== postId) : [...prev, postId]);
+        setSavedPostIds(prev =>
+            isCurrentlySaved
+                ? prev.filter(id => id !== postId)
+                : [...prev, postId]
+        );
 
         try {
-            if (isSaved) {
-                await DBService.unsavePost(postId, currentUser.id);
-                toast.success('Removed from saved');
-            } else {
-                await DBService.savePost(postId, currentUser.id);
-                toast.success('Post saved!');
-            }
+            const nowSaved = await DBService.toggleSave(postId, currentUser.id);
+            // Sync state with server response
+            setSavedPostIds(prev =>
+                nowSaved
+                    ? (prev.includes(postId) ? prev : [...prev, postId])
+                    : prev.filter(id => id !== postId)
+            );
+            toast.success(nowSaved ? 'Post saved!' : 'Removed from saved');
         } catch (e) {
             // Revert
-            setSavedPostIds(prev => isSaved ? [...prev, postId] : prev.filter(id => id !== postId));
+            setSavedPostIds(prev =>
+                isCurrentlySaved
+                    ? [...prev, postId]
+                    : prev.filter(id => id !== postId)
+            );
             toast.error('Failed to update save');
         }
     };
@@ -709,8 +744,8 @@ const Feed: React.FC<FeedProps> = ({ currentUser, onUserClick }) => {
                             <div className="flex items-center justify-between px-3 pt-3">
                                 <div className="flex items-center gap-4">
                                     {(() => {
-                                        const likesArray = Array.isArray(post.likes) ? post.likes : [];
-                                        const isLiked = likesArray.includes(currentUser.id);
+                                        // Use likedPostIds from database for accurate state
+                                        const isLiked = likedPostIds.includes(post.id);
                                         return (
                                             <button onClick={() => handleLike(post.id)} className="group flex items-center gap-1.5 focus:outline-none">
                                                 <Heart className={`w-6 h-6 transition-transform active:scale-90 ${isLiked ? 'fill-red-500 text-red-500' : 'text-gray-900 dark:text-white stroke-[1.5px]'}`} />
@@ -729,7 +764,8 @@ const Feed: React.FC<FeedProps> = ({ currentUser, onUserClick }) => {
 
                                 {/* Save/Bookmark */}
                                 {(() => {
-                                    const isSaved = currentUser.savedPosts?.includes(post.id);
+                                    // Use savedPostIds from database for accurate state
+                                    const isSaved = savedPostIds.includes(post.id);
                                     return (
                                         <button onClick={() => handleSave(post.id)} className="group focus:outline-none">
                                             <Bookmark className={`w-6 h-6 transition-transform active:scale-90 ${isSaved ? 'fill-current text-gray-900 dark:text-white' : 'text-gray-900 dark:text-white stroke-[1.5px]'}`} />
@@ -741,7 +777,7 @@ const Feed: React.FC<FeedProps> = ({ currentUser, onUserClick }) => {
                             {/* Likes Text */}
                             <div className="px-4 py-1">
                                 <p className="font-bold text-sm text-gray-900 dark:text-white">
-                                    {Array.isArray(post.likes) ? post.likes.length : post.likes} likes
+                                    {post.likeCount ?? (Array.isArray(post.likes) ? post.likes.length : post.likes)} likes
                                 </p>
                             </div>
 

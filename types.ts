@@ -91,6 +91,7 @@ export interface Post {
   imageUrl?: string;
   likes: number | string[];  // Can be count or array of user IDs
   likedBy?: string[];  // Array of user IDs who liked this post
+  likeCount?: number;  // Count from subcollection
   comments: number;
   mediaType?: 'image' | 'video';
   commentCount?: number;

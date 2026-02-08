@@ -1056,57 +1056,144 @@ export class DBService {
         return result.data;
     }
 
-    static async likePost(postId: string, userId: string): Promise<void> {
+    // Toggle like - idempotent operation using subcollection
+    static async toggleLike(postId: string, userId: string): Promise<boolean> {
+        const likeRef = doc(db, 'posts', postId, 'likes', userId);
         const postRef = doc(db, 'posts', postId);
         const userRef = doc(db, 'users', userId);
 
-        // Add to post's likes and user's likedPosts
-        await updateDoc(postRef, {
-            likes: arrayUnion(userId)
-        });
-        await updateDoc(userRef, {
-            likedPosts: arrayUnion(postId)
-        });
+        // Check if already liked
+        const likeSnap = await getDoc(likeRef);
+        const wasLiked = likeSnap.exists();
 
-        // Create notification (non-blocking to prevent API failures from affecting likes)
-        const post = await this.getPost(postId);
-        const liker = await this.getUserById(userId);
-        if (post && liker && post.userId !== userId) {
-            this.createNotification({
-                userId: post.userId,
-                type: 'like',
-                senderId: userId,
-                text: `${liker.username} liked your post`,
-                // @ts-ignore - Extra fields for consistency if needed, but senderId/text are core
-                postId: postId
-            }).catch(err => console.error('[likePost] Notification failed (non-blocking):', err));
+        if (wasLiked) {
+            // Unlike - remove the like document
+            await deleteDoc(likeRef);
+            await updateDoc(postRef, { likeCount: increment(-1) });
+            await updateDoc(userRef, { likedPosts: arrayRemove(postId) });
+            console.log('[DB] Unliked post:', postId);
+            return false; // now NOT liked
+        } else {
+            // Like - create the like document
+            await setDoc(likeRef, {
+                userId,
+                timestamp: serverTimestamp()
+            });
+            await updateDoc(postRef, { likeCount: increment(1) });
+            await updateDoc(userRef, { likedPosts: arrayUnion(postId) });
+            console.log('[DB] Liked post:', postId);
+
+            // Send notification ONLY for NEW like (not previously liked)
+            const post = await this.getPost(postId);
+            const liker = await this.getUserById(userId);
+            if (post && liker && post.userId !== userId) {
+                this.createNotification({
+                    userId: post.userId,
+                    type: 'like',
+                    senderId: userId,
+                    text: `${liker.username} liked your post`,
+                    postId: postId
+                }).catch(err => console.error('[toggleLike] Notification failed:', err));
+            }
+            return true; // now liked
+        }
+    }
+
+    // Check if user liked a post
+    static async isPostLiked(postId: string, userId: string): Promise<boolean> {
+        const likeRef = doc(db, 'posts', postId, 'likes', userId);
+        const likeSnap = await getDoc(likeRef);
+        return likeSnap.exists();
+    }
+
+    // Legacy methods for backwards compatibility - redirect to toggle
+    static async likePost(postId: string, userId: string): Promise<void> {
+        const isLiked = await this.isPostLiked(postId, userId);
+        if (!isLiked) {
+            await this.toggleLike(postId, userId);
         }
     }
 
     static async unlikePost(postId: string, userId: string): Promise<void> {
-        const postRef = doc(db, 'posts', postId);
-        const userRef = doc(db, 'users', userId);
-
-        await updateDoc(postRef, {
-            likes: arrayRemove(userId)
-        });
-        await updateDoc(userRef, {
-            likedPosts: arrayRemove(postId)
-        });
+        const isLiked = await this.isPostLiked(postId, userId);
+        if (isLiked) {
+            await this.toggleLike(postId, userId);
+        }
     }
 
-    static async savePost(postId: string, userId: string): Promise<void> {
+    // Toggle save - idempotent operation using subcollection
+    static async toggleSave(postId: string, userId: string): Promise<boolean> {
+        const saveRef = doc(db, 'posts', postId, 'saves', userId);
         const userRef = doc(db, 'users', userId);
-        await updateDoc(userRef, {
-            savedPosts: arrayUnion(postId)
+
+        // Check if already saved
+        const saveSnap = await getDoc(saveRef);
+        const wasSaved = saveSnap.exists();
+
+        if (wasSaved) {
+            // Unsave
+            await deleteDoc(saveRef);
+            await updateDoc(userRef, { savedPosts: arrayRemove(postId) });
+            console.log('[DB] Unsaved post:', postId);
+            return false; // now NOT saved
+        } else {
+            // Save
+            await setDoc(saveRef, {
+                userId,
+                timestamp: serverTimestamp()
+            });
+            await updateDoc(userRef, { savedPosts: arrayUnion(postId) });
+            console.log('[DB] Saved post:', postId);
+            return true; // now saved
+        }
+    }
+
+    // Check if user saved a post
+    static async isPostSaved(postId: string, userId: string): Promise<boolean> {
+        const saveRef = doc(db, 'posts', postId, 'saves', userId);
+        const saveSnap = await getDoc(saveRef);
+        return saveSnap.exists();
+    }
+
+    // Check user interactions for a post (for UI state restoration)
+    static async checkUserInteractions(postId: string, userId: string): Promise<{ isLiked: boolean; isSaved: boolean }> {
+        const [likeSnap, saveSnap] = await Promise.all([
+            getDoc(doc(db, 'posts', postId, 'likes', userId)),
+            getDoc(doc(db, 'posts', postId, 'saves', userId))
+        ]);
+        return {
+            isLiked: likeSnap.exists(),
+            isSaved: saveSnap.exists()
+        };
+    }
+
+    // Batch check interactions for multiple posts
+    static async checkBatchInteractions(postIds: string[], userId: string): Promise<Map<string, { isLiked: boolean; isSaved: boolean }>> {
+        const results = new Map<string, { isLiked: boolean; isSaved: boolean }>();
+
+        // Batch fetch for performance
+        const promises = postIds.map(async (postId) => {
+            const interactions = await this.checkUserInteractions(postId, userId);
+            results.set(postId, interactions);
         });
+
+        await Promise.all(promises);
+        return results;
+    }
+
+    // Legacy methods for backwards compatibility
+    static async savePost(postId: string, userId: string): Promise<void> {
+        const isSaved = await this.isPostSaved(postId, userId);
+        if (!isSaved) {
+            await this.toggleSave(postId, userId);
+        }
     }
 
     static async unsavePost(postId: string, userId: string): Promise<void> {
-        const userRef = doc(db, 'users', userId);
-        await updateDoc(userRef, {
-            savedPosts: arrayRemove(postId)
-        });
+        const isSaved = await this.isPostSaved(postId, userId);
+        if (isSaved) {
+            await this.toggleSave(postId, userId);
+        }
     }
 
     static async getSavedPosts(userId: string): Promise<Post[]> {
