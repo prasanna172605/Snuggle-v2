@@ -240,8 +240,12 @@ const AppContent = ({
           <AnimatePresence mode="wait" initial={false}>
             <Suspense fallback={<LoadingFallback />}>
               <Routes location={location} key={location.pathname}>
+                {/* Home -> Feed (Memories) */}
                 <Route path="/" element={<PageTransition><Feed currentUser={currentUser} onUserClick={(userId) => navigate(`/profile/${userId}`)} /></PageTransition>} />
+                
+                {/* Messages */}
                 <Route path="/messages" element={<PageTransition><Messages currentUser={currentUser} onChatSelect={(user) => navigate(`/chat/${user.id}`)} onUserClick={(userId) => navigate(`/profile/${userId}`)} /></PageTransition>} />
+                
                 <Route path="/chat/:userId" element={<PageTransition><ChatWrapper currentUser={currentUser} /></PageTransition>} />
                 <Route path="/profile" element={<PageTransition><Profile user={currentUser} currentUser={currentUser} isOwnProfile={true} onLogout={onLogout} /></PageTransition>} />
                 <Route path="/profile/:userId" element={<PageTransition><Profile currentUser={currentUser} isOwnProfile={false} /></PageTransition>} />

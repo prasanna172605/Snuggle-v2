@@ -68,7 +68,7 @@ const Sidebar: React.FC<SidebarProps> = ({ unreadCount, unreadMessagesCount = 0,
 
             {/* Navigation */}
             <nav className="flex-1 space-y-2">
-                <NavItem to="/" icon={Home} label="Home" />
+                <NavItem to="/" icon={Home} label="Memories" />
                 <NavItem to="/messages" icon={MessageCircle} label="Messages" />
                 <NavItem to="/notifications" icon={Bell} label="Notifications" />
                 <NavItem to="/profile" icon={User} label="Profile" />

@@ -1,5 +1,4 @@
 
-
 import React, { useState, useEffect } from 'react';
 import { User, Post, Story, Comment as AppComment } from '../types';
 import { DBService } from '../services/database';
@@ -188,14 +187,14 @@ const StoriesBento: React.FC<{
                         document.getElementById('story-file-input')?.click();
                     }
                 }}>
-                    <div className={`w-[72px] h-[72px] rounded-full p-[3px] cursor-pointer transition-all ${storiesByUser[currentUser.id]?.length ? 'bg-gradient-to-tr from-amber-400 to-fuchsia-600' : 'bg-transparent border-2 border-dashed border-gray-300 dark:border-gray-600'}`}>
+                    <div className={`w-[72px] h-[72px] rounded-full p-[3px] cursor-pointer transition-all ${storiesByUser[currentUser.id]?.length ? 'bg-gradient-to-tr from-accent to-primary' : 'bg-transparent border-2 border-dashed border-gray-300 dark:border-gray-600'}`}>
                         <div className="w-full h-full rounded-full p-[2px] relative overflow-hidden">
                             <img src={currentUser.avatar} className="w-full h-full rounded-full object-cover border-2 border-white dark:border-black" alt="Your Story" />
 
                             {/* Plus Icon */}
                             <div
                                 onClick={handleAddStory}
-                                className="absolute bottom-0 right-0 w-6 h-6 bg-blue-500 rounded-full border-2 border-white dark:border-black flex items-center justify-center hover:bg-blue-600 transition-colors z-10"
+                                className="absolute bottom-0 right-0 w-6 h-6 bg-accent rounded-full border-2 border-white dark:border-black flex items-center justify-center hover:bg-accent-dark transition-colors z-10"
                             >
                                 <span className="text-white text-lg font-bold pb-0.5">+</span>
                             </div>
@@ -212,7 +211,7 @@ const StoriesBento: React.FC<{
 
                         return (
                             <div key={user.id} className="flex flex-col items-center space-y-1 min-w-[72px] group" onClick={() => onStoryClick(user.id)}>
-                                <div className={`w-[72px] h-[72px] rounded-full p-[3px] cursor-pointer transition-transform group-hover:scale-105 ${allViewed ? 'bg-gray-300 dark:bg-gray-700' : 'bg-gradient-to-tr from-amber-400 to-fuchsia-600'}`}>
+                                <div className={`w-[72px] h-[72px] rounded-full p-[3px] cursor-pointer transition-transform group-hover:scale-105 ${allViewed ? 'bg-gray-300 dark:bg-gray-700' : 'bg-gradient-to-tr from-accent to-primary'}`}>
                                     <div className="w-full h-full rounded-full p-[2px] bg-white dark:bg-black">
                                         <img src={user.avatar} className="w-full h-full rounded-full object-cover border-2 border-white dark:border-black" alt={user.username} />
                                     </div>
@@ -353,7 +352,7 @@ const Feed: React.FC<FeedProps> = ({ currentUser, onUserClick }) => {
     }
 
     return (
-        <div className="pb-20 pt-0">
+        <div className="pb-28 pt-4 md:pb-8">
             {/* Story Upload Input */}
             <input
                 type="file"
@@ -363,6 +362,7 @@ const Feed: React.FC<FeedProps> = ({ currentUser, onUserClick }) => {
                 onChange={handleStoryUpload}
             />
 
+            <h1 className="text-2xl font-bold px-4 mb-4 text-gray-900 dark:text-white">Memories</h1>
             <StoriesBento
                 currentUser={currentUser}
                 storyUsers={storyUsers}
@@ -432,111 +432,145 @@ const Feed: React.FC<FeedProps> = ({ currentUser, onUserClick }) => {
                 />
             )}
 
-            {/* Posts Feed */}
-            <div className="flex flex-col gap-6 px-4 max-w-xl mx-auto w-full">
+            {/* Posts Feed - Memories Style */}
+            <div className="flex flex-col gap-8 px-4 max-w-lg mx-auto w-full">
                 {posts.map(post => {
                     const user = users[post.userId] || { username: 'Unknown User', avatar: '', id: post.userId } as User;
                     const isLiked = likedPostIds.includes(post.id);
                     const isSaved = savedPostIds.includes(post.id);
+                    
+                    const likeCount = Array.isArray(post.likes) ? post.likes.length : (post.likes || 0);
 
                     return (
-                        <div key={post.id} className="bg-white dark:bg-dark-card border-y border-gray-100 dark:border-dark-border sm:border sm:rounded-3xl overflow-hidden shadow-sm hover:shadow-md transition-shadow">
-                            {/* Header */}
-                            <div className="flex items-center justify-between p-3">
-                                <div
-                                    className="flex items-center gap-3 cursor-pointer"
-                                    onClick={() => onUserClick?.(user.id)}
-                                >
-                                    <div className="w-10 h-10 rounded-full overflow-hidden border border-gray-100 dark:border-dark-border">
-                                        {/* Explicit Image instead of Skeleton for reliability if loaded */}
-                                        {user.avatar ? (
-                                            <img src={user.avatar} className="w-full h-full object-cover" alt={user.username} />
-                                        ) : (
-                                            <div className="w-full h-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center">
-                                                <span className="text-xs font-bold text-gray-400">{user.username.charAt(0).toUpperCase()}</span>
+                        <div key={post.id} className="relative group/card">
+                            {/* Floating Tile Card */}
+                            <div className="bg-white dark:bg-dark-card rounded-[32px] shadow-soft hover:shadow-lg transition-all duration-300 overflow-hidden border border-white/50 dark:border-white/5">
+                                
+                                {/* Header */}
+                                <div className="flex items-center justify-between p-4 pl-5">
+                                    <div className="flex items-center gap-3 cursor-pointer" onClick={() => onUserClick?.(user.id)}>
+                                        <div className="w-10 h-10 p-[2px] bg-gradient-to-tr from-accent to-primary rounded-full">
+                                            <div className="w-full h-full rounded-full border-2 border-white dark:border-dark-card overflow-hidden">
+                                                 {user.avatar ? (
+                                                    <img src={user.avatar} alt={user.username} className="w-full h-full object-cover" />
+                                                ) : <SkeletonAvatar className="w-full h-full" />}
                                             </div>
+                                        </div>
+                                        <div className="flex flex-col">
+                                            <span className="font-bold text-gray-900 dark:text-white text-[15px] leading-tight">{user.username}</span>
+                                            <span className="text-xs text-gray-400 font-medium">{formatRelativeTime(post.createdAt)}</span>
+                                        </div>
+                                    </div>
+                                    <button onClick={() => setMenuPost(post)} className="p-2 text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors">
+                                        <MoreHorizontal className="w-5 h-5" />
+                                    </button>
+                                </div>
+
+                                {/* Media Section with Overlay */}
+                                <div className="relative w-full aspect-[4/5] bg-gray-100 dark:bg-black/20 overflow-hidden">
+                                     {post.mediaType === 'video' ? (
+                                        <video
+                                            src={post.imageUrl || ''}
+                                            className="w-full h-full object-cover"
+                                            controls={false}
+                                            muted
+                                            loop
+                                            playsInline
+                                            onClick={() => navigate(`/post/${post.id}`)}
+                                        />
+                                    ) : (
+                                        <img
+                                            src={post.imageUrl || ''}
+                                            alt="Post"
+                                            className="w-full h-full object-cover"
+                                            loading="lazy"
+                                            onClick={() => navigate(`/post/${post.id}`)}
+                                        />
+                                    )}
+
+                                    {/* Overlay Actions */}
+                                    <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover/card:opacity-100 transition-opacity duration-300 flex items-end justify-between p-6">
+                                        <div className="flex items-center gap-4">
+                                            <button
+                                                onClick={() => handleLike(post.id)}
+                                                className="w-12 h-12 rounded-full bg-white/10 backdrop-blur-md flex items-center justify-center hover:bg-white/20 transition-all group/btn"
+                                            >
+                                                <Heart className={`w-6 h-6 ${isLiked ? 'fill-red-500 text-red-500' : 'text-white group-hover/btn:scale-110 transition-transform'}`} />
+                                            </button>
+                                            <button
+                                                onClick={() => setCommentsPost(post)}
+                                                className="w-12 h-12 rounded-full bg-white/10 backdrop-blur-md flex items-center justify-center hover:bg-white/20 transition-all text-white"
+                                            >
+                                                <MessageSquare className="w-6 h-6" />
+                                            </button>
+                                            <button
+                                                onClick={() => setSharePost(post)}
+                                                className="w-12 h-12 rounded-full bg-white/10 backdrop-blur-md flex items-center justify-center hover:bg-white/20 transition-all text-white"
+                                            >
+                                                <Send className="w-6 h-6" />
+                                            </button>
+                                        </div>
+                                        <button
+                                            onClick={() => handleSave(post)}
+                                            className="w-12 h-12 rounded-full bg-white/10 backdrop-blur-md flex items-center justify-center hover:bg-white/20 transition-all text-white"
+                                        >
+                                            <Bookmark className={`w-6 h-6 ${isSaved ? 'fill-white text-white' : 'text-white'}`} />
+                                        </button>
+                                    </div>
+                                    
+                                    {/* Always Visible Like Counter (if overlay hidden on mobile, fallback) */}
+                                    <div className="absolute bottom-4 left-4 sm:hidden pointer-events-none">
+                                         <div className="flex items-center gap-2 px-3 py-1.5 bg-black/40 backdrop-blur-md rounded-full text-white text-sm font-medium">
+                                            <Heart className={`w-4 h-4 ${isLiked ? 'fill-red-500 text-red-500' : 'text-white'}`} />
+                                            {likeCount > 0 && likeCount}
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Caption Section */}
+                                <div className="p-5 pt-4">
+                                    {likeCount > 0 && (
+                                        <div 
+                                            className="flex items-center gap-2 mb-2 cursor-pointer"
+                                            onClick={() => setLikesPost(post)}
+                                        >
+                                            <div className="flex -space-x-2">
+                                                <div className="w-5 h-5 rounded-full bg-gray-200 border border-white dark:border-dark-card" />
+                                                <div className="w-5 h-5 rounded-full bg-gray-300 border border-white dark:border-dark-card" />
+                                            </div>
+                                            <span className="text-sm font-medium text-gray-900 dark:text-white">
+                                                {likeCount} likes
+                                            </span>
+                                        </div>
+                                    )}
+                                    <div className="space-y-1">
+                                        <p className="text-[15px] leading-relaxed text-gray-800 dark:text-gray-200">
+                                            <span className="font-bold mr-2 text-gray-900 dark:text-white">{user.username}</span>
+                                            {post.caption}
+                                        </p>
+                                        {post.comments > 0 && (
+                                            <button
+                                                onClick={() => setCommentsPost(post)}
+                                                className="text-sm text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 font-medium mt-1"
+                                            >
+                                                View all {post.comments} comments
+                                            </button>
                                         )}
                                     </div>
-                                    <div>
-                                        <h3 className="font-bold text-sm text-black dark:text-white">{user.username}</h3>
-                                        <p className="text-xs text-gray-500">{formatRelativeTime(post.createdAt)}</p>
-                                    </div>
                                 </div>
-                                <button onClick={() => setMenuPost(post)} className="text-gray-500 hover:text-black dark:hover:text-white transition-colors p-2">
-                                    <MoreHorizontal className="w-5 h-5" />
-                                </button>
-                            </div>
-
-                            {/* Image */}
-                            <div className="relative aspect-square bg-gray-100 dark:bg-dark-bg cursor-pointer" onDoubleClick={() => handleLike(post.id)}>
-                                <img src={post.imageUrl} className="w-full h-full object-cover" alt="Post" loading="lazy" />
-                            </div>
-
-                            {/* Actions */}
-                            <div className="p-3 pb-1 flex items-center justify-between">
-                                <div className="flex items-center gap-4">
-                                    <button
-                                        onClick={() => handleLike(post.id)}
-                                        className="transition-transform active:scale-90"
-                                    >
-                                        <Heart
-                                            className={`w-7 h-7 ${isLiked ? 'fill-warm text-warm' : 'text-black dark:text-white stroke-[1.5px]'}`}
-                                        />
-                                    </button>
-                                    <button
-                                        onClick={() => setCommentsPost(post)}
-                                        className="transition-transform active:scale-90"
-                                    >
-                                        <MessageSquare className="w-7 h-7 text-black dark:text-white stroke-[1.5px]" />
-                                    </button>
-                                    <button
-                                        onClick={() => setSharePost(post)}
-                                        className="transition-transform active:scale-90"
-                                    >
-                                        <Send className="w-7 h-7 text-black dark:text-white stroke-[1.5px]" />
-                                    </button>
-                                </div>
-                                <button
-                                    onClick={() => handleSave(post)}
-                                    className="transition-transform active:scale-90"
-                                >
-                                    <Star className={`w-7 h-7 ${isSaved ? 'fill-warm text-warm' : 'text-black dark:text-white stroke-[1.5px]'}`} />
-                                </button>
-                            </div>
-
-                            {/* Likes & Caption */}
-                            <div className="px-3 pb-4">
-                                <button
-                                    onClick={() => setLikesPost(post)}
-                                    className="font-bold text-sm text-black dark:text-white hover:underline focus:outline-none block mb-1"
-                                >
-                                    {post.likeCount ?? (Array.isArray(post.likes) ? post.likes.length : post.likes || 0)} likes
-                                </button>
-                                <div className="text-sm leading-relaxed">
-                                    <span
-                                        className="font-bold mr-2 text-black dark:text-white cursor-pointer"
-                                        onClick={() => onUserClick?.(user.id)}
-                                    >
-                                        {user.username}
-                                    </span>
-                                    <span className="text-gray-800 dark:text-gray-300">{post.caption}</span>
-                                </div>
-                                {post.comments > 0 && (
-                                    <button
-                                        onClick={() => setCommentsPost(post)}
-                                        className="text-gray-500 text-sm mt-1.5 font-medium hover:text-black dark:hover:text-gray-300"
-                                    >
-                                        View all {post.comments} comments
-                                    </button>
-                                )}
                             </div>
                         </div>
                     );
                 })}
                 {posts.length === 0 && (
-                    <div className="text-center py-20 bg-white/50 dark:bg-dark-surface/50 rounded-3xl mx-4 border border-dashed border-gray-200 dark:border-dark-border">
-                        <p className="text-gray-500 font-medium">No posts here yet.</p>
-                        <p className="text-sm text-gray-400 mt-1">Follow people to see their snaps!</p>
+                    <div className="flex flex-col items-center justify-center py-20 text-center">
+                        <div className="w-20 h-20 bg-warm-neutral dark:bg-dark-card rounded-full flex items-center justify-center mb-4">
+                            <Star className="w-10 h-10 text-accent/50" />
+                        </div>
+                        <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2">No Memories Yet</h3>
+                        <p className="text-gray-500 max-w-xs mx-auto">
+                            Start capturing your moments to see them appear here in your memories feed.
+                        </p>
                     </div>
                 )}
             </div>

@@ -37,8 +37,9 @@ export const SkeletonText: React.FC<{ lines?: number; className?: string }> = ({
     );
 };
 
-export const SkeletonAvatar: React.FC<{ size?: 'sm' | 'md' | 'lg' }> = ({
+export const SkeletonAvatar: React.FC<{ size?: 'sm' | 'md' | 'lg'; className?: string }> = ({
     size = 'md',
+    className,
 }) => {
     const sizeClasses = {
         sm: 'w-8 h-8',
@@ -46,7 +47,7 @@ export const SkeletonAvatar: React.FC<{ size?: 'sm' | 'md' | 'lg' }> = ({
         lg: 'w-12 h-12',
     };
 
-    return <Skeleton className={cn('rounded-full', sizeClasses[size])} />;
+    return <Skeleton className={cn('rounded-full', sizeClasses[size], className)} />;
 };
 
 export const SkeletonCard: React.FC<{ className?: string }> = ({ className }) => {

@@ -26,7 +26,7 @@ export default {
           dark: '#022E33',
           50: '#F0FDFD',
           100: '#CCFBFB',
-          200: '#9AD3DA', // Light Blue from palette
+          200: '#9AD3DA',
           300: '#5FB5BE',
           400: '#2D8E99',
           500: '#03444A', // Base
@@ -36,27 +36,10 @@ export default {
           900: '#011517',
         },
 
-        // Accent: Teal (#00A8A8)
+        // Accent: Soft Orange (#E66414) - REPLACING Teal as main accent
         accent: {
-          DEFAULT: '#00A8A8',
-          light: '#9AD3DA', // Light Blue from palette
-          dark: '#007A7A',
-          50: '#F0FDFD',
-          100: '#D1FAFA',
-          200: '#9AD3DA',
-          300: '#5EC2C2',
-          400: '#26BDBD',
-          500: '#00A8A8', // Base
-          600: '#008F8F',
-          700: '#007A7A',
-          800: '#006161',
-          900: '#004A4A',
-        },
-
-        // Warm Accent: Spanish Orange (#E66414)
-        warm: {
           DEFAULT: '#E66414',
-          light: '#FF924C', // Peach from palette
+          light: '#FF924C', // Peach
           dark: '#BF500F',
           50: '#FFF5EB',
           100: '#FFE8D6',
@@ -70,6 +53,12 @@ export default {
           900: '#853207',
         },
 
+        // Warm Neutral Backgrounds
+        warm: {
+          neutral: '#FAF9F6', // Alabaster / Off-White
+          card: '#FFFFFF',
+        },
+
         // Semantic: Success
         success: {
           DEFAULT: '#2E7D32',
@@ -80,7 +69,7 @@ export default {
 
         // Semantic: Warning
         warning: {
-          DEFAULT: '#FF924C', // Using Peach
+          DEFAULT: '#FF924C',
           light: '#FFB078',
           dark: '#E66414',
           bg: 'rgba(255, 146, 76, 0.1)',
@@ -98,24 +87,19 @@ export default {
         // LIGHT MODE SURFACES
         // ==============================
         light: {
-          bg: '#9AD3DA', // Light Blue Background
+          background: '#FAF9F6', // Warm Neutral
           surface: '#FFFFFF',
-          elevated: '#FFFFFF',
-          overlay: 'rgba(255, 255, 255, 0.9)',
-          divider: '#E5E7EB',
-          border: '#E5E7EB',
-          hover: 'rgba(0, 0, 0, 0.05)',
-          pressed: 'rgba(0, 0, 0, 0.1)',
-          selected: 'rgba(230, 100, 20, 0.12)', // Warm Orange Tint
-        },
-
-        // Light mode text
-        'light-text': {
-          primary: '#000000', // Strict Black
-          secondary: '#374151',
-          tertiary: '#9CA3AF',
-          disabled: '#D1D5DB',
-          inverse: '#FFFFFF',
+          text: {
+            primary: '#1A1A1A', // Dark Readable
+            secondary: '#4A4A4A',
+            muted: '#757575',
+            tertiary: '#757575',
+            disabled: '#9CA3AF',
+          },
+          border: '#E0E0E0',
+          hover: '#F5F5F5',
+          pressed: '#EEEEEE',
+          divider: '#E0E0E0',
         },
 
         // ==============================

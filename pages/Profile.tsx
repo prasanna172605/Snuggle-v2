@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { User, Post } from '../types';
@@ -151,382 +152,254 @@ const Profile: React.FC<ProfileProps> = ({ user: propUser, currentUser, isOwnPro
                 throw new Error(err.message || 'Failed to update profile');
             }
 
-            const data = await response.json();
-            const updatedUser = data.data.user; // Assuming response structure
-
+            // 3. Update Local State
+            const updatedUser = { ...user, ...editForm, avatar: avatarUrl };
             setUser(updatedUser);
-            // Also update local session to reflect changes immediately
-            if (isOwnProfile) {
-                // currentUser props might be stale until parent updates, 
-                // but we can rely on local state 'user' for now.
-                // Optionally trigger a re-fetch or parent callback if needed.
+            if (isOwnProfile && onLogout) {
+                 // Consider updating context user here if we had access to setContextUser
             }
             setIsEditing(false);
-        } catch (err: any) {
-            console.error(err);
-            setEditError(err.message || 'Failed to save changes');
+            setAvatarFile(null);
+            setPreviewAvatar(null);
+
+        } catch (error: any) {
+            console.error('Save Profile Error:', error);
+            setEditError(error.message);
         } finally {
             setSaving(false);
         }
     };
-
+    
     const openFollowList = async (type: 'followers' | 'following') => {
         if (!user) return;
         setShowFollowList(type);
-        setFollowListUsers([]); // Reset while loading
         const ids = type === 'followers' ? user.followers : user.following;
         if (ids && ids.length > 0) {
             const users = await DBService.getUsersByIds(ids);
             setFollowListUsers(users);
+        } else {
+            setFollowListUsers([]);
         }
-    };
+    }
 
-    // ... (inside component)
-
-    if (loading || !user) return <div className="p-4 pt-10"><SkeletonProfile /></div>;
+    if (loading) return <SkeletonProfile />;
+    if (!user) return <div className="p-10 text-center">User not found</div>;
 
     // --- Edit Mode UI ---
     if (isEditing) {
         return (
-            <div className="pb-28 pt-2 px-2 relative min-h-screen bg-snuggle-50">
-                <div className="bg-white rounded-bento p-6 shadow-sm">
+            <div className="min-h-screen bg-gray-50 dark:bg-black p-4 pb-24">
+                <div className="max-w-md mx-auto bg-white dark:bg-dark-card rounded-3xl p-6 shadow-sm">
                     <div className="flex justify-between items-center mb-6">
-                        <h2 className="text-xl font-bold">Edit Profile</h2>
-                        <button onClick={() => setIsEditing(false)} className="bg-gray-100 p-2 rounded-full hover:bg-gray-200">
-                            <XIcon className="w-5 h-5" />
+                        <button onClick={() => setIsEditing(false)} className="text-gray-500">Cancel</button>
+                        <h2 className="text-xl font-bold dark:text-white">Edit Profile</h2>
+                        <button onClick={handleSaveProfile} disabled={saving} className="text-accent font-bold">
+                            {saving ? 'Saving...' : 'Done'}
                         </button>
                     </div>
 
-                    <div className="flex flex-col items-center mb-6 relative">
-                        <div className="w-28 h-28 rounded-[36px] bg-gray-100 mb-4 relative overflow-hidden group">
-                            <img src={previewAvatar || user.avatar} className="w-full h-full object-cover" />
-                            <div className="absolute inset-0 bg-black/30 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer" onClick={() => fileInputRef.current?.click()}>
+                    <div className="flex flex-col items-center mb-8">
+                        <div className="relative group cursor-pointer" onClick={() => fileInputRef.current?.click()}>
+                             <div className="w-24 h-24 rounded-full overflow-hidden border-4 border-gray-100 dark:border-dark-border">
+                                <img 
+                                    src={previewAvatar || user.avatar || 'https://via.placeholder.com/150'} 
+                                    className="w-full h-full object-cover" 
+                                />
+                             </div>
+                             <div className="absolute inset-0 bg-black/40 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
                                 <Camera className="w-8 h-8 text-white" />
-                            </div>
+                             </div>
                         </div>
-                        <input type="file" ref={fileInputRef} onChange={handleFileSelect} className="hidden" accept="image/*" />
-                        <button onClick={() => fileInputRef.current?.click()} className="text-sm font-bold text-snuggle-500">Change Photo</button>
+                        <p className="text-accent font-medium mt-3 cursor-pointer" onClick={() => fileInputRef.current?.click()}>
+                            Change Profile Photo
+                        </p>
+                        <input type="file" ref={fileInputRef} onChange={handleFileSelect} accept="image/*" className="hidden" />
                     </div>
 
                     <div className="space-y-4">
                         <div>
-                            <label className="text-xs font-bold text-gray-400 uppercase ml-3">Full Name</label>
+                            <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Name</label>
                             <input
                                 type="text"
                                 value={editForm.fullName || ''}
-                                onChange={e => setEditForm(prev => ({ ...prev, fullName: e.target.value }))}
-                                className="w-full bg-gray-50 rounded-xl p-3 font-bold text-gray-900 border-2 border-transparent focus:border-snuggle-100 focus:bg-white transition-all outline-none"
+                                onChange={e => setEditForm({ ...editForm, fullName: e.target.value })}
+                                className="w-full p-3 bg-gray-50 dark:bg-dark-bg rounded-xl border-none focus:ring-2 focus:ring-accent/20 dark:text-white"
+                                placeholder="Name"
                             />
                         </div>
-
                         <div>
-                            <label className="text-xs font-bold text-gray-400 uppercase ml-3">Bio</label>
+                            <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Username</label>
+                            <input
+                                type="text"
+                                value={editForm.username || ''}
+                                onChange={e => setEditForm({ ...editForm, username: e.target.value })}
+                                className="w-full p-3 bg-gray-50 dark:bg-dark-bg rounded-xl border-none focus:ring-2 focus:ring-accent/20 dark:text-white"
+                                placeholder="Username"
+                            />
+                        </div>
+                        <div>
+                            <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Bio</label>
                             <textarea
                                 value={editForm.bio || ''}
-                                onChange={e => setEditForm(prev => ({ ...prev, bio: e.target.value }))}
-                                className="w-full bg-gray-50 rounded-xl p-3 text-sm font-medium text-gray-900 border-2 border-transparent focus:border-snuggle-100 focus:bg-white transition-all outline-none h-24 resize-none"
-                                maxLength={500}
-                                placeholder="Tell us about yourself..."
-                            />
-                            <div className="text-right text-[10px] text-gray-400 font-bold pr-2">{editForm.bio?.length || 0}/500</div>
-                        </div>
-
-                        <div>
-                            <label className="text-xs font-bold text-gray-400 uppercase ml-3">Location</label>
-                            <div className="grid grid-cols-2 gap-2">
-                                <input
-                                    type="text"
-                                    placeholder="City"
-                                    value={editForm.location?.city || ''}
-                                    onChange={e => setEditForm(prev => ({ ...prev, location: { ...prev.location, city: e.target.value, country: prev.location?.country } }))}
-                                    className="w-full bg-gray-50 rounded-xl p-3 text-sm font-bold border-2 border-transparent focus:border-snuggle-100 focus:bg-white outline-none"
-                                />
-                                <input
-                                    type="text"
-                                    placeholder="Country"
-                                    value={editForm.location?.country || ''}
-                                    onChange={e => setEditForm(prev => ({ ...prev, location: { ...prev.location, country: e.target.value, city: prev.location?.city } }))}
-                                    className="w-full bg-gray-50 rounded-xl p-3 text-sm font-bold border-2 border-transparent focus:border-snuggle-100 focus:bg-white outline-none"
-                                />
-                            </div>
-                        </div>
-
-                        <div>
-                            <label className="text-xs font-bold text-gray-400 uppercase ml-3">Date of Birth</label>
-                            <input
-                                type="date"
-                                value={editForm.dateOfBirth || ''}
-                                onChange={e => setEditForm(prev => ({ ...prev, dateOfBirth: e.target.value }))}
-                                className="w-full bg-gray-50 rounded-xl p-3 text-sm font-bold text-gray-900 border-2 border-transparent focus:border-snuggle-100 focus:bg-white transition-all outline-none"
+                                onChange={e => setEditForm({ ...editForm, bio: e.target.value })}
+                                className="w-full p-3 bg-gray-50 dark:bg-dark-bg rounded-xl border-none focus:ring-2 focus:ring-accent/20 dark:text-white resize-none h-24"
+                                placeholder="Bio"
                             />
                         </div>
-
-                        <div>
-                            <label className="text-xs font-bold text-gray-400 uppercase ml-3">Phone</label>
-                            <input
-                                type="tel"
-                                value={editForm.phone || ''}
-                                onChange={e => setEditForm(prev => ({ ...prev, phone: e.target.value }))}
-                                className="w-full bg-gray-50 rounded-xl p-3 text-sm font-bold text-gray-900 border-2 border-transparent focus:border-snuggle-100 focus:bg-white transition-all outline-none"
-                                placeholder="+1 234 567 8900"
-                            />
-                        </div>
-
-                        <div>
-                            <label className="text-xs font-bold text-gray-400 uppercase ml-3">Website</label>
-                            <input
-                                type="url"
-                                value={editForm.socialLinks?.website || ''}
-                                onChange={e => setEditForm(prev => ({ ...prev, socialLinks: { ...prev.socialLinks, website: e.target.value } }))}
-                                className="w-full bg-gray-50 rounded-xl p-3 text-sm font-bold text-gray-900 border-2 border-transparent focus:border-snuggle-100 focus:bg-white transition-all outline-none"
-                                placeholder="https://..."
-                            />
-                        </div>
-
-                        {editError && (
-                            <div className="bg-red-50 text-red-500 text-xs font-bold p-3 rounded-xl text-center">
-                                {editError}
-                            </div>
-                        )}
-
-                        <button
-                            onClick={handleSaveProfile}
-                            disabled={saving}
-                            className="w-full bg-black text-white font-bold py-4 rounded-xl shadow-lg hover:bg-gray-800 active:scale-95 transition-all flex justify-center items-center gap-2"
-                        >
-                            {saving ? (
-                                <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                            ) : (
-                                <>
-                                    <Save className="w-4 h-4" /> Save Changes
-                                </>
-                            )}
-                        </button>
+                        {editError && <p className="text-red-500 text-sm text-center">{editError}</p>}
                     </div>
                 </div>
             </div>
         );
     }
 
-    // --- View Mode UI (Instagram-like) ---
+    // --- View Mode UI (New Design) ---
     return (
-        <div className="pb-28 relative bg-white dark:bg-black min-h-screen">
-            {/* Header with Settings */}
-            <div className="sticky top-0 z-20 bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl border-b border-white/20 dark:border-white/5 shadow-sm">
-                <div className="flex items-center justify-between px-6 py-4 max-w-4xl mx-auto">
-                    <h1 className="text-2xl font-black text-gray-900 dark:text-white tracking-tight">{user.username}</h1>
+        <div className="pb-28 bg-warm-neutral dark:bg-black min-h-screen">
+             {/* Header with Settings - Overlay on Cover Image */}
+             <div className="absolute top-0 left-0 right-0 z-20 p-4 flex justify-between items-center text-white">
+                 <button onClick={() => navigate(-1)} className="p-2 bg-black/20 backdrop-blur-md rounded-full hover:bg-black/30 transition-colors">
+                     <XIcon className="w-6 h-6" />
+                 </button>
+                 {isOwnProfile && (
+                     <button onClick={() => navigate('/settings')} className="p-2 bg-black/20 backdrop-blur-md rounded-full hover:bg-black/30 transition-colors">
+                         <Settings className="w-6 h-6" />
+                     </button>
+                 )}
+             </div>
+
+            {/* Profile Header Block */}
+            <div className="bg-white dark:bg-dark-card rounded-b-[40px] shadow-sm overflow-hidden mb-6">
+                {/* Cover Image */}
+                <div className="h-48 md:h-64 bg-gradient-to-r from-blue-400 via-purple-500 to-pink-500 relative">
+                     {/* Future: Real Cover Image */}
+                </div>
+
+                {/* Profile Info */}
+                <div className="px-6 pb-8 pt-0 relative text-center">
+                    {/* Avatar */}
+                    <div className="relative -mt-16 mb-4 inline-block">
+                        <div className="w-32 h-32 rounded-full p-1 bg-white dark:bg-dark-card mx-auto">
+                            <img 
+                                src={user.avatar} 
+                                alt={user.username} 
+                                className="w-full h-full rounded-full object-cover border-4 border-white dark:border-dark-card" 
+                            />
+                        </div>
+                    </div>
+
+                    {/* Name & Handle */}
+                    <h1 className="text-2xl font-black text-gray-900 dark:text-white mb-1">{user.fullName}</h1>
+                    <p className="text-gray-500 font-medium mb-4">@{user.username}</p>
+
+                    {/* Bio */}
+                    {user.bio && (
+                        <p className="text-gray-700 dark:text-gray-300 max-w-md mx-auto mb-6 leading-relaxed">
+                            {user.bio}
+                        </p>
+                    )}
+
+                    {/* Actions */}
+                    <div className="flex justify-center gap-3 mb-8">
+                        {isOwnProfile ? (
+                            <button 
+                                onClick={() => setIsEditing(true)}
+                                className="px-8 py-3 bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-white font-bold rounded-2xl hover:bg-gray-200 dark:hover:bg-gray-700 transition-all"
+                            >
+                                Edit Profile
+                            </button>
+                        ) : (
+                             <button
+                                onClick={handleFollowToggle}
+                                disabled={followLoading}
+                                className={`px-8 py-3 font-bold rounded-2xl transition-all shadow-lg shadow-accent/20 ${isFollowing
+                                    ? 'bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-white'
+                                    : 'bg-accent text-white'
+                                    }`}
+                            >
+                                {isFollowing ? 'Following' : 'Follow'}
+                            </button>
+                        )}
+                        <button className="p-3 bg-gray-100 dark:bg-gray-800 rounded-2xl hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-900 dark:text-white">
+                            <Share2 className="w-5 h-5" />
+                        </button>
+                    </div>
+
+                     {/* Stats Row */}
+                     <div className="flex justify-center gap-8 md:gap-16 border-t border-gray-100 dark:border-dark-border pt-6">
+                        <div className="text-center">
+                            <span className="block font-black text-xl text-gray-900 dark:text-white">{userPosts.length}</span>
+                            <span className="text-sm text-gray-500 font-medium uppercase tracking-wide">Posts</span>
+                        </div>
+                        <div className="text-center cursor-pointer hover:opacity-70" onClick={() => openFollowList('followers')}>
+                            <span className="block font-black text-xl text-gray-900 dark:text-white">{user.followers?.length || 0}</span>
+                            <span className="text-sm text-gray-500 font-medium uppercase tracking-wide">Followers</span>
+                        </div>
+                        <div className="text-center cursor-pointer hover:opacity-70" onClick={() => openFollowList('following')}>
+                            <span className="block font-black text-xl text-gray-900 dark:text-white">{user.following?.length || 0}</span>
+                            <span className="text-sm text-gray-500 font-medium uppercase tracking-wide">Following</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            {/* Content Tabs - Pill Style */}
+            <div className="px-4 mb-4">
+                <div className="bg-white dark:bg-dark-card p-1.5 rounded-[24px] flex shadow-sm">
+                    <button
+                        onClick={() => setActiveTab('posts')}
+                        className={`flex-1 py-2.5 rounded-[20px] font-bold text-sm transition-all ${activeTab === 'posts'
+                            ? 'bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-white shadow-sm'
+                            : 'text-gray-500 hover:bg-gray-50 dark:hover:bg-white/5'
+                            }`}
+                    >
+                        Posts
+                    </button>
+                    <button
+                        onClick={() => setActiveTab('reels')}
+                        className={`flex-1 py-2.5 rounded-[20px] font-bold text-sm transition-all ${activeTab === 'reels'
+                            ? 'bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-white shadow-sm'
+                            : 'text-gray-500 hover:bg-gray-50 dark:hover:bg-white/5'
+                            }`}
+                    >
+                        Reels
+                    </button>
                     {isOwnProfile && (
-                        <button onClick={() => navigate('/settings')} className="p-3 bg-gray-50 dark:bg-white/5 hover:bg-gray-100 dark:hover:bg-white/10 rounded-full transition-colors">
-                            <Settings className="w-6 h-6 text-gray-700 dark:text-gray-200" />
+                         <button
+                            onClick={() => setActiveTab('favourites')}
+                            className={`flex-1 py-2.5 rounded-[20px] font-bold text-sm transition-all ${activeTab === 'favourites'
+                                ? 'bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-white shadow-sm'
+                                : 'text-gray-500 hover:bg-gray-50 dark:hover:bg-white/5'
+                                }`}
+                        >
+                            Saved
                         </button>
                     )}
                 </div>
             </div>
 
-            <div className="max-w-4xl mx-auto px-4">
-                {/* Profile Header - Horizontal Layout */}
-                <div className="py-6 flex items-start gap-6 md:gap-10">
-                    {/* Avatar */}
-                    <div className="flex-shrink-0">
-                        <div className="w-20 h-20 md:w-36 md:h-36 rounded-full ring-2 ring-warm p-1">
-                            <img src={user.avatar} alt={user.username} className="w-full h-full rounded-full object-cover bg-gray-200" />
-                        </div>
-                    </div>
-
-                    {/* Info Section */}
-                    <div className="flex-1 min-w-0">
-                        {/* Username and Actions */}
-                        <div className="flex flex-wrap items-center gap-3 mb-4">
-                            <h2 className="text-xl font-semibold text-gray-900 dark:text-white">{user.username}</h2>
-                            {isOwnProfile ? (
-                                <div className="flex gap-2">
-                                    <button
-                                        onClick={() => setIsEditing(true)}
-                                        className="px-4 py-1.5 bg-gray-100 dark:bg-gray-800 rounded-lg font-semibold text-sm hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
-                                    >
-                                        Edit profile
-                                    </button>
-                                    <button
-                                        className="px-4 py-1.5 bg-gray-100 dark:bg-gray-800 rounded-lg font-semibold text-sm hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
-                                    >
-                                        View archive
-                                    </button>
-                                </div>
-                            ) : (
-                                <div className="flex gap-2">
-                                    <button
-                                        onClick={handleFollowToggle}
-                                        disabled={followLoading}
-                                        className={`px-6 py-1.5 rounded-lg font-semibold text-sm transition-colors flex items-center gap-2 ${isFollowing
-                                            ? 'bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-white hover:bg-gray-200'
-                                            : 'bg-blue-500 text-white hover:bg-blue-600'
-                                            }`}
-                                    >
-                                        {followLoading ? (
-                                            <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
-                                        ) : isFollowing ? 'Following' : 'Follow'}
-                                    </button>
-                                    <button
-                                        onClick={() => navigate(`/chat/${user.id}`)}
-                                        className="px-4 py-1.5 bg-gray-100 dark:bg-gray-800 rounded-lg font-semibold text-sm hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
-                                    >
-                                        Message
-                                    </button>
-                                </div>
-                            )}
-                        </div>
-
-                        {/* Stats Row */}
-                        <div className="hidden md:flex gap-8 mb-4">
-                            <div className="text-center">
-                                <span className="font-bold text-gray-900 dark:text-white">{userPosts.length}</span>
-                                <span className="text-gray-500 ml-1">posts</span>
-                            </div>
-                            <div
-                                className="cursor-pointer hover:opacity-70"
-                                onClick={() => openFollowList('followers')}
-                            >
-                                <span className="font-bold text-gray-900 dark:text-white">{user.followers?.length || 0}</span>
-                                <span className="text-gray-500 ml-1">followers</span>
-                            </div>
-                            <div
-                                className="cursor-pointer hover:opacity-70"
-                                onClick={() => openFollowList('following')}
-                            >
-                                <span className="font-bold text-gray-900 dark:text-white">{user.following?.length || 0}</span>
-                                <span className="text-gray-500 ml-1">following</span>
-                            </div>
-                        </div>
-
-                        {/* Bio (Desktop) */}
-                        <div className="hidden md:block">
-                            <p className="font-semibold text-gray-900 dark:text-white">{user.fullName}</p>
-                            {user.bio && <p className="text-gray-700 dark:text-gray-300 text-sm whitespace-pre-line">{user.bio}</p>}
-                            {user.socialLinks?.website && (
-                                <a href={user.socialLinks.website} target="_blank" className="text-blue-900 dark:text-blue-400 font-semibold text-sm hover:underline">
-                                    {user.socialLinks.website.replace(/^https?:\/\//, '')}
-                                </a>
-                            )}
-                        </div>
-                    </div>
-                </div>
-
-                {/* Bio (Mobile) */}
-                <div className="md:hidden pb-4 border-b border-gray-100 dark:border-dark-border">
-                    <p className="font-semibold text-gray-900 dark:text-white">{user.fullName}</p>
-                    {user.bio && <p className="text-gray-700 dark:text-gray-300 text-sm whitespace-pre-line">{user.bio}</p>}
-                    {user.socialLinks?.website && (
-                        <a href={user.socialLinks.website} target="_blank" className="text-blue-900 dark:text-blue-400 font-semibold text-sm hover:underline">
-                            {user.socialLinks.website.replace(/^https?:\/\//, '')}
-                        </a>
-                    )}
-                </div>
-
-                {/* Stats Row (Mobile) */}
-                <div className="md:hidden py-3 grid grid-cols-3 border-b border-gray-100 dark:border-dark-border">
-                    <div className="text-center">
-                        <span className="block font-bold text-gray-900 dark:text-white">{userPosts.length}</span>
-                        <span className="text-xs text-gray-500">posts</span>
-                    </div>
-                    <div
-                        className="text-center cursor-pointer"
-                        onClick={() => openFollowList('followers')}
-                    >
-                        <span className="block font-bold text-gray-900 dark:text-white">{user.followers?.length || 0}</span>
-                        <span className="text-xs text-gray-500">followers</span>
-                    </div>
-                    <div
-                        className="text-center cursor-pointer"
-                        onClick={() => openFollowList('following')}
-                    >
-                        <span className="block font-bold text-gray-900 dark:text-white">{user.following?.length || 0}</span>
-                        <span className="text-xs text-gray-500">following</span>
-                    </div>
-                </div>
-
-                {/* Story Highlights (Placeholder) */}
-                <div className="py-4 flex gap-4 overflow-x-auto scrollbar-hide">
-                    <div className="flex flex-col items-center gap-1 flex-shrink-0">
-                        <div className="w-16 h-16 rounded-full border-2 border-gray-200 dark:border-gray-700 flex items-center justify-center bg-gray-50 dark:bg-gray-900">
-                            <span className="text-2xl">+</span>
-                        </div>
-                        <span className="text-xs text-gray-500">New</span>
-                    </div>
-                </div>
-
-                {/* Tab Bar */}
-                <div className="flex border-t border-gray-100 dark:border-gray-800 mt-2">
-                    <button
-                        onClick={() => setActiveTab('posts')}
-                        className={`flex-1 py-4 flex justify-center items-center gap-2 border-t-2 -mt-[2px] transition-all ${activeTab === 'posts'
-                            ? 'border-gray-900 dark:border-white text-gray-900 dark:text-white'
-                            : 'border-transparent text-gray-400 hover:text-gray-600'
-                            }`}
-                    >
-                        <Grid className={`w-5 h-5 ${activeTab === 'posts' ? 'stroke-[2.5px]' : ''}`} />
-                    </button>
-                    <button
-                        onClick={() => setActiveTab('reels')}
-                        className={`flex-1 py-4 flex justify-center items-center gap-2 border-t-2 -mt-[2px] transition-all ${activeTab === 'reels'
-                            ? 'border-gray-900 dark:border-white text-gray-900 dark:text-white'
-                            : 'border-transparent text-gray-400 hover:text-gray-600'
-                            }`}
-                    >
-                        <Film className={`w-5 h-5 ${activeTab === 'reels' ? 'stroke-[2.5px]' : ''}`} />
-                    </button>
-                    {isOwnProfile && (
-                        <button
-                            onClick={() => setActiveTab('favourites')}
-                            className={`flex-1 py-4 flex justify-center items-center gap-2 border-t-2 -mt-[2px] transition-all ${activeTab === 'favourites'
-                                ? 'border-gray-900 dark:border-white text-gray-900 dark:text-white'
-                                : 'border-transparent text-gray-400 hover:text-gray-600'
-                                }`}
-                        >
-                            <div className={`w-5 h-5 flex items-center justify-center text-lg leading-none ${activeTab === 'favourites' ? 'stroke-[2.5px]' : ''}`}>⭐</div>
-                        </button>
-                    )}
-                    <button
-                        onClick={() => setActiveTab('tagged')}
-                        className={`flex-1 py-4 flex justify-center items-center gap-2 border-t-2 -mt-[2px] transition-all ${activeTab === 'tagged'
-                            ? 'border-gray-900 dark:border-white text-gray-900 dark:text-white'
-                            : 'border-transparent text-gray-400 hover:text-gray-600'
-                            }`}
-                    >
-                        <UserSquare2 className={`w-5 h-5 ${activeTab === 'tagged' ? 'stroke-[2.5px]' : ''}`} />
-                    </button>
-                </div>
-
-                {/* Posts Grid - 3 Columns with Gap */}
-                <div className="grid grid-cols-3 gap-1 pb-20">
+            {/* Posts Grid */}
+            <div className="max-w-4xl mx-auto px-4 pb-20">
+                <div className="grid grid-cols-3 gap-1.5 container-round">
                     {activeTab === 'posts' && userPosts.map(post => (
                         <div
                             key={post.id}
                             onClick={() => setSelectedPost(post)}
-                            className="aspect-square relative group cursor-pointer overflow-hidden bg-gray-100 dark:bg-gray-800 rounded-xl"
+                            className="aspect-square relative group cursor-pointer overflow-hidden bg-gray-100 dark:bg-gray-800 rounded-2xl"
                         >
                             {post.mediaType === 'video' ? (
                                 <>
-                                    <video src={post.imageUrl} className="w-full h-full object-cover transition-transform group-hover:scale-110 duration-500" />
+                                    <video src={post.imageUrl} className="w-full h-full object-cover" />
                                     <div className="absolute top-2 right-2">
                                         <Play className="w-5 h-5 text-white fill-white drop-shadow-md" />
                                     </div>
                                 </>
                             ) : (
-                                <img src={post.imageUrl} className="w-full h-full object-cover transition-transform group-hover:scale-110 duration-500" alt="" />
+                                <img src={post.imageUrl} className="w-full h-full object-cover" alt="" />
                             )}
-                            <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-6 backdrop-blur-[2px]">
-                                <div className="flex items-center gap-1 text-white font-bold">
-                                    <Heart className="w-6 h-6 fill-white" />
-                                    <span className="text-lg">{Array.isArray(post.likes) ? post.likes.length : post.likes}</span>
-                                </div>
-                                <div className="flex items-center gap-1 text-white font-bold">
-                                    <MessageCircle className="w-6 h-6 fill-white" />
-                                    <span className="text-lg">{post.comments}</span>
-                                </div>
-                            </div>
                         </div>
                     ))}
-                    {activeTab === 'reels' && (
+                     {activeTab === 'reels' && (
                         <div className="col-span-3 py-12 text-center text-gray-400">
                             <Film className="w-12 h-12 mx-auto mb-2 opacity-50" />
                             <p>No reels yet</p>
@@ -534,21 +407,8 @@ const Profile: React.FC<ProfileProps> = ({ user: propUser, currentUser, isOwnPro
                     )}
                     {activeTab === 'favourites' && isOwnProfile && (
                         <div className="col-span-3 py-12 text-center text-gray-400">
-                            <div className="w-12 h-12 mx-auto mb-2 opacity-50 flex items-center justify-center text-4xl">⭐</div>
-                            <p>Only you can see your favourites</p>
-                        </div>
-                    )}
-                    {activeTab === 'tagged' && (
-                        <div className="col-span-3 py-12 text-center text-gray-400">
-                            <UserSquare2 className="w-12 h-12 mx-auto mb-2 opacity-50" />
-                            <p>No tagged posts</p>
-                        </div>
-                    )}
-                    {activeTab === 'posts' && userPosts.length === 0 && (
-                        <div className="col-span-3 py-12 text-center text-gray-400">
-                            <Camera className="w-12 h-12 mx-auto mb-2 opacity-50" />
-                            <h3 className="font-bold text-xl text-gray-900 dark:text-white mb-1">Share Photos</h3>
-                            <p className="text-sm">When you share photos, they will appear on your profile.</p>
+                             <div className="w-12 h-12 mx-auto mb-2 opacity-50 flex items-center justify-center text-4xl">⭐</div>
+                             <p>Your favourites will appear here</p>
                         </div>
                     )}
                 </div>
@@ -563,13 +423,11 @@ const Profile: React.FC<ProfileProps> = ({ user: propUser, currentUser, isOwnPro
                     isOwner={isOwnProfile}
                     onClose={() => setSelectedPost(null)}
                     onPostUpdated={() => {
-                        // Refresh posts
                         if (user) {
                             DBService.getUserPosts(user.id).then(setUserPosts);
                         }
                     }}
                     onPostDeleted={() => {
-                        // Remove from list and close
                         setUserPosts(prev => prev.filter(p => p.id !== selectedPost.id));
                         setSelectedPost(null);
                     }}

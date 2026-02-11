@@ -17,14 +17,14 @@
 
   /* Light mode body */
   body {
-    @apply bg-light-bg text-light-text-primary;
-    background-color: #9AD3DA !important;
+    @apply text-light-text-primary;
+    background-color: #FAF9F6 !important; /* Warm Neutral */
   }
 
   /* Dark mode body */
   .dark body {
     @apply bg-dark-bg text-dark-text-primary;
-    background-color: #000000 !important;
+    background-color: #03444A !important; /* Deep Blue Primary (or strict black if preferred, but user said Deep Blue Primary in color direction) */
   }
 
   /* Prevent transition on theme change for specific elements */
@@ -248,7 +248,8 @@ body {
 
 /* Input Field */
 .snuggle-input {
-  @apply bg-light-bg border border-light-border rounded-xl;
+  @apply border border-light-border rounded-xl;
+  background-color: #FAF9F6;
   @apply text-light-text-primary placeholder:text-light-text-tertiary;
   @apply focus:border-accent focus:ring-2 focus:ring-accent/20 focus:outline-none;
   @apply transition-all duration-200;
@@ -298,13 +299,13 @@ body {
 
 /* Badge - Notification (Warm) */
 .snuggle-badge-warm {
-  @apply bg-warm text-white text-xs font-bold;
+  @apply bg-warning text-white text-xs font-bold;
   @apply px-2 py-0.5 rounded-full;
 }
 
 /* Story Ring */
 .snuggle-story-ring {
-  @apply ring-2 ring-warm ring-offset-2 ring-offset-light-bg;
+  @apply ring-2 ring-warning ring-offset-2 ring-offset-light-background;
 }
 
 .dark .snuggle-story-ring {

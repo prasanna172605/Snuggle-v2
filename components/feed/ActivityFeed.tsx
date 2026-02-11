@@ -21,7 +21,7 @@ export function ActivityFeed() {
 
         // Subscribe to recent activities (real-time)
         const unsubscribe = activityFeedService.subscribeToRecentActivities(
-            currentUser.uid,
+            currentUser.id,
             30,
             (newActivities) => {
                 setActivities(newActivities);
@@ -38,7 +38,7 @@ export function ActivityFeed() {
 
         const oldestActivity = activities[activities.length - 1];
         const olderActivities = await activityFeedService.loadOlderActivities(
-            currentUser.uid,
+            currentUser.id,
             oldestActivity.createdAt,
             20
         );
