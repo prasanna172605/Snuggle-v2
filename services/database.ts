@@ -11,6 +11,7 @@ import {
     where,
     orderBy,
     limit,
+    startAfter,
     Timestamp,
     arrayUnion,
     arrayRemove,
@@ -23,7 +24,9 @@ import {
 import { v4 as uuidv4 } from 'uuid';
 import config from '../config/environment';
 import { db, auth, storage, googleProvider, realtimeDb, messaging } from './firebase';
-import { ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage';
+import { uploadFile } from './fileUpload';
+import { getAuth } from 'firebase/auth';
+import { getStorage, ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage';
 import { getToken } from 'firebase/messaging';
 import { signInWithEmailAndPassword, signInWithPopup, onAuthStateChanged, signOut, deleteUser as deleteFirebaseUser, createUserWithEmailAndPassword, sendPasswordResetEmail } from 'firebase/auth';
 import { onSnapshot } from 'firebase/firestore';
@@ -627,9 +630,12 @@ export class DBService {
 
 
     static async uploadAvatar(userId: string, file: File): Promise<string> {
-        const fileRef = ref(storage, `avatars/${userId}_${Date.now()}`);
-        await uploadBytes(fileRef, file);
-        return await getDownloadURL(fileRef);
+        // 1. Upload to Cloudinary
+        const result = await uploadFile(file, userId, undefined, 'avatar');
+
+        // 2. Update User Profile
+        await this.updateProfile(userId, { avatar: result.url });
+        return result.url;
     }
 
     static async updateProfile(userId: string, updates: Partial<User>): Promise<User> {
@@ -1552,6 +1558,254 @@ export class DBService {
             .filter(post => !post.isDeleted);
     }
 
+    // ==================== MEMORY OPERATIONS ====================
+
+    static async createMemory(memory: Omit<import('../types').Memory, 'id' | 'createdAt' | 'likesCount' | 'commentsCount'>): Promise<void> {
+        const memoryRef = doc(collection(db, 'memories'));
+        const newMemory = {
+            ...memory,
+            id: memoryRef.id,
+            likesCount: 0,
+            commentsCount: 0,
+            createdAt: serverTimestamp(),
+            // Search index fields
+            searchKeywords: memory.caption.toLowerCase().split(' ')
+        };
+        await setDoc(memoryRef, newMemory);
+    }
+
+    static async getMemoriesFeed(lastId?: string, limitCount = 10): Promise<import('../types').Memory[]> {
+        // Fetch from 'memories' collection
+        let memoriesQuery = query(
+            collection(db, 'memories'),
+            orderBy('createdAt', 'desc'),
+            limit(limitCount)
+        );
+
+        if (lastId) {
+            const lastDoc = await getDoc(doc(db, 'memories', lastId));
+            if (lastDoc.exists()) {
+                memoriesQuery = query(memoriesQuery, startAfter(lastDoc));
+            }
+        }
+
+        const memoriesSnap = await getDocs(memoriesQuery);
+        let memories = memoriesSnap.docs.map(d => ({
+            id: d.id,
+            ...d.data(),
+            _isLegacy: false
+        } as any));
+
+        // Fallback or Merge: If we have room, fetch from legacy 'posts'
+        // For simplicity in this transition, we'll fetch 'posts' if we are on the first page
+        // or if memories are sparse.
+        if (memories.length < limitCount) {
+             let postsQuery = query(
+                collection(db, 'posts'),
+                orderBy('createdAt', 'desc'),
+                limit(limitCount - memories.length)
+             );
+             
+             // Note: Pagination across collections is tricky. 
+             // We'll just append for now to ensure the feed isn't empty.
+             const postsSnap = await getDocs(postsQuery);
+             const legacyPosts = postsSnap.docs.map(d => {
+                 const data = d.data();
+                 return {
+                     id: d.id,
+                     userId: data.userId,
+                     type: data.mediaType === 'video' ? 'video' : 'image',
+                     caption: data.caption || '',
+                     mediaUrl: data.imageUrl || '',
+                     likesCount: typeof data.likes === 'number' ? data.likes : (Array.isArray(data.likes) ? data.likes.length : 0),
+                     commentsCount: data.comments || 0,
+                     createdAt: data.createdAt,
+                     _isLegacy: true
+                 };
+             });
+             memories = [...memories, ...legacyPosts];
+        }
+
+        const hydratedMemories = await Promise.all(memories.map(async (data) => {
+            const memory = {
+                ...data,
+                createdAt: data.createdAt?.toMillis?.() || (typeof data.createdAt === 'number' ? data.createdAt : Date.now())
+            } as import('../types').Memory;
+
+            // Hydrate User
+            const user = await this.getUserById(memory.userId);
+            if (user) memory.user = user;
+
+            // Hydrate Interactions
+            if (auth.currentUser) {
+                if (data._isLegacy) {
+                    // Legacy posts interaction check
+                    // Depending on how likes were stored, this might need adjustment
+                    // Assuming interacts are in users/{uid}/likedPosts
+                    const userSnap = await getDoc(doc(db, 'users', auth.currentUser.uid));
+                    if (userSnap.exists()) {
+                        const userData = userSnap.data();
+                        memory.isLiked = userData.likedPosts?.includes(memory.id);
+                        memory.isSaved = userData.savedPosts?.includes(memory.id);
+                    }
+                } else {
+                    const likeSnap = await getDoc(doc(db, 'memories', memory.id, 'likes', auth.currentUser.uid));
+                    memory.isLiked = likeSnap.exists();
+                    
+                    const saveSnap = await getDoc(doc(db, 'users', auth.currentUser.uid, 'savedMemories', memory.id));
+                    memory.isSaved = saveSnap.exists();
+                }
+            }
+
+            return memory;
+        }));
+
+        // Sort by date if merged
+        return hydratedMemories.sort((a, b) => b.createdAt - a.createdAt);
+    }
+
+    static async toggleMemoryLike(memoryId: string, userId: string): Promise<boolean> {
+        const likeRef = doc(db, 'memories', memoryId, 'likes', userId);
+        const memoryRef = doc(db, 'memories', memoryId);
+        
+        const likeSnap = await getDoc(likeRef);
+        const isLiked = likeSnap.exists();
+
+        if (isLiked) {
+            await deleteDoc(likeRef);
+            await updateDoc(memoryRef, { likesCount: increment(-1) });
+            return false;
+        } else {
+            await setDoc(likeRef, { timestamp: serverTimestamp() });
+            await updateDoc(memoryRef, { likesCount: increment(1) });
+            
+            // Notification
+            const memorySnap = await getDoc(memoryRef);
+            const memory = memorySnap.data() as import('../types').Memory;
+            if (memory && memory.userId !== userId) {
+                 await this.createNotification({
+                    userId: memory.userId,
+                    type: 'like',
+                    senderId: userId,
+                    title: 'New Like',
+                    message: `Someone liked your memory`,
+                    data: { memoryId, url: `/memory/${memoryId}` }
+                });
+            }
+            return true;
+        }
+    }
+
+    static async toggleMemorySave(memoryId: string, userId: string): Promise<boolean> {
+        const saveRef = doc(db, 'users', userId, 'savedMemories', memoryId);
+        const saveSnap = await getDoc(saveRef);
+        
+        if (saveSnap.exists()) {
+            await deleteDoc(saveRef);
+            return false;
+        } else {
+            await setDoc(saveRef, { timestamp: serverTimestamp() });
+            return true;
+        }
+    }
+
+    static async getMemory(memoryId: string): Promise<import('../types').Memory | null> {
+        try {
+            let docRef = doc(db, 'memories', memoryId);
+            let docSnap = await getDoc(docRef);
+            let data: any;
+            let isLegacy = false;
+            
+            if (!docSnap.exists()) {
+                // Check legacy posts
+                docRef = doc(db, 'posts', memoryId);
+                docSnap = await getDoc(docRef);
+                if (!docSnap.exists()) return null;
+                
+                const postData = docSnap.data();
+                data = {
+                    userId: postData.userId,
+                    type: postData.mediaType === 'video' ? 'video' : 'image',
+                    caption: postData.caption || '',
+                    mediaUrl: postData.imageUrl || '',
+                    likesCount: typeof postData.likes === 'number' ? postData.likes : (Array.isArray(postData.likes) ? postData.likes.length : 0),
+                    commentsCount: postData.comments || 0,
+                    createdAt: postData.createdAt
+                };
+                isLegacy = true;
+            } else {
+                data = docSnap.data();
+            }
+            
+            const memory = {
+                id: docSnap.id,
+                ...data,
+                createdAt: data.createdAt?.toMillis?.() || (typeof data.createdAt === 'number' ? data.createdAt : Date.now()),
+                _isLegacy: isLegacy
+            } as import('../types').Memory;
+
+            // Hydrate User
+            const user = await this.getUserById(memory.userId);
+            if (user) memory.user = user;
+
+            // Hydrate Interactions for current user
+            const auth = getAuth();
+            if (auth.currentUser) {
+                if (isLegacy) {
+                    const userSnap = await getDoc(doc(db, 'users', auth.currentUser.uid));
+                    if (userSnap.exists()) {
+                        const userData = userSnap.data();
+                        memory.isLiked = userData.likedPosts?.includes(memory.id);
+                        memory.isSaved = userData.savedPosts?.includes(memory.id);
+                    }
+                } else {
+                    const likeSnap = await getDoc(doc(db, 'memories', memory.id, 'likes', auth.currentUser.uid));
+                    memory.isLiked = likeSnap.exists();
+                    
+                    const saveSnap = await getDoc(doc(db, 'users', auth.currentUser.uid, 'savedMemories', memory.id));
+                    memory.isSaved = saveSnap.exists();
+                }
+            }
+            
+            return memory;
+        } catch (error) {
+            console.error('Error getting memory:', error);
+            return null;
+        }
+    }
+
+    static async addMemoryComment(memoryId: string, commentData: Omit<import('../types').Comment, 'id' | 'createdAt'>): Promise<import('../types').Comment> {
+        const commentRef = doc(collection(db, 'memories', memoryId, 'comments'));
+        const newComment = {
+            id: commentRef.id,
+            ...commentData,
+            createdAt: serverTimestamp()
+        };
+        await setDoc(commentRef, newComment);
+        
+        await updateDoc(doc(db, 'memories', memoryId), {
+            commentsCount: increment(1)
+        });
+
+        return {
+            ...newComment,
+            createdAt: Date.now()
+        } as import('../types').Comment;
+    }
+
+    static async getMemoryComments(memoryId: string): Promise<import('../types').Comment[]> {
+        const q = query(
+            collection(db, 'memories', memoryId, 'comments'),
+            orderBy('createdAt', 'desc')
+        );
+        const snapshot = await getDocs(q);
+        return snapshot.docs.map(doc => ({
+            id: doc.id,
+            ...doc.data(),
+            createdAt: doc.data().createdAt?.toMillis?.() || Date.now()
+        })) as import('../types').Comment[];
+    }
+
     // ==================== MESSAGE OPERATIONS ====================
 
     static async requestNotificationPermission(userId: string): Promise<string | null> {
@@ -1575,6 +1829,12 @@ export class DBService {
             }
 
             console.log('[DB] Permission granted, fetching token...', config.firebase.vapidKey);
+
+            // Wait for service worker to be ready to avoid "no active Service Worker" error
+            if ('serviceWorker' in navigator) {
+                const registration = await navigator.serviceWorker.ready;
+                console.log('[DB] Service Worker ready for messaging:', registration.scope);
+            }
 
             // Get Token
             const token = await getToken(messaging, {
@@ -1749,12 +2009,19 @@ export class DBService {
             }
         }
 
-        const firestoreMessage = {
+        const firestoreMessage: any = {
             ...messageData,
             text: encryptedText,
             ...encryptionMeta,
             timestamp: Timestamp.fromMillis(messageData.timestamp)
         };
+
+        // Remove undefined fields to prevent Firestore errors
+        Object.keys(firestoreMessage).forEach(key => {
+            if (firestoreMessage[key] === undefined) {
+                delete firestoreMessage[key];
+            }
+        });
 
         await setDoc(messageRef, firestoreMessage);
 
@@ -2225,9 +2492,12 @@ export class DBService {
     // ==================== STORAGE OPERATIONS ====================
 
     static async uploadImage(file: File, path: string): Promise<string> {
-        const storageRef = ref(storage, `${path}/${Date.now()}_${file.name}`);
-        await uploadBytes(storageRef, file);
-        return await getDownloadURL(storageRef);
+        const user = auth.currentUser;
+        if (!user) throw new Error('Unauthorized');
+        
+        // 1. Upload to Cloudinary
+        const result = await uploadFile(file, user.uid, undefined, file.name);
+        return result.url;
     }
 
     static async deleteImage(imageUrl: string): Promise<void> {
@@ -2292,16 +2562,15 @@ export class DBService {
     }
 
     static async uploadStory(userId: string, file: File): Promise<void> {
-        const fileRef = ref(storage, `stories/${userId}/${uuidv4()}_${file.name}`);
-        await uploadBytes(fileRef, file);
-        const url = await getDownloadURL(fileRef);
+        // 1. Upload to Cloudinary
+        const result = await uploadFile(file, userId, undefined, file.name);
 
         const expiresAt = new Date();
         expiresAt.setHours(expiresAt.getHours() + 24);
 
         await addDoc(collection(db, 'stories'), {
             userId,
-            imageUrl: url,
+            imageUrl: result.url,
             createdAt: serverTimestamp(),
             expiresAt: Timestamp.fromDate(expiresAt),
             views: [],
@@ -2384,6 +2653,124 @@ export class DBService {
         }
     }
 
+    // ==================== CHAT SETTINGS & DETAILS ====================
+
+    static async getChatDetails(chatId: string, currentUserId: string): Promise<import('../types').Chat> {
+        // Fetch Chat
+        const chatRef = doc(db, 'chats', chatId);
+        const chatSnap = await getDoc(chatRef);
+        
+        let chatData: import('../types').Chat;
+
+        if (chatSnap.exists()) {
+             chatData = { id: chatSnap.id, ...chatSnap.data() } as import('../types').Chat;
+        } else {
+             // Handle uninitialized chat (no messages sent yet)
+             const parts = chatId.split('_');
+             if (parts.length !== 2 || !parts.includes(currentUserId)) {
+                 // Try to see if it's a group chat ID? For now assume direct chats use _
+                 // If it's a random ID (group), we can't reconstruct participants without the doc.
+                 throw new Error('Chat not found');
+             }
+             chatData = {
+                 id: chatId,
+                 participants: parts,
+                 unreadCounts: {},
+                 lastMessage: '',
+                 lastMessageTimeValue: Date.now()
+             };
+        }
+
+        // Fetch User Settings (Mute)
+        // Stored in subcollection: users/{userId}/chatSettings/{chatId}
+        const settingsRef = doc(db, 'users', currentUserId, 'chatSettings', chatId);
+        const settingsSnap = await getDoc(settingsRef);
+        const settings = settingsSnap.exists() ? settingsSnap.data() : {};
+
+        return {
+            ...chatData,
+            muted: settings.muted || false
+        };
+    }
+
+    static async updateChatTheme(chatId: string, themeId: string): Promise<void> {
+        const chatRef = doc(db, 'chats', chatId);
+        await updateDoc(chatRef, { themeId });
+    }
+
+    static async toggleChatMute(chatId: string, userId: string): Promise<boolean> {
+        const settingsRef = doc(db, 'users', userId, 'chatSettings', chatId);
+        const snap = await getDoc(settingsRef);
+        
+        let newMuteStatus = true;
+        
+        if (snap.exists()) {
+            newMuteStatus = !snap.data().muted;
+            await updateDoc(settingsRef, { muted: newMuteStatus });
+        } else {
+            await setDoc(settingsRef, { muted: true });
+        }
+        
+        return newMuteStatus;
+    }
+
+    static async updateNickname(chatId: string, userId: string, nickname: string): Promise<void> {
+        const chatRef = doc(db, 'chats', chatId);
+        // Map keys must not contain '.'
+        await updateDoc(chatRef, {
+            [`nicknames.${userId}`]: nickname
+        });
+    }
+
+    static async getSharedMedia(chatId: string, limitCount: number = 30): Promise<import('../types').Message[]> {
+        const q = query(
+            collection(db, 'chats', chatId, 'messages'),
+            where('type', 'in', ['image', 'video']),
+            orderBy('timestamp', 'desc'),
+            limit(limitCount)
+        );
+        
+        const snapshot = await getDocs(q);
+        return snapshot.docs.map(doc => ({
+            ...doc.data(),
+            id: doc.id
+        } as import('../types').Message));
+    }
+
+    static async getThemes(): Promise<import('../types').Theme[]> {
+        const q = query(collection(db, 'themes'), orderBy('name'));
+        const snapshot = await getDocs(q);
+        return snapshot.docs.map(doc => ({
+            id: doc.id,
+            ...doc.data()
+        } as import('../types').Theme));
+    }
+
+    static async getThemeById(themeId: string): Promise<import('../types').Theme | null> {
+        const docRef = doc(db, 'themes', themeId);
+        const snap = await getDoc(docRef);
+        if (snap.exists()) {
+            return { id: snap.id, ...snap.data() } as import('../types').Theme;
+        }
+        return null;
+    }
+
+    static async createCustomTheme(userId: string, file: File): Promise<import('../types').Theme> {
+        const url = await this.uploadImage(file, `themes/${userId}`);
+        const themeRef = doc(collection(db, 'themes'));
+        const newTheme: import('../types').Theme = {
+            id: themeRef.id,
+            name: 'Custom Theme',
+            type: 'custom',
+            backgroundUrl: url,
+            createdBy: userId
+        };
+        await setDoc(themeRef, newTheme);
+        return newTheme;
+    }
+
+
+    /* Existing Code */
     /**
      * Add participant to call
      */

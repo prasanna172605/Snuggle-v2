@@ -16,6 +16,8 @@ const CameraCapture: React.FC<CameraCaptureProps> = ({ onCapture, onClose }) => 
     const chunksRef = useRef<Blob[]>([]);
     const [facingMode, setFacingMode] = useState<'user' | 'environment'>('user');
 
+    const streamRef = useRef<MediaStream | null>(null);
+
     useEffect(() => {
         startCamera();
         return () => stopCamera();
@@ -29,6 +31,7 @@ const CameraCapture: React.FC<CameraCaptureProps> = ({ onCapture, onClose }) => 
                 audio: true // Request audio permission upfront for seamless switching
             });
             setStream(s);
+            streamRef.current = s;
             if (videoRef.current) {
                 videoRef.current.srcObject = s;
             }
@@ -40,8 +43,9 @@ const CameraCapture: React.FC<CameraCaptureProps> = ({ onCapture, onClose }) => 
     };
 
     const stopCamera = () => {
-        if (stream) {
-            stream.getTracks().forEach(t => t.stop());
+        if (streamRef.current) {
+            streamRef.current.getTracks().forEach(t => t.stop());
+            streamRef.current = null;
         }
     };
 

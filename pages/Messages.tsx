@@ -153,7 +153,7 @@ const Messages: React.FC<MessagesProps> = ({ currentUser, onChatSelect, onUserCl
 
             {/* Header */}
             <div className="flex items-center justify-between px-6 py-4">
-                <h1 className="text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-gray-900 to-gray-600 dark:from-white dark:to-gray-400">Messages</h1>
+                <h1 className="text-3xl font-black text-snuggle-600 dark:text-snuggle-400">Messages</h1>
                 <div className="flex items-center gap-2">
                     <button
                         onClick={() => setIsEditMode(!isEditMode)}

@@ -86,7 +86,7 @@ const PostDetailContent: React.FC<PostDetailContentProps> = ({
         } catch (e) {
             // Revert
             setFavouritesCount(prev => isSaved ? prev + 1 : Math.max(0, prev - 1));
-            toast.error('Failed to update favourite');
+            toast.error('Failed to update favourites');
         }
     };
 

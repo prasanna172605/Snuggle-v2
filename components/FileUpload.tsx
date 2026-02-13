@@ -1,7 +1,7 @@
 import React, { useState, useRef, DragEvent } from 'react';
 import { Upload, X, FileText, Image as ImageIcon, Loader2, CheckCircle, AlertCircle } from 'lucide-react';
-import { uploadFile, validateFile, isImageFile, createImagePreview, UploadResult } from '../services/fileUpload';
-import { auth } from '../config/firebase';
+import { validateFile, isImageFile, createImagePreview, UploadResult } from '../services/fileUpload';
+import { auth } from '../services/firebase';
 
 interface FileUploadProps {
     onUploadComplete: (results: UploadResult[]) => void;
@@ -85,11 +85,11 @@ export const FileUpload: React.FC<FileUploadProps> = ({
         setFiles(prev => prev.filter((_, i) => i !== index));
     };
 
-    // Upload all files
+    // Upload (Encode) all files
     const uploadAllFiles = async () => {
         const user = auth.currentUser;
         if (!user) {
-            alert('You must be logged in to upload files');
+            alert('You must be logged in to process files');
             return;
         }
 
@@ -100,7 +100,7 @@ export const FileUpload: React.FC<FileUploadProps> = ({
 
             if (fileItem.status !== 'pending') continue;
 
-            // Update status to uploading
+            // Update status to processing
             setFiles(prev => {
                 const updated = [...prev];
                 updated[i] = { ...updated[i], status: 'uploading', progress: 0 };
@@ -108,18 +108,29 @@ export const FileUpload: React.FC<FileUploadProps> = ({
             });
 
             try {
-                const result = await uploadFile(
-                    fileItem.file,
-                    user.uid,
-                    (progress) => {
-                        // Update progress
-                        setFiles(prev => {
-                            const updated = [...prev];
-                            updated[i] = { ...updated[i], progress };
-                            return updated;
-                        });
-                    }
-                );
+                // 1. Convert to Base64
+                const reader = new FileReader();
+                const base64Promise = new Promise<string>((resolve, reject) => {
+                    reader.onload = () => resolve(reader.result as string);
+                    reader.onerror = reject;
+                    reader.readAsDataURL(fileItem.file);
+                });
+
+                const base64Data = await base64Promise;
+
+                // 2. Size Check (Firestore 1MB limit)
+                if (base64Data.length > 819200) {
+                    throw new Error('File too large for database (Max 800KB for stability).');
+                }
+
+                const result: UploadResult = {
+                    url: base64Data,
+                    filename: fileItem.file.name,
+                    originalName: fileItem.file.name,
+                    size: fileItem.file.size,
+                    mimeType: fileItem.file.type,
+                    category: isImageFile(fileItem.file) ? 'images' as any : 'documents' as any
+                };
 
                 // Update to success
                 setFiles(prev => {

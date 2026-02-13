@@ -1,4 +1,4 @@
-import React, { useState, useEffect, Suspense } from 'react';
+import React, { useState, useEffect, Suspense, useTransition } from 'react';
 import { Routes, Route, useNavigate, useLocation, Navigate, useParams } from 'react-router-dom';
 import { onMessage } from 'firebase/messaging';
 import { signOut, onAuthStateChanged } from 'firebase/auth';
@@ -18,17 +18,20 @@ import { InteractionProvider } from './context/InteractionContext';
 const Login = React.lazy(() => import('./pages/Login'));
 const Signup = React.lazy(() => import('./pages/Signup'));
 const GoogleUsernameSetup = React.lazy(() => import('./pages/GoogleUsernameSetup'));
-const Feed = React.lazy(() => import('./pages/Feed'));
+const FeedMemories = React.lazy(() => import('./pages/FeedMemories'));
+const CreateMemory = React.lazy(() => import('./pages/CreateMemory'));
+const MemoryViewer = React.lazy(() => import('./pages/MemoryViewer'));
 const Messages = React.lazy(() => import('./pages/Messages'));
 const Profile = React.lazy(() => import('./pages/Profile'));
 const Chat = React.lazy(() => import('./pages/Chat'));
 const Settings = React.lazy(() => import('./pages/Settings'));
-const Create = React.lazy(() => import('./pages/Create'));
+const Create = React.lazy(() => import('./pages/Create')); 
 const Notifications = React.lazy(() => import('./pages/Notifications'));
 const Activities = React.lazy(() => import('./pages/Activities'));
 const Favourites = React.lazy(() => import('./pages/Favourites'));
 const RecentlyDeleted = React.lazy(() => import('./pages/RecentlyDeleted'));
 const PostDetail = React.lazy(() => import('./pages/PostDetail'));
+const ChatDetails = React.lazy(() => import('./pages/ChatDetails'));
 const BottomNav = React.lazy(() => import('./components/BottomNav'));
 import Sidebar from './components/Sidebar';
 import CallOverlay from './components/CallOverlay';
@@ -39,7 +42,7 @@ import SplashScreen from './components/common/SplashScreen';
 
 const LoadingFallback = () => (
   <div className="min-h-screen flex items-center justify-center bg-light-background dark:bg-dark-background">
-    <Loader2 className="w-12 h-12 animate-spin text-cyan-500" />
+    <Loader2 className="w-12 h-12 animate-spin text-snuggle-600" />
   </div>
 );
 
@@ -164,7 +167,9 @@ const AppContent = ({
           toast.custom((t) => (
             <div className="flex items-center gap-3 w-full bg-white dark:bg-zinc-900 border border-gray-100 dark:border-zinc-800 shadow-lg rounded-xl p-4 cursor-pointer" onClick={() => {
               toast.dismiss(t);
-              navigate('/notifications');
+              React.startTransition(() => {
+                navigate('/notifications');
+              });
             }}>
               <div className="w-10 h-10 rounded-full bg-snuggle-100 dark:bg-snuggle-900/30 flex items-center justify-center text-snuggle-500">
                 <Bell className="w-5 h-5" />
@@ -242,16 +247,18 @@ const AppContent = ({
             <Suspense fallback={<LoadingFallback />}>
               <Routes location={location} key={location.pathname}>
                 {/* Home -> Feed (Memories) */}
-                <Route path="/" element={<PageTransition><Feed currentUser={currentUser} onUserClick={(userId) => navigate(`/profile/${userId}`)} /></PageTransition>} />
+                <Route path="/" element={<PageTransition><FeedMemories /></PageTransition>} />
                 
                 {/* Messages */}
-                <Route path="/messages" element={<PageTransition><Messages currentUser={currentUser} onChatSelect={(user) => navigate(`/chat/${user.id}`)} onUserClick={(userId) => navigate(`/profile/${userId}`)} /></PageTransition>} />
+                 <Route path="/messages" element={<PageTransition><Messages currentUser={currentUser} onChatSelect={(user) => React.startTransition(() => navigate(`/chat/${user.id}`))} onUserClick={(userId) => React.startTransition(() => navigate(`/profile/${userId}`))} /></PageTransition>} />
                 
                 <Route path="/chat/:userId" element={<PageTransition><ChatWrapper currentUser={currentUser} /></PageTransition>} />
+                <Route path="/chat/:chatId/details" element={<PageTransition><ChatDetails currentUser={currentUser} /></PageTransition>} />
                 <Route path="/profile" element={<PageTransition><Profile user={currentUser} currentUser={currentUser} isOwnProfile={true} onLogout={onLogout} /></PageTransition>} />
                 <Route path="/profile/:userId" element={<PageTransition><Profile currentUser={currentUser} isOwnProfile={false} /></PageTransition>} />
-                <Route path="/create" element={<PageTransition><CreateWrapper currentUser={currentUser} /></PageTransition>} />
-                <Route path="/notifications" element={<PageTransition><Notifications currentUser={currentUser} onUserClick={(userId) => navigate(`/profile/${userId}`)} /></PageTransition>} />
+                <Route path="/create" element={<PageTransition><CreateMemory /></PageTransition>} />
+                <Route path="/memory/:memoryId" element={<PageTransition><MemoryViewer /></PageTransition>} />
+                 <Route path="/notifications" element={<PageTransition><Notifications currentUser={currentUser} onUserClick={(userId) => React.startTransition(() => navigate(`/profile/${userId}`))} /></PageTransition>} />
                 <Route path="/settings" element={<PageTransition><SettingsWrapper currentUser={currentUser} onLogout={onLogout} onUpdateUser={onUpdateUser} onDeleteAccount={onDeleteAccount} onSwitchAccount={onSwitchAccount} onAddAccount={onAddAccount} /></PageTransition>} />
                 <Route path="/activities" element={<PageTransition><Activities currentUser={currentUser} onBack={() => navigate(-1)} /></PageTransition>} />
                 <Route path="/favourites" element={<PageTransition><Favourites currentUser={currentUser} onBack={() => navigate(-1)} /></PageTransition>} />

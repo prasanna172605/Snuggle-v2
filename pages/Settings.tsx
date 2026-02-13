@@ -239,7 +239,7 @@ const Settings: React.FC<SettingsProps> = ({
           <button onClick={onBack} className="p-2 -ml-2 hover:bg-gray-100 dark:hover:bg-gray-900 rounded-full transition-colors font-bold text-sm flex items-center gap-1 text-gray-600 dark:text-gray-300">
             <ChevronRight className="w-5 h-5 rotate-180" /> Back
           </button>
-          <h1 className="text-lg font-black tracking-tight text-gray-900 dark:text-white">Settings</h1>
+          <h1 className="text-lg font-black tracking-tight text-snuggle-600 dark:text-snuggle-400">Settings</h1>
           <div className="w-16" /> {/* Spacer */}
         </div>
 

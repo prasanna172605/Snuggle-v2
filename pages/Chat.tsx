@@ -4,14 +4,15 @@ import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { User, Message } from '../types';
 import { DBService } from '../services/database';
+import { DEFAULT_THEMES } from '../constants/themes';
 import { useCall } from '../context/CallContext';
 import CameraCapture from '../components/CameraCapture';
 import CallButton from '../components/CallButton';
 import CallHistoryMessage from '../components/CallHistoryMessage';
-import { ArrowLeft, Phone, Video, Send, Image as ImageIcon, Smile, Check, CheckCheck, Mic, Trash2, Camera, Trash, Plus } from 'lucide-react';
+import { ArrowLeft, Phone, Video, Send, Image as ImageIcon, Smile, Check, CheckCheck, Mic, Trash2, Camera, Trash, Plus, Copy } from 'lucide-react';
 import { SkeletonChat } from '../components/common/Skeleton';
 import { formatDateHeader } from '../utils/dateUtils';
-import { uploadFile, compressImage, generateVideoThumbnail, getMediaDuration, FileCategory, formatFileSize } from '../services/fileUpload';
+import { uploadFile, FileCategory, formatFileSize } from '../services/fileUpload';
 import MediaViewer from '../components/MediaViewer';
 import ForwardSheet from '../components/ForwardSheet';
 import { toast } from 'sonner';
@@ -35,9 +36,10 @@ const Chat: React.FC<ChatProps> = ({ currentUser, otherUser, onBack }) => {
   const [showAttachMenu, setShowAttachMenu] = useState(false);
   const [showCamera, setShowCamera] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [themeUrl, setThemeUrl] = useState<string>('');
 
   // Media Viewer & Forward State
-  const [mediaViewer, setMediaViewer] = useState<{ isOpen: boolean; url: string; type: 'image' | 'video'; senderName?: string; timestamp?: number } | null>(null);
+  const [mediaViewer, setMediaViewer] = useState<{ isOpen: boolean; url: string; type: 'image' | 'video'; senderName?: string; timestamp?: number; message?: Message } | null>(null);
   const [forwardSheet, setForwardSheet] = useState<{ isOpen: boolean; message: Message | null } | null>(null);
   const [uploadProgress, setUploadProgress] = useState<number | null>(null);
 
@@ -73,8 +75,38 @@ const Chat: React.FC<ChatProps> = ({ currentUser, otherUser, onBack }) => {
     if (u) setIsOtherUserOnline(u.isOnline);
   };
 
+  const loadTheme = async () => {
+    const chatId = DBService.getChatId(currentUser.id, otherUser.id);
+    try {
+      const chat = await DBService.getChatDetails(chatId, currentUser.id);
+      if (chat.themeId) {
+        const defaultTheme = DEFAULT_THEMES.find(t => t.id === chat.themeId);
+        if (defaultTheme) {
+          setThemeUrl(defaultTheme.backgroundUrl);
+        } else {
+          const custom = await DBService.getThemeById(chat.themeId);
+          if (custom) setThemeUrl(custom.backgroundUrl);
+        }
+      } else {
+         setThemeUrl('');
+      }
+    } catch (e: any) {
+      if (e.code === 'permission-denied') {
+          console.warn('Theme access denied, using default');
+      } else {
+          console.error('Failed to load theme', e);
+      }
+    }
+  };
+
+  const handleHeaderClick = () => {
+    const chatId = DBService.getChatId(currentUser.id, otherUser.id);
+    navigate(`/chat/${chatId}/details`);
+  };
+
   useEffect(() => {
     checkPresence();
+    loadTheme();
 
     // Real-time subscription for messages - enables instant status updates (including "seen")
     const unsubscribe = DBService.subscribeToMessages(currentUser.id, otherUser.id, (msgs) => {
@@ -242,69 +274,42 @@ const Chat: React.FC<ChatProps> = ({ currentUser, otherUser, onBack }) => {
     try {
       setShowAttachMenu(false);
       
-      // 1. Compress image if needed
-      let fileToUpload = file;
-      if (file.type.startsWith('image/')) {
-        toast.loading('Compressing image...');
-        const compressedBlob = await compressImage(file);
-        fileToUpload = new File([compressedBlob], file.name, { type: 'image/jpeg' });
-        toast.dismiss();
-      }
-
-      // 2. Generate metadata
-      let thumbnailUrl: string | undefined;
-      let duration: number | undefined;
-
-      if (file.type.startsWith('video/')) {
-        toast.loading('Processing video...');
-        try {
-          const thumbBlob = await generateVideoThumbnail(file);
-          // Upload thumbnail
-          const thumbResult = await uploadFile(thumbBlob, currentUser.id, undefined, `thumb_${file.name}.jpg`);
-          thumbnailUrl = thumbResult.url;
-          duration = await getMediaDuration(file);
-        } catch (err) {
-          console.error('Video processing failed', err);
-        }
-        toast.dismiss();
-      } else if (file.type.startsWith('audio/')) {
-        duration = await getMediaDuration(file);
-      }
-
-      // 3. Upload file with progress
+      // 1. Show loading
+      toast.loading('Uploading file...');
       setUploadProgress(0);
+
+      // 2. Upload to Cloudinary
       const result = await uploadFile(
-        fileToUpload,
+        file,
         currentUser.id,
         (progress) => setUploadProgress(progress),
         file.name
       );
 
-      // 4. Send message
+      // 3. Send message
       const newMessage: Message = {
         id: Date.now().toString(),
         senderId: currentUser.id,
         receiverId: otherUser.id,
-        text: '', // No text for media messages
+        text: '', // Media messages don't need text
         timestamp: Date.now(),
         status: 'sent',
-        type: result.category === FileCategory.IMAGE ? 'image' : 
-              result.category === FileCategory.VIDEO ? 'video' : 
-              result.category === FileCategory.AUDIO ? 'audio' : 'text', // Fallback
+        type: result.category as any,
         fileUrl: result.url,
         fileName: result.originalName,
         fileSize: result.size,
-        thumbnailUrl: thumbnailUrl,
-        mediaDuration: duration,
+        thumbnailUrl: result.thumbnailUrl,
         read: false,
       };
 
       await DBService.sendMessage(newMessage);
       setUploadProgress(null);
+      toast.dismiss();
       toast.success('Sent!');
 
     } catch (error: any) {
       console.error('Upload failed:', error);
+      toast.dismiss();
       toast.error(error.message || 'Upload failed');
       setUploadProgress(null);
     }
@@ -457,6 +462,43 @@ const Chat: React.FC<ChatProps> = ({ currentUser, otherUser, onBack }) => {
     }
   };
 
+  // NEW: Copy Content Logic
+  const handleCopyContent = async (msg: Message) => {
+    try {
+      if (msg.type === 'text') {
+        await navigator.clipboard.writeText(msg.text);
+        toast.success('Text copied');
+      } else if (msg.fileUrl && (msg.type === 'image' || msg.type === 'video')) {
+        // Try to fetch blob and copy
+        const response = await fetch(msg.fileUrl);
+        const blob = await response.blob();
+        
+        // Only images can be written to clipboard as items in most browsers
+        if (msg.type === 'image') {
+            try {
+                await navigator.clipboard.write([
+                    new ClipboardItem({
+                        [blob.type]: blob
+                    })
+                ]);
+                toast.success('Image copied to clipboard');
+            } catch (err) {
+                 // Fallback to URL
+                 await navigator.clipboard.writeText(msg.fileUrl);
+                 toast.success('Image link copied (Browser restricted image copy)');
+            }
+        } else {
+            // For video, copy URL
+            await navigator.clipboard.writeText(msg.fileUrl);
+            toast.success('Video link copied');
+        }
+      }
+    } catch (err) {
+      console.error('Failed to copy', err);
+      toast.error('Failed to copy');
+    }
+  };
+
   const getStatusIcon = (status: Message['status']) => {
     const iconClass = "w-3.5 h-3.5";
     if ((status as string) === 'seen') return <CheckCheck className={`${iconClass} text-blue-400`} strokeWidth={2.5} />;
@@ -469,7 +511,12 @@ const Chat: React.FC<ChatProps> = ({ currentUser, otherUser, onBack }) => {
   };
 
   return (
-    <div className="flex flex-col h-full bg-light-background dark:bg-dark-background text-black dark:text-white overflow-hidden relative font-['Plus_Jakarta_Sans']">
+    <div 
+      className="flex flex-col h-full bg-light-background dark:bg-black text-black dark:text-white overflow-hidden relative font-['Plus_Jakarta_Sans'] bg-cover bg-center transition-all duration-500"
+      style={{ backgroundImage: themeUrl ? `url(${themeUrl})` : undefined }}
+    >
+      {/* Dark Overlay for readability if theme is applied */}
+      {themeUrl && <div className="absolute inset-0 bg-black/40 pointer-events-none" />}
       {showCamera && <CameraCapture onCapture={handleCameraCapture} onClose={() => setShowCamera(false)} />}
 
       {/* Floating Header */}
@@ -477,12 +524,12 @@ const Chat: React.FC<ChatProps> = ({ currentUser, otherUser, onBack }) => {
         <button onClick={onBack} className="p-2 -ml-2 rounded-full hover:bg-black/5 dark:hover:bg-white/10 transition-colors">
           <ArrowLeft className="w-5 h-5 text-gray-700 dark:text-white" />
         </button>
-        <div className="relative">
+        <div className="relative cursor-pointer" onClick={handleHeaderClick}>
           <img src={otherUser.avatar} className="w-10 h-10 rounded-full object-cover ring-2 ring-white dark:ring-slate-700" />
-          {isOtherUserOnline && <div className="absolute 1bottom-0 right-0 w-3 h-3 bg-emerald-500 rounded-full border-2 border-white dark:border-slate-800" />}
+          {isOtherUserOnline && <div className="absolute bottom-0 right-0 w-3 h-3 bg-emerald-500 rounded-full border-2 border-white dark:border-slate-800" />}
         </div>
-        <div className="flex-1 min-w-0 ml-1">
-          <h2 className="font-bold text-[16px] truncate text-black dark:text-white">{otherUser.fullName}</h2>
+        <div className="flex-1 min-w-0 ml-1 cursor-pointer" onClick={handleHeaderClick}>
+          <h2 className="font-bold text-[16px] truncate text-black dark:text-white hover:underline decoration-white/50">{otherUser.fullName}</h2>
           <p className="text-xs text-gray-500 dark:text-gray-400 truncate font-medium">
             {isOtherUserTyping ? 'typing...' : (isOtherUserOnline ? 'Active now' : 'Offline')}
           </p>
@@ -601,13 +648,20 @@ const Chat: React.FC<ChatProps> = ({ currentUser, otherUser, onBack }) => {
                                 </button>
                               ))}
                               
-                              <div className="pl-1 ml-1 border-l border-gray-200 dark:border-gray-600">
+                              <div className="pl-1 ml-1 border-l border-gray-200 dark:border-gray-600 flex gap-1">
                                 <button
                                     onClick={(e) => { e.stopPropagation(); setForwardSheet({ isOpen: true, message: msg }); setReactingToMessageId(null); }}
                                     className="w-9 h-9 flex items-center justify-center text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full transition-colors active:scale-90"
                                     title="Forward"
                                 >
                                     <Send className="w-4 h-4" />
+                                </button>
+                                <button
+                                    onClick={(e) => { e.stopPropagation(); handleCopyContent(msg); setReactingToMessageId(null); }}
+                                    className="w-9 h-9 flex items-center justify-center text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full transition-colors active:scale-90"
+                                    title="Copy"
+                                >
+                                    <Copy className="w-4 h-4" />
                                 </button>
                               </div>
 
@@ -653,10 +707,13 @@ const Chat: React.FC<ChatProps> = ({ currentUser, otherUser, onBack }) => {
                                         </div>
                                     </div>
                                 ) : (
+                                    <>
                                     <img 
                                         src={msg.fileUrl || msg.text} 
                                         className="max-w-full max-h-[300px] min-w-[200px] object-cover bg-gray-100 dark:bg-gray-800"
                                     />
+                                    {(!msg.fileUrl && !msg.text) && <span className="text-red-500 text-xs p-2 block">Error: No media source</span>}
+                                    </>
                                 )}
                                 
                                 <div className="absolute bottom-0 right-0 left-0 p-2 bg-gradient-to-t from-black/60 to-transparent flex justify-end items-end gap-1">
@@ -932,6 +989,14 @@ const Chat: React.FC<ChatProps> = ({ currentUser, otherUser, onBack }) => {
             mediaType={mediaViewer.type}
             senderName={mediaViewer.senderName}
             timestamp={mediaViewer.timestamp}
+            onForward={() => {
+                setMediaViewer(null);
+                if (mediaViewer.message) {
+                    setForwardSheet({ isOpen: true, message: mediaViewer.message });
+                } else {
+                    toast.error("Cannot forward this message");
+                }
+            }}
           />
         )}
       </AnimatePresence>

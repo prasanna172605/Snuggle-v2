@@ -74,7 +74,7 @@ const Activities: React.FC<ActivitiesProps> = ({ currentUser, onBack, onPostClic
                             <ArrowLeft className="w-6 h-6" />
                         </button>
                     )}
-                    <h1 className="text-xl font-bold">Your Activity</h1>
+                    <h1 className="text-xl font-bold text-snuggle-600 dark:text-snuggle-400">Your Activity</h1>
                 </div>
             </div>
 
@@ -108,7 +108,7 @@ const Activities: React.FC<ActivitiesProps> = ({ currentUser, onBack, onPostClic
                                 key={tab.id}
                                 onClick={() => setActiveTab(tab.id)}
                                 className={`flex-1 py-4 flex items-center justify-center gap-2 text-sm font-semibold transition-colors border-b-2 ${activeTab === tab.id
-                                    ? 'border-accent text-accent'
+                                    ? 'border-snuggle-600 text-snuggle-600 dark:border-snuggle-400 dark:text-snuggle-400'
                                     : 'border-transparent text-gray-400 hover:text-gray-600'
                                     }`}
                             >
@@ -124,14 +124,14 @@ const Activities: React.FC<ActivitiesProps> = ({ currentUser, onBack, onPostClic
                             <button className="text-sm font-semibold">Newest to oldest</button>
                             <button className="text-sm font-semibold text-gray-400">Sort & filter</button>
                         </div>
-                        <button className="text-sm font-semibold text-accent">Select</button>
+                        <button className="text-sm font-semibold text-snuggle-600">Select</button>
                     </div>
 
                     {/* Content Grid/List */}
                     <div className="p-4">
                         {loading ? (
                             <div className="flex justify-center py-12">
-                                <Loader2 className="w-8 h-8 animate-spin text-accent" />
+                            <Loader2 className="w-8 h-8 animate-spin text-snuggle-600" />
                             </div>
                         ) : (
                             <>

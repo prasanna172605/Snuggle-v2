@@ -90,6 +90,15 @@ export interface Message {
   callStatus?: 'completed' | 'missed' | 'rejected' | 'ongoing';
 }
 
+export interface Theme {
+  id: string;
+  name: string;
+  type: 'default' | 'custom';
+  backgroundUrl: string;
+  createdBy?: string; // userId if custom
+  previewUrl?: string; // optimize for list view
+}
+
 export interface Chat {
   id: string;
   participants: string[];
@@ -99,6 +108,11 @@ export interface Chat {
   unreadCount?: number;
   unreadCounts?: Record<string, number>;
   otherUser?: User;
+  
+  // Details
+  themeId?: string;
+  nicknames?: Record<string, string>;
+  muted?: boolean; // Hydrated from user settings
 }
 
 export interface Post {
@@ -222,4 +236,31 @@ export interface SignalingMessage {
   deviceId?: string;
   answeringDeviceId?: string;
   callerId?: string;
+}
+// Memories System
+export type MemoryType = 'image' | 'video' | 'reel';
+
+export interface Memory {
+  id: string;
+  userId: string;
+  type: MemoryType;
+  caption: string;
+  mediaUrl: string;
+  thumbnailUrl?: string; // For videos/reels
+  aspectRatio?: number;
+  duration?: number;
+  
+  // Interactions
+  likesCount: number;
+  commentsCount: number;
+  
+  // Auth context (hydrated)
+  isLiked?: boolean;
+  isSaved?: boolean;
+  
+  // Timestamps
+  createdAt: any;
+  
+  // Hydrated fields
+  user?: User; 
 }

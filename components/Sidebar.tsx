@@ -95,15 +95,15 @@ const Sidebar: React.FC<SidebarProps> = ({ unreadCount, unreadMessagesCount = 0,
                 {/* Popup Menu */}
                 {showMenu && (
                     <div className="absolute bottom-full left-0 w-60 mb-2 bg-white dark:bg-dark-card border border-gray-100 dark:border-dark-border rounded-2xl shadow-xl overflow-hidden animate-in slide-in-from-bottom-2 fade-in duration-200">
-                        <NavLink to="/settings" className="flex items-center gap-3 px-4 py-3 hover:bg-gray-50 dark:hover:bg-dark-border transition-colors">
+                        <NavLink to="/settings" className={({ isActive }) => `flex items-center gap-3 px-4 py-3 hover:bg-gray-50 dark:hover:bg-dark-border transition-colors ${isActive ? 'text-snuggle-600 dark:text-snuggle-300' : ''}`}>
                             <Settings className="w-5 h-5" />
                             <span className="font-medium">Settings</span>
                         </NavLink>
-                        <NavLink to="/activities" className="flex items-center gap-3 px-4 py-3 hover:bg-gray-50 dark:hover:bg-dark-border transition-colors">
+                        <NavLink to="/activities" className={({ isActive }) => `flex items-center gap-3 px-4 py-3 hover:bg-gray-50 dark:hover:bg-dark-border transition-colors ${isActive ? 'text-snuggle-600 dark:text-snuggle-300' : ''}`}>
                             <Heart className="w-5 h-5" />
                             <span className="font-medium">Your Activity</span>
                         </NavLink>
-                        <NavLink to="/favourites" className="flex items-center gap-3 px-4 py-3 hover:bg-gray-50 dark:hover:bg-dark-border transition-colors">
+                        <NavLink to="/favourites" className={({ isActive }) => `flex items-center gap-3 px-4 py-3 hover:bg-gray-50 dark:hover:bg-dark-border transition-colors ${isActive ? 'text-snuggle-600 dark:text-snuggle-300' : ''}`}>
                             <div className="w-5 h-5 flex items-center justify-center text-lg leading-none">⭐</div>
                             <span className="font-medium">Favourites</span>
                         </NavLink>

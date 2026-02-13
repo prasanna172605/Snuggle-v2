@@ -18,7 +18,7 @@ const BottomNav: React.FC<BottomNavProps> = ({ unreadCount, unreadMessagesCount 
         to={to}
         className={({ isActive }) =>
           `flex flex-col items-center justify-center min-w-[56px] min-h-[56px] rounded-2xl transition-all duration-300 ${isActive
-            ? 'text-accent dark:text-accent-light bg-warm-neutral dark:bg-snuggle-900/20 scale-105'
+            ? 'text-snuggle-500 dark:text-snuggle-400 bg-snuggle-50 dark:bg-snuggle-900/20 scale-105'
             : 'text-gray-400 dark:text-gray-500 hover:bg-white/50 dark:hover:bg-white/5 active:scale-95'
           }`
         }
@@ -29,13 +29,13 @@ const BottomNav: React.FC<BottomNavProps> = ({ unreadCount, unreadMessagesCount 
             <Icon className={`w-6 h-6 ${isActive ? 'stroke-[2.5px]' : 'stroke-2'}`} />
             {to === '/notifications' && unreadCount > 0 && (
               <span
-                className="absolute top-0 right-0 w-2.5 h-2.5 bg-accent rounded-full border-2 border-white dark:border-black"
+                className="absolute top-0 right-0 w-2.5 h-2.5 bg-snuggle-500 rounded-full border-2 border-white dark:border-black"
                 aria-label="Unread notifications"
               />
             )}
             {to === '/messages' && unreadMessagesCount > 0 && (
               <span
-                className="absolute -top-1 -right-1 min-w-[16px] h-[16px] bg-accent rounded-full flex items-center justify-center text-[10px] font-bold text-white border-2 border-white dark:border-black"
+                className="absolute -top-1 -right-1 min-w-[16px] h-[16px] bg-snuggle-500 rounded-full flex items-center justify-center text-[10px] font-bold text-white border-2 border-white dark:border-black"
                 aria-label="Unread messages"
               >
                 {unreadMessagesCount > 9 ? '9+' : unreadMessagesCount}
@@ -75,7 +75,7 @@ const BottomNav: React.FC<BottomNavProps> = ({ unreadCount, unreadMessagesCount 
           <div className="absolute left-1/2 -top-6 -translate-x-1/2">
              <button
               onClick={() => setShowUploadModal(true)}
-              className="w-14 h-14 bg-accent rounded-full flex items-center justify-center shadow-lg shadow-accent/40 transform hover:scale-105 active:scale-95 transition-all"
+              className="w-14 h-14 bg-snuggle-500 rounded-full flex items-center justify-center shadow-lg shadow-snuggle-500/40 transform hover:scale-105 active:scale-95 transition-all"
               aria-label="Create post"
             >
               <Plus className="w-8 h-8 text-white" strokeWidth={2.5} />

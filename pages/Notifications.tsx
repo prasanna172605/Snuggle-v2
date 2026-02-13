@@ -84,7 +84,7 @@ const Notifications: React.FC<NotificationsProps> = ({ currentUser, onUserClick 
     return (
         <div className="bg-white dark:bg-black min-h-screen">
             <div className="px-4 py-4 border-b border-gray-100 dark:border-dark-border flex justify-between items-center">
-                <h2 className="text-xl font-bold text-gray-900 dark:text-white">Notifications</h2>
+                <h2 className="text-xl font-bold text-snuggle-600 dark:text-snuggle-400">Notifications</h2>
                 <button
                     onClick={async () => {
                         if (!currentUser?.id) return;

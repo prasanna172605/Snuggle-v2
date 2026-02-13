@@ -174,8 +174,8 @@ const Profile: React.FC<ProfileProps> = ({ user: propUser, currentUser, isOwnPro
                 <div className="max-w-md mx-auto bg-white dark:bg-dark-card rounded-3xl p-6 shadow-sm">
                     <div className="flex justify-between items-center mb-6">
                         <button onClick={() => setIsEditing(false)} className="text-gray-500">Cancel</button>
-                        <h2 className="text-xl font-bold dark:text-white">Edit Profile</h2>
-                        <button onClick={handleSaveProfile} disabled={saving} className="text-accent font-bold">
+                        <h2 className="text-xl font-bold text-snuggle-600 dark:text-snuggle-400">Edit Profile</h2>
+                        <button onClick={handleSaveProfile} disabled={saving} className="text-snuggle-600 dark:text-snuggle-400 font-bold">
                             {saving ? 'Saving...' : 'Done'}
                         </button>
                     </div>
@@ -192,7 +192,7 @@ const Profile: React.FC<ProfileProps> = ({ user: propUser, currentUser, isOwnPro
                                 <Camera className="w-8 h-8 text-white" />
                              </div>
                         </div>
-                        <p className="text-accent font-medium mt-3 cursor-pointer" onClick={() => fileInputRef.current?.click()}>
+                        <p className="text-snuggle-600 dark:text-snuggle-400 font-medium mt-3 cursor-pointer" onClick={() => fileInputRef.current?.click()}>
                             Change Profile Photo
                         </p>
                         <input type="file" ref={fileInputRef} onChange={handleFileSelect} accept="image/*" className="hidden" />
@@ -312,12 +312,12 @@ const Profile: React.FC<ProfileProps> = ({ user: propUser, currentUser, isOwnPro
                                 Edit Profile
                             </button>
                         ) : (
-                             <button
+                              <button
                                 onClick={handleFollowToggle}
                                 disabled={followLoading}
-                                className={`px-8 py-3 font-bold rounded-2xl transition-all shadow-lg shadow-accent/20 ${isFollowing
+                                className={`px-8 py-3 font-bold rounded-2xl transition-all shadow-lg shadow-snuggle-500/20 ${isFollowing
                                     ? 'bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-white'
-                                    : 'bg-accent text-white'
+                                    : 'bg-snuggle-600 text-white'
                                     }`}
                             >
                                 {isFollowing ? 'Following' : 'Follow'}

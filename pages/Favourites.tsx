@@ -51,7 +51,7 @@ const Favourites: React.FC<FavouritesProps> = ({ currentUser, onBack, onPostClic
                             <ArrowLeft className="w-6 h-6" />
                         </button>
                     )}
-                    <h1 className="text-xl font-bold">Favourites</h1>
+                    <h1 className="text-xl font-bold text-snuggle-600 dark:text-snuggle-400">Favourites</h1>
                 </div>
             </div>
 
@@ -91,7 +91,7 @@ const Favourites: React.FC<FavouritesProps> = ({ currentUser, onBack, onPostClic
                         </div>
                         <h3 className="font-bold text-xl text-gray-900 dark:text-white mb-2">No Favourites Yet</h3>
                         <p className="text-sm max-w-xs mx-auto">
-                            Save photos and videos that you want to see again. No one is notified, and only you can see what you've likely.
+                            Save photos and videos that you want to see again. No one is notified, and only you can see your favourites.
                         </p>
                     </div>
                 )}

@@ -467,7 +467,8 @@ const Feed: React.FC<FeedProps> = ({ currentUser, onUserClick }) => {
                                 </div>
 
                                 {/* Media Section with Overlay */}
-                                <div className="relative w-full aspect-[4/5] bg-gray-100 dark:bg-black/20 overflow-hidden">
+                                <div className="p-3">
+                                    <div className="relative w-full aspect-[4/5] bg-gray-100 dark:bg-black/20 overflow-hidden rounded-[24px] border border-gray-100 dark:border-white/5 shadow-inner">
                                      {post.mediaType === 'video' ? (
                                         <video
                                             src={post.imageUrl || ''}
@@ -484,7 +485,11 @@ const Feed: React.FC<FeedProps> = ({ currentUser, onUserClick }) => {
                                             alt="Post"
                                             className="w-full h-full object-cover"
                                             loading="lazy"
-                                            onClick={() => navigate(`/post/${post.id}`)}
+                                            onClick={() => {
+                                                if (window.innerWidth > 768) {
+                                                    navigate(`/post/${post.id}`);
+                                                }
+                                            }}
                                         />
                                     )}
 
@@ -514,7 +519,7 @@ const Feed: React.FC<FeedProps> = ({ currentUser, onUserClick }) => {
                                             onClick={() => handleSave(post)}
                                             className="w-12 h-12 rounded-full bg-white/10 backdrop-blur-md flex items-center justify-center hover:bg-white/20 transition-all text-white pointer-events-auto"
                                         >
-                                            <Bookmark className={`w-6 h-6 ${isSaved ? 'fill-white text-white' : 'text-white'}`} />
+                                            <Star className={`w-6 h-6 ${isSaved ? 'fill-amber-500 text-amber-500' : 'text-white'}`} />
                                         </button>
                                     </div>
                                     
@@ -523,8 +528,9 @@ const Feed: React.FC<FeedProps> = ({ currentUser, onUserClick }) => {
                                          <div className="flex items-center gap-2 px-3 py-1.5 bg-black/40 backdrop-blur-md rounded-full text-white text-sm font-medium">
                                             <Heart className={`w-4 h-4 ${isLiked ? 'fill-red-500 text-red-500' : 'text-white'}`} />
                                             {likeCount > 0 && likeCount}
-                                        </div>
                                     </div>
+                                </div>
+                                </div>
                                 </div>
 
                                 {/* Caption Section */}
