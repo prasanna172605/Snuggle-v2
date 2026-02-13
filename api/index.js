@@ -46,6 +46,7 @@ app.use(express.json());
 import { verifyToken, requireRole } from './backend/middleware/auth.js';
 import AppError from './backend/utils/AppError.js';
 import catchAsync from './backend/utils/catchAsync.js';
+import { apiLimiter, authLimiter } from './backend/middleware/rateLimiter.js';
 // We define error handler inline to ensure it definitely runs and has access to res
 // import { globalErrorHandler } from '../middleware/error.js'; 
 
@@ -55,6 +56,10 @@ import userRouter from './backend/routes/users.js';
 import contentRouter from './backend/routes/content.js';
 import settingsRouter from './backend/routes/settings.js';
 import notificationRouter from './backend/routes/notifications.js';
+import mediaRouter from './backend/routes/media.js';
+
+// Global API Rate Limiter
+app.use('/api/v1', apiLimiter);
 
 // Health Check
 app.get('/api/health', (req, res) => {
@@ -64,9 +69,10 @@ app.get('/api/health', (req, res) => {
 // Mount Routes
 app.use('/api/v1/users', userRouter);
 app.use('/api/v1/content', contentRouter);
-app.use('/api/v1/auth', authRouter);
+app.use('/api/v1/auth', authLimiter, authRouter);
 app.use('/api/v1/settings', settingsRouter);
 app.use('/api/v1/notifications', notificationRouter);
+app.use('/api/v1/media', mediaRouter);
 
 // Lazy-loaded Push Handler
 app.post('/api/send-push', verifyToken, catchAsync(async (req, res, next) => {

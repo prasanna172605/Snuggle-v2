@@ -11,6 +11,10 @@ import CallHistoryMessage from '../components/CallHistoryMessage';
 import { ArrowLeft, Phone, Video, Send, Image as ImageIcon, Smile, Check, CheckCheck, Mic, Trash2, Camera, Trash, Plus } from 'lucide-react';
 import { SkeletonChat } from '../components/common/Skeleton';
 import { formatDateHeader } from '../utils/dateUtils';
+import { uploadFile, compressImage, generateVideoThumbnail, getMediaDuration, FileCategory, formatFileSize } from '../services/fileUpload';
+import MediaViewer from '../components/MediaViewer';
+import ForwardSheet from '../components/ForwardSheet';
+import { toast } from 'sonner';
 
 interface ChatProps {
   currentUser: User;
@@ -31,6 +35,11 @@ const Chat: React.FC<ChatProps> = ({ currentUser, otherUser, onBack }) => {
   const [showAttachMenu, setShowAttachMenu] = useState(false);
   const [showCamera, setShowCamera] = useState(false);
   const [loading, setLoading] = useState(true);
+
+  // Media Viewer & Forward State
+  const [mediaViewer, setMediaViewer] = useState<{ isOpen: boolean; url: string; type: 'image' | 'video'; senderName?: string; timestamp?: number } | null>(null);
+  const [forwardSheet, setForwardSheet] = useState<{ isOpen: boolean; message: Message | null } | null>(null);
+  const [uploadProgress, setUploadProgress] = useState<number | null>(null);
 
   // Recording State
   const [isRecording, setIsRecording] = useState(false);
@@ -195,6 +204,8 @@ const Chat: React.FC<ChatProps> = ({ currentUser, otherUser, onBack }) => {
     }, 2000);
   };
 
+
+
   const handleSend = async () => {
     if (!inputText.trim()) return;
 
@@ -226,35 +237,79 @@ const Chat: React.FC<ChatProps> = ({ currentUser, otherUser, onBack }) => {
 
   const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (file) {
-      // Allow larger files since we're using Storage now (10MB limit)
-      if (file.size > 10 * 1024 * 1024) {
-        alert("File too large. Please select a file under 10MB.");
-        return;
+    if (!file) return;
+
+    try {
+      setShowAttachMenu(false);
+      
+      // 1. Compress image if needed
+      let fileToUpload = file;
+      if (file.type.startsWith('image/')) {
+        toast.loading('Compressing image...');
+        const compressedBlob = await compressImage(file);
+        fileToUpload = new File([compressedBlob], file.name, { type: 'image/jpeg' });
+        toast.dismiss();
       }
 
-      try {
-        // Upload to Firebase Storage
-        const path = `chat_media/${currentUser.id}/${Date.now()}_${file.name}`;
-        const downloadUrl = await DBService.uploadMediaToStorage(file, path);
+      // 2. Generate metadata
+      let thumbnailUrl: string | undefined;
+      let duration: number | undefined;
 
-        const messageType = file.type.startsWith('video/') ? 'video' : 'image';
-        const newMessage: Message = {
-          id: Date.now().toString(),
-          senderId: currentUser.id,
-          receiverId: otherUser.id,
-          text: downloadUrl,
-          timestamp: Date.now(),
-          status: 'sent',
-          type: messageType,
-          read: false,
-        };
-        await DBService.sendMessage(newMessage);
-      } catch (error) {
-        console.error('Error uploading file:', error);
-        alert('Failed to upload file. Please try again.');
+      if (file.type.startsWith('video/')) {
+        toast.loading('Processing video...');
+        try {
+          const thumbBlob = await generateVideoThumbnail(file);
+          // Upload thumbnail
+          const thumbResult = await uploadFile(thumbBlob, currentUser.id, undefined, `thumb_${file.name}.jpg`);
+          thumbnailUrl = thumbResult.url;
+          duration = await getMediaDuration(file);
+        } catch (err) {
+          console.error('Video processing failed', err);
+        }
+        toast.dismiss();
+      } else if (file.type.startsWith('audio/')) {
+        duration = await getMediaDuration(file);
       }
+
+      // 3. Upload file with progress
+      setUploadProgress(0);
+      const result = await uploadFile(
+        fileToUpload,
+        currentUser.id,
+        (progress) => setUploadProgress(progress),
+        file.name
+      );
+
+      // 4. Send message
+      const newMessage: Message = {
+        id: Date.now().toString(),
+        senderId: currentUser.id,
+        receiverId: otherUser.id,
+        text: '', // No text for media messages
+        timestamp: Date.now(),
+        status: 'sent',
+        type: result.category === FileCategory.IMAGE ? 'image' : 
+              result.category === FileCategory.VIDEO ? 'video' : 
+              result.category === FileCategory.AUDIO ? 'audio' : 'text', // Fallback
+        fileUrl: result.url,
+        fileName: result.originalName,
+        fileSize: result.size,
+        thumbnailUrl: thumbnailUrl,
+        mediaDuration: duration,
+        read: false,
+      };
+
+      await DBService.sendMessage(newMessage);
+      setUploadProgress(null);
+      toast.success('Sent!');
+
+    } catch (error: any) {
+      console.error('Upload failed:', error);
+      toast.error(error.message || 'Upload failed');
+      setUploadProgress(null);
     }
+    
+    // Reset input
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
@@ -404,9 +459,9 @@ const Chat: React.FC<ChatProps> = ({ currentUser, otherUser, onBack }) => {
 
   const getStatusIcon = (status: Message['status']) => {
     const iconClass = "w-3.5 h-3.5";
-    if ((status as string) === 'seen') return <CheckCheck className={`${iconClass} text-blue-500`} strokeWidth={2.5} />;
-    if (status === 'delivered') return <CheckCheck className={`${iconClass} text-white/70`} />;
-    return <Check className={`${iconClass} text-white/70`} />;
+    if ((status as string) === 'seen') return <CheckCheck className={`${iconClass} text-blue-400`} strokeWidth={2.5} />;
+    if (status === 'delivered') return <CheckCheck className={`${iconClass} text-white/80`} />;
+    return <Check className={`${iconClass} text-white/80`} />;
   };
 
   const formatTime = (timestamp: number) => {
@@ -458,13 +513,14 @@ const Chat: React.FC<ChatProps> = ({ currentUser, otherUser, onBack }) => {
               const isMe = msg.senderId === currentUser.id;
               const isLastInGroup = index === messages.length - 1 || messages[index + 1].senderId !== msg.senderId;
               const isFirstInGroup = index === 0 || messages[index - 1].senderId !== msg.senderId;
-              const showTime = index === messages.length - 1 || (index < messages.length - 1 && messages[index + 1].timestamp - msg.timestamp > 300000);
-
+              
+              // Only apply bubble rounding to text/audio/post messages
               const roundedClass = isMe
                 ? `${isFirstInGroup ? 'rounded-tr-2xl' : 'rounded-tr-[4px]'} ${isLastInGroup ? 'rounded-br-2xl' : 'rounded-br-[4px]'} rounded-l-2xl`
                 : `${isFirstInGroup ? 'rounded-tl-2xl' : 'rounded-tl-[4px]'} ${isLastInGroup ? 'rounded-bl-2xl' : 'rounded-bl-[4px]'} rounded-r-2xl`;
 
               const showReactionMenu = reactingToMessageId === msg.id;
+              const isMedia = msg.type === 'image' || msg.type === 'video';
 
               // Reaction Logic
               const reactionCounts: Record<string, number> = {};
@@ -544,6 +600,17 @@ const Chat: React.FC<ChatProps> = ({ currentUser, otherUser, onBack }) => {
                                   {emoji}
                                 </button>
                               ))}
+                              
+                              <div className="pl-1 ml-1 border-l border-gray-200 dark:border-gray-600">
+                                <button
+                                    onClick={(e) => { e.stopPropagation(); setForwardSheet({ isOpen: true, message: msg }); setReactingToMessageId(null); }}
+                                    className="w-9 h-9 flex items-center justify-center text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full transition-colors active:scale-90"
+                                    title="Forward"
+                                >
+                                    <Send className="w-4 h-4" />
+                                </button>
+                              </div>
+
                               {isMe && (
                                 <div className="pl-1 ml-1 border-l border-gray-200 dark:border-gray-600">
                                   <button
@@ -558,78 +625,103 @@ const Chat: React.FC<ChatProps> = ({ currentUser, otherUser, onBack }) => {
                           )}
                         </AnimatePresence>
 
-                        <div className={`
-                            message-bubble px-3 py-2 shadow-sm relative z-10
-                            ${isMe
-                            ? `bg-gradient-to-tr from-warm-light to-warm text-black shadow-lg shadow-warm/20 ${roundedClass}`
-                            : `bg-white dark:bg-dark-surface text-black dark:text-white border border-gray-100 dark:border-dark-border shadow-sm ${roundedClass}`
-                          }
-                            `}>
-                          <div className="flex flex-col">
-                            {msg.type === 'audio' ? (
-                              <div className="min-w-[200px] py-1 flex items-center">
-                                <audio
-                                  controls
-                                  src={msg.text}
-                                  className={`h-8 w-full rounded-lg ${isMe ? 'opacity-90 invert brightness-0 grayscale contrast-200' : 'dark:invert dark:brightness-0 dark:contrast-200'}`}
-                                  style={isMe ? { filter: 'invert(1) brightness(2)' } : {}}
-                                />
-                              </div>
-                            ) : (msg.type === 'image' || (msg.text && msg.text.startsWith('data:video'))) ? (
-                              <div className="mb-1">
-                                {(msg.text && msg.text.startsWith('data:video')) ? (
-                                  <video
-                                    src={msg.text}
-                                    controls
-                                    className="max-w-full rounded-lg object-cover max-h-[300px]"
-                                    style={{ minWidth: '150px' }}
-                                  />
+                        {isMedia ? (
+                             // ─── INSTA-STYLE MEDIA CARD ─────────────────
+                             <div 
+                                className="relative rounded-2xl overflow-hidden cursor-pointer shadow-sm active:scale-98 transition-transform bg-black/5 dark:bg-white/5"
+                                onClick={() => setMediaViewer({ 
+                                    isOpen: true, 
+                                    url: msg.fileUrl || msg.text, 
+                                    type: msg.type as 'image' | 'video',
+                                    senderName: isMe ? 'You' : otherUser.fullName,
+                                    timestamp: msg.timestamp
+                                })}
+                            >
+                                {msg.type === 'video' ? (
+                                    <div className="relative">
+                                        <img 
+                                            src={msg.thumbnailUrl || (msg.text?.startsWith('data:video') ? undefined : msg.fileUrl) || '/video-placeholder.png'} 
+                                            className="max-w-full max-h-[300px] min-w-[200px] object-cover"
+                                        />
+                                        <div className="absolute inset-0 flex items-center justify-center bg-black/20">
+                                            <div className="w-12 h-12 bg-black/50 backdrop-blur-sm rounded-full flex items-center justify-center">
+                                                <div className="w-0 h-0 border-t-[8px] border-t-transparent border-l-[14px] border-l-white border-b-[8px] border-b-transparent ml-1" />
+                                            </div>
+                                        </div>
+                                        <div className="absolute bottom-2 left-2 bg-black/60 px-2 py-0.5 rounded text-[10px] font-medium text-white">
+                                            {msg.mediaDuration ? formatDuration(msg.mediaDuration) : 'Video'}
+                                        </div>
+                                    </div>
                                 ) : (
-                                  <img
-                                    src={msg.text}
-                                    alt="Shared photo"
-                                    className="max-w-full rounded-lg object-cover max-h-[300px]"
-                                    style={{ minWidth: '150px' }}
-                                    onClick={() => window.open(msg.text, '_blank')}
-                                  />
+                                    <img 
+                                        src={msg.fileUrl || msg.text} 
+                                        className="max-w-full max-h-[300px] min-w-[200px] object-cover bg-gray-100 dark:bg-gray-800"
+                                    />
                                 )}
-                              </div>
-                            ) : msg.type === 'post' && msg.post ? (
-                              <div
-                                className="bg-white dark:bg-dark-card rounded-xl overflow-hidden border border-gray-200 dark:border-dark-border cursor-pointer hover:opacity-95 transition-opacity max-w-[260px] my-1"
-                                onClick={() => navigate(`/post/${msg.post?.id}`)}
-                              >
-                                {msg.post.imageUrl && (
-                                  <div className="w-full h-32 overflow-hidden bg-gray-100 dark:bg-dark-bg">
-                                    <img src={msg.post.imageUrl} className="w-full h-full object-cover" alt="Post preview" />
+                                
+                                <div className="absolute bottom-0 right-0 left-0 p-2 bg-gradient-to-t from-black/60 to-transparent flex justify-end items-end gap-1">
+                                    <span className="text-[10px] font-medium text-white/90">
+                                        {formatTime(msg.timestamp)}
+                                    </span>
+                                    {isMe && getStatusIcon(msg.status)}
+                                </div>
+                            </div>
+                        ) : (
+                            // ─── STANDARD BUBBLE (Text/Audio/Post) ──────
+                            <div className={`
+                                message-bubble px-3 py-2 shadow-sm relative z-10
+                                ${isMe
+                                ? `bg-gradient-to-br from-accent-light to-accent text-white shadow-lg shadow-accent/30 ${roundedClass}`
+                                : `bg-white dark:bg-dark-surface text-black dark:text-white border border-gray-100 dark:border-dark-border shadow-sm ${roundedClass}`
+                              }
+                                `}>
+                              <div className="flex flex-col">
+                                {msg.type === 'audio' ? (
+                                  <div className="min-w-[200px] py-1 flex items-center">
+                                    <audio
+                                      controls
+                                      src={msg.text}
+                                      className={`h-8 w-full rounded-lg ${isMe ? 'opacity-90 invert brightness-0 grayscale contrast-200' : 'dark:invert dark:brightness-0 dark:contrast-200'}`}
+                                      style={isMe ? { filter: 'invert(1) brightness(2)' } : {}}
+                                    />
                                   </div>
+                                ) : msg.type === 'post' && msg.post ? (
+                                  <div
+                                    className="bg-white dark:bg-dark-card rounded-xl overflow-hidden border border-gray-200 dark:border-dark-border cursor-pointer hover:opacity-95 transition-opacity max-w-[260px] my-1"
+                                    onClick={() => navigate(`/post/${msg.post?.id}`)}
+                                  >
+                                    {msg.post.imageUrl && (
+                                      <div className="w-full h-32 overflow-hidden bg-gray-100 dark:bg-dark-bg">
+                                        <img src={msg.post.imageUrl} className="w-full h-full object-cover" alt="Post preview" />
+                                      </div>
+                                    )}
+                                    <div className="p-3">
+                                      <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Shared Post</p>
+                                      <p className="text-sm font-medium text-black dark:text-white line-clamp-2 leading-snug">
+                                        {msg.post.caption || 'Check out this post'}
+                                      </p>
+                                    </div>
+                                  </div>
+                                ) : (
+                                  <span className="text-[15px] leading-relaxed break-words whitespace-pre-wrap font-medium">
+                                    {msg.text}
+                                    <span className="inline-block w-12 h-0"></span>
+                                  </span>
                                 )}
-                                <div className="p-3">
-                                  <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Shared Post</p>
-                                  <p className="text-sm font-medium text-black dark:text-white line-clamp-2 leading-snug">
-                                    {msg.post.caption || 'Check out this post'}
-                                  </p>
+    
+                                <div className={`flex items-center gap-1 self-end mt-1.5 ml-auto ${isMe ? 'text-white/80' : 'text-gray-400 dark:text-gray-500'}`}>
+                                  <span className="text-[10px] font-medium opacity-90">
+                                    {formatTime(msg.timestamp)}
+                                  </span>
+                                  {isMe && (
+                                    <span>
+                                      {getStatusIcon(msg.status)}
+                                    </span>
+                                  )}
                                 </div>
                               </div>
-                            ) : (
-                              <span className="text-[15px] leading-relaxed break-words whitespace-pre-wrap font-medium">
-                                {msg.text}
-                                <span className="inline-block w-12 h-0"></span>
-                              </span>
-                            )}
-
-                            <div className={`flex items-center gap-1 self-end mt-1.5 ml-auto ${isMe ? 'text-amber-100' : 'text-gray-400 dark:text-gray-500'}`}>
-                              <span className="text-[10px] font-medium opacity-90">
-                                {formatTime(msg.timestamp)}
-                              </span>
-                              {isMe && (
-                                <span>
-                                  {getStatusIcon(msg.status)}
-                                </span>
-                              )}
                             </div>
-                          </div>
-                        </div>
+                        )}
 
                         {reactionEntries.length > 0 && (
                           <motion.div
@@ -789,7 +881,7 @@ const Chat: React.FC<ChatProps> = ({ currentUser, otherUser, onBack }) => {
               type="file"
               ref={fileInputRef}
               className="hidden"
-              accept="image/*"
+              accept="image/*,video/*,audio/*"
               onChange={handleFileSelect}
             />
 
@@ -814,7 +906,7 @@ const Chat: React.FC<ChatProps> = ({ currentUser, otherUser, onBack }) => {
             {/* Box 3: Mic/Send Button (Square) */}
             <button
               className={`h-[52px] w-[52px] shrink-0 flex items-center justify-center rounded-2xl transition-all duration-300 shadow-sm ${inputText.trim()
-                ? 'bg-gradient-to-tr from-warm-light to-warm text-white transform hover:scale-105 shadow-warm/30'
+                ? 'bg-gradient-to-tr from-accent-light to-accent text-white transform hover:scale-105 shadow-accent/30'
                 : 'bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700'
                 }`}
               onClick={inputText.trim() ? handleSend : handleStartRecording}
@@ -828,7 +920,30 @@ const Chat: React.FC<ChatProps> = ({ currentUser, otherUser, onBack }) => {
           </div>
         )}
       </div>
-    </div >
+
+
+      {/* Media Viewer Overlay */}
+      <AnimatePresence>
+        {mediaViewer && (
+          <MediaViewer
+            isOpen={mediaViewer.isOpen}
+            onClose={() => setMediaViewer(null)}
+            mediaUrl={mediaViewer.url}
+            mediaType={mediaViewer.type}
+            senderName={mediaViewer.senderName}
+            timestamp={mediaViewer.timestamp}
+          />
+        )}
+      </AnimatePresence>
+
+      {/* Forward Sheet */}
+      <ForwardSheet
+        isOpen={forwardSheet?.isOpen || false}
+        onClose={() => setForwardSheet(null)}
+        message={forwardSheet?.message || null}
+        currentUser={currentUser}
+      />
+    </div>
   );
 };
 

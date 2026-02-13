@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { User, Post } from '../types';
-import { Settings, Grid, Edit3, Share2, MessageCircle, UserPlus, UserMinus, UserCheck, Camera, Save, X as XIcon, MapPin, Calendar, Link as LinkIcon, Phone, Bookmark, Play, Film, UserSquare2, Heart } from 'lucide-react';
+import { Settings, Grid, Edit3, Share2, MessageCircle, UserPlus, UserMinus, UserCheck, Camera, Save, X as XIcon, MapPin, Calendar, Link as LinkIcon, Phone, Bookmark, Play, Film, UserSquare2, Heart, Twitter, Instagram } from 'lucide-react';
 import { DBService } from '../services/database';
 import { SkeletonProfile } from '../components/common/Skeleton';
 import PostDetailModal from '../components/PostDetailModal';
@@ -69,6 +69,12 @@ const Profile: React.FC<ProfileProps> = ({ user: propUser, currentUser, isOwnPro
         loadProfile();
     }, [userId, currentUser, isOwnProfile]);
 
+    useEffect(() => {
+        if (activeTab === 'favourites' && isOwnProfile && currentUser) {
+            DBService.getSavedPosts(currentUser.id).then(setSavedPosts);
+        }
+    }, [activeTab, isOwnProfile, currentUser]);
+
     const handleFollowToggle = async () => {
         if (!currentUser || !user) return;
 
@@ -120,40 +126,16 @@ const Profile: React.FC<ProfileProps> = ({ user: propUser, currentUser, isOwnPro
             let avatarUrl = user.avatar;
             if (avatarFile) {
                 avatarUrl = await DBService.uploadAvatar(user.id, avatarFile);
-
-                // Update via API
-                const token = await DBService.getCurrentToken();
-                await fetch('/api/v1/users/me/avatar', {
-                    method: 'PATCH',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${token}`
-                    },
-                    body: JSON.stringify({ avatarUrl })
-                });
             }
 
-            // 2. Update Profile Data
-            const token = await DBService.getCurrentToken();
-            const response = await fetch('/api/v1/users/me', {
-                method: 'PUT',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`
-                },
-                body: JSON.stringify({
-                    ...editForm,
-                    avatar: avatarUrl // Optimistically included, though PATCH handles it separately usually
-                })
-            });
+            // 2. Update Profile Data and Local State
+            const updates = {
+                ...editForm,
+                avatar: avatarUrl || user.avatar
+            };
+            
+            const updatedUser = await DBService.updateProfile(user.id, updates);
 
-            if (!response.ok) {
-                const err = await response.json();
-                throw new Error(err.message || 'Failed to update profile');
-            }
-
-            // 3. Update Local State
-            const updatedUser = { ...user, ...editForm, avatar: avatarUrl };
             setUser(updatedUser);
             if (isOwnProfile && onLogout) {
                  // Consider updating context user here if we had access to setContextUser
@@ -294,9 +276,30 @@ const Profile: React.FC<ProfileProps> = ({ user: propUser, currentUser, isOwnPro
 
                     {/* Bio */}
                     {user.bio && (
-                        <p className="text-gray-700 dark:text-gray-300 max-w-md mx-auto mb-6 leading-relaxed">
+                        <p className="text-gray-700 dark:text-gray-300 max-w-md mx-auto mb-4 leading-relaxed">
                             {user.bio}
                         </p>
+                    )}
+
+                    {/* Social Links */}
+                    {user.socialLinks && (user.socialLinks.website || user.socialLinks.instagram || user.socialLinks.twitter) && (
+                        <div className="flex justify-center gap-4 mb-6">
+                            {user.socialLinks.website && (
+                                <a href={user.socialLinks.website.startsWith('http') ? user.socialLinks.website : `https://${user.socialLinks.website}`} target="_blank" rel="noopener noreferrer" className="text-gray-500 hover:text-accent transition-colors">
+                                    <LinkIcon className="w-5 h-5" />
+                                </a>
+                            )}
+                            {user.socialLinks.instagram && (
+                                <a href={`https://instagram.com/${user.socialLinks.instagram}`} target="_blank" rel="noopener noreferrer" className="text-gray-500 hover:text-pink-500 transition-colors">
+                                    <Instagram className="w-5 h-5" />
+                                </a>
+                            )}
+                            {user.socialLinks.twitter && (
+                                <a href={`https://twitter.com/${user.socialLinks.twitter}`} target="_blank" rel="noopener noreferrer" className="text-gray-500 hover:text-blue-400 transition-colors">
+                                    <Twitter className="w-5 h-5" />
+                                </a>
+                            )}
+                        </div>
                     )}
 
                     {/* Actions */}
@@ -406,10 +409,31 @@ const Profile: React.FC<ProfileProps> = ({ user: propUser, currentUser, isOwnPro
                         </div>
                     )}
                     {activeTab === 'favourites' && isOwnProfile && (
-                        <div className="col-span-3 py-12 text-center text-gray-400">
-                             <div className="w-12 h-12 mx-auto mb-2 opacity-50 flex items-center justify-center text-4xl">⭐</div>
-                             <p>Your favourites will appear here</p>
-                        </div>
+                        savedPosts.length > 0 ? (
+                            savedPosts.map(post => (
+                                <div
+                                    key={post.id}
+                                    onClick={() => setSelectedPost(post)}
+                                    className="aspect-square relative group cursor-pointer overflow-hidden bg-gray-100 dark:bg-gray-800 rounded-2xl"
+                                >
+                                    {post.mediaType === 'video' ? (
+                                        <>
+                                            <video src={post.imageUrl} className="w-full h-full object-cover" />
+                                            <div className="absolute top-2 right-2">
+                                                <Play className="w-5 h-5 text-white fill-white drop-shadow-md" />
+                                            </div>
+                                        </>
+                                    ) : (
+                                        <img src={post.imageUrl} className="w-full h-full object-cover" alt="" />
+                                    )}
+                                </div>
+                            ))
+                        ) : (
+                            <div className="col-span-3 py-12 text-center text-gray-400">
+                                <div className="w-12 h-12 mx-auto mb-2 opacity-50 flex items-center justify-center text-4xl">⭐</div>
+                                <p>Your favourites will appear here</p>
+                            </div>
+                        )
                     )}
                 </div>
             </div>

@@ -3,6 +3,7 @@ import { onAuthStateChanged } from 'firebase/auth';
 import { auth } from '../services/firebase';
 import { DBService } from '../services/database';
 import { User } from '../types';
+import { initializeKeys, clearE2EEData } from '../services/keyManager';
 
 interface AuthContextType {
     currentUser: User | null;
@@ -23,6 +24,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                     const user = await DBService.getUserById(firebaseUser.uid);
                     if (user) {
                         setCurrentUser(user);
+
+                        // Initialize E2EE keys
+                        initializeKeys(user.id).catch(err =>
+                            console.warn('[Auth] E2EE key initialization skipped:', err)
+                        );
 
                         // Auto-register FCM token for push notifications
                         // This ensures the device token is always saved on login
@@ -55,6 +61,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }, []);
 
     const logout = async () => {
+        await clearE2EEData();
         await auth.signOut();
     };
 

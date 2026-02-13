@@ -58,8 +58,23 @@ const Sidebar: React.FC<SidebarProps> = ({ unreadCount, unreadMessagesCount = 0,
         <aside className="hidden md:flex flex-col w-64 h-full flex-shrink-0 bg-white/60 dark:bg-black/60 backdrop-blur-xl border-r border-white/20 dark:border-white/10 py-6 px-4 z-40">
             {/* Brand */}
             <div className="flex items-center gap-3 px-4 mb-8">
-                <div className="w-10 h-10 bg-gradient-to-tr from-snuggle-400 to-snuggle-600 rounded-xl flex items-center justify-center shadow-lg shadow-snuggle-500/30">
-                    <span className="text-white font-bold text-xl">S</span>
+                <div className="w-14 h-14 flex items-center justify-center rounded-full overflow-hidden border-2 border-gray-100 dark:border-white/10 shadow-md bg-white/5 flex-shrink-0">
+                    <img 
+                        src="/logo-reveal.png" 
+                        alt="Logo" 
+                        className="w-full h-full object-cover scale-125"
+                        onError={(e) => {
+                            e.currentTarget.style.display = 'none';
+                            const parent = e.currentTarget.parentElement;
+                            if (parent) {
+                                parent.className = "w-10 h-10 bg-gradient-to-tr from-snuggle-400 to-snuggle-600 rounded-xl flex items-center justify-center shadow-lg shadow-snuggle-500/30";
+                                const span = document.createElement('span');
+                                span.className = "text-white font-bold text-xl";
+                                span.innerText = "S";
+                                parent.appendChild(span);
+                            }
+                        }}
+                    />
                 </div>
                 <h1 className="text-2xl font-bold bg-gradient-to-r from-gray-900 to-gray-600 dark:from-white dark:to-gray-400 bg-clip-text text-transparent">
                     Snuggle

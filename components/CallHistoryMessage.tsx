@@ -44,18 +44,18 @@ export default function CallHistoryMessage({
     const isMissed = status === 'missed' || status === 'declined';
 
     return (
-        <div className={`flex items-center gap-3 p-3 rounded-2xl min-w-[200px] border ${isOutgoing
-            ? 'bg-warm-50 dark:bg-warm-900/30 border-warm-200 dark:border-warm-800/50'
+        <div className={`flex items-center gap-3 p-3 rounded-2xl min-w-[200px] max-w-[280px] border ${isOutgoing
+            ? 'bg-accent-50 dark:bg-accent-900/30 border-accent-200 dark:border-accent-800/50'
             : 'bg-white dark:bg-dark-surface border-gray-100 dark:border-dark-border'}`}>
 
             {/* Icon Container */}
-            <div className={`w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 ${isMissed ? 'bg-red-100 dark:bg-red-900/20' : 'bg-warm-100 dark:bg-warm-900/20'}`}>
+            <div className={`w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 ${isMissed ? 'bg-red-100 dark:bg-red-900/20' : 'bg-accent-100 dark:bg-accent-900/20'}`}>
                 {status === 'missed' ? (
                     <PhoneMissed className="w-5 h-5 text-red-500" />
                 ) : callType === 'video' ? (
-                    <Video className="w-5 h-5 text-warm-600 dark:text-warm-400" />
+                    <Video className="w-5 h-5 text-accent-600 dark:text-accent-400" />
                 ) : (
-                    <Phone className="w-5 h-5 text-warm-600 dark:text-warm-400" />
+                    <Phone className="w-5 h-5 text-accent-600 dark:text-accent-400" />
                 )}
             </div>
 

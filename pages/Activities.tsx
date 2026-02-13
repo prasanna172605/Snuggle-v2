@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { User, Post } from '../types';
+import { User, Post, Comment } from '../types';
 import { DBService } from '../services/database';
 import { ArrowLeft, Heart, MessageSquare, Reply, ChevronRight, Trash2, Loader2 } from 'lucide-react';
 import { formatRelativeTime } from '../utils/dateUtils';
@@ -17,6 +17,7 @@ const Activities: React.FC<ActivitiesProps> = ({ currentUser, onBack, onPostClic
     const navigate = useNavigate();
     const [activeTab, setActiveTab] = useState<ActivityTab>('likes');
     const [likedPosts, setLikedPosts] = useState<Post[]>([]);
+    const [userComments, setUserComments] = useState<Comment[]>([]);
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
@@ -29,9 +30,11 @@ const Activities: React.FC<ActivitiesProps> = ({ currentUser, onBack, onPostClic
             if (activeTab === 'likes') {
                 const posts = await DBService.getLikedPosts(currentUser.id);
                 setLikedPosts(posts);
+            } else if (activeTab === 'comments') {
+                const comments = await DBService.getUserComments(currentUser.id);
+                setUserComments(comments);
             } else {
-                // TODO: Implement comments and replies fetching
-                setLikedPosts([]);
+                // Future: Implement replies fetching
             }
         } catch (e) {
             console.error('Error loading activities:', e);
@@ -99,7 +102,7 @@ const Activities: React.FC<ActivitiesProps> = ({ currentUser, onBack, onPostClic
                 {/* Main Content */}
                 <div className="flex-1 overflow-y-auto">
                     {/* Tabs */}
-                    <div className="flex border-b border-gray-100 dark:border-dark-border sticky top-0 bg-white dark:bg-black">
+                    <div className="flex border-b border-gray-100 dark:border-dark-border sticky top-0 bg-white dark:bg-black z-10">
                         {tabs.map(tab => (
                             <button
                                 key={tab.id}
@@ -124,41 +127,72 @@ const Activities: React.FC<ActivitiesProps> = ({ currentUser, onBack, onPostClic
                         <button className="text-sm font-semibold text-accent">Select</button>
                     </div>
 
-                    {/* Content Grid */}
+                    {/* Content Grid/List */}
                     <div className="p-4">
                         {loading ? (
                             <div className="flex justify-center py-12">
                                 <Loader2 className="w-8 h-8 animate-spin text-accent" />
                             </div>
-                        ) : activeTab === 'likes' && likedPosts.length > 0 ? (
-                            <div className="grid grid-cols-3 gap-1">
-                                {likedPosts.map(post => (
-                                    <div
-                                        key={post.id}
-                                        onClick={() => handlePostClick(post.id)}
-                                        className="aspect-square relative group cursor-pointer"
-                                    >
-                                        {post.mediaType === 'video' ? (
-                                            <video src={post.imageUrl} className="w-full h-full object-cover rounded-lg" />
-                                        ) : (
-                                            <img src={post.imageUrl} className="w-full h-full object-cover rounded-lg" alt="" />
-                                        )}
-                                        <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center rounded-lg">
-                                            <Heart className="w-6 h-6 text-white fill-white" />
-                                        </div>
-                                    </div>
-                                ))}
-                            </div>
                         ) : (
-                            <div className="text-center py-20 text-gray-400">
-                                <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center">
-                                    {activeTab === 'likes' && <Heart className="w-8 h-8" />}
-                                    {activeTab === 'comments' && <MessageSquare className="w-8 h-8" />}
-                                    {activeTab === 'replies' && <Reply className="w-8 h-8" />}
-                                </div>
-                                <p className="font-semibold">No {activeTab} yet</p>
-                                <p className="text-sm">When you {activeTab === 'likes' ? 'like' : activeTab === 'comments' ? 'comment on' : 'reply to'} posts, they'll appear here.</p>
-                            </div>
+                            <>
+                                {activeTab === 'likes' && (
+                                    likedPosts.length > 0 ? (
+                                        <div className="grid grid-cols-3 gap-1">
+                                            {likedPosts.map(post => (
+                                                <div
+                                                    key={post.id}
+                                                    onClick={() => handlePostClick(post.id)}
+                                                    className="aspect-square relative group cursor-pointer"
+                                                >
+                                                    {post.mediaType === 'video' ? (
+                                                        <video src={post.imageUrl} className="w-full h-full object-cover rounded-lg" />
+                                                    ) : (
+                                                        <img src={post.imageUrl} className="w-full h-full object-cover rounded-lg" alt="" />
+                                                    )}
+                                                    <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center rounded-lg">
+                                                        <Heart className="w-6 h-6 text-white fill-white" />
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    ) : (
+                                        <div className="text-center py-20 text-gray-400">
+                                            <Heart className="w-16 h-16 mx-auto mb-4 opacity-20" />
+                                            <p>No likes yet</p>
+                                        </div>
+                                    )
+                                )}
+
+                                {activeTab === 'comments' && (
+                                    userComments.length > 0 ? (
+                                        <div className="space-y-3">
+                                            {userComments.map(comment => (
+                                                <div 
+                                                    key={comment.id} 
+                                                    onClick={() => handlePostClick(comment.postId)}
+                                                    className="p-4 bg-gray-50 dark:bg-dark-card rounded-xl cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+                                                >
+                                                    <p className="font-semibold text-sm mb-1 text-gray-900 dark:text-white">Commented on a post</p>
+                                                    <p className="text-gray-600 dark:text-gray-300 line-clamp-2">"{comment.text}"</p>
+                                                    <p className="text-xs text-gray-400 mt-2">{formatRelativeTime(comment.createdAt)}</p>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    ) : (
+                                        <div className="text-center py-20 text-gray-400">
+                                            <MessageSquare className="w-16 h-16 mx-auto mb-4 opacity-20" />
+                                            <p>No comments yet</p>
+                                        </div>
+                                    )
+                                )}
+
+                                {activeTab === 'replies' && (
+                                    <div className="text-center py-20 text-gray-400">
+                                        <Reply className="w-16 h-16 mx-auto mb-4 opacity-20" />
+                                        <p>No replies yet</p>
+                                    </div>
+                                )}
+                            </>
                         )}
                     </div>
                 </div>

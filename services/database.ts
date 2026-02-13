@@ -28,12 +28,14 @@ import { getToken } from 'firebase/messaging';
 import { signInWithEmailAndPassword, signInWithPopup, onAuthStateChanged, signOut, deleteUser as deleteFirebaseUser, createUserWithEmailAndPassword, sendPasswordResetEmail } from 'firebase/auth';
 import { onSnapshot } from 'firebase/firestore';
 import { ref as rtdbRef, set, onDisconnect, serverTimestamp as rtdbServerTimestamp, onValue, off, child, get } from 'firebase/database';
+import { encrypt, decrypt } from './encryptionService';
+import { initializeKeys, getSharedKey, isE2EEReady } from './keyManager';
 
 // Types
 
 
 // Types
-import { User, Post, Story, Comment as AppComment, CoreContent, ContentType, ContentStatus, ContentPriority } from '../types';
+import { User, Post, Story, Comment as AppComment, CoreContent, ContentType, ContentStatus, ContentPriority, Chat, Message } from '../types';
 import type { Notification } from '../types';
 
 export interface Call {
@@ -1151,6 +1153,7 @@ export class DBService {
     // Toggle save - idempotent operation using subcollection
     static async toggleSave(postId: string, userId: string): Promise<boolean> {
         const saveRef = doc(db, 'posts', postId, 'saves', userId);
+        const postRef = doc(db, 'posts', postId);
         const userRef = doc(db, 'users', userId);
 
         // Check if already saved
@@ -1160,6 +1163,11 @@ export class DBService {
         if (wasSaved) {
             // Unsave
             await deleteDoc(saveRef);
+            try {
+                await updateDoc(postRef, { favouritesCount: increment(-1) });
+            } catch (e) {
+                console.warn('[DB] favouritesCount decrement failed:', e);
+            }
             await updateDoc(userRef, { savedPosts: arrayRemove(postId) });
             console.log('[DB] Unsaved post:', postId);
             return false; // now NOT saved
@@ -1169,6 +1177,11 @@ export class DBService {
                 userId,
                 timestamp: serverTimestamp()
             });
+            try {
+                await updateDoc(postRef, { favouritesCount: increment(1) });
+            } catch (e) {
+                console.warn('[DB] favouritesCount increment failed:', e);
+            }
             await updateDoc(userRef, { savedPosts: arrayUnion(postId) });
             console.log('[DB] Saved post:', postId);
             return true; // now saved
@@ -1449,6 +1462,76 @@ export class DBService {
         });
     }
 
+    static async getUserComments(userId: string): Promise<AppComment[]> {
+        const q = query(
+            collection(db, 'comments'),
+            where('userId', '==', userId),
+            orderBy('createdAt', 'desc')
+        );
+
+        const querySnapshot = await getDocs(q);
+        return querySnapshot.docs.map(doc => {
+            const data = doc.data();
+            return {
+                ...data,
+                id: doc.id,
+                createdAt: data.createdAt?.toMillis ? data.createdAt.toMillis() : Date.now()
+            } as AppComment;
+        });
+    }
+
+    /**
+     * Get users who liked a post (for "Who liked this" modal)
+     */
+    static async getLikedByUsers(postId: string, maxResults: number = 50): Promise<import('../types').User[]> {
+        try {
+            const likesQuery = query(
+                collection(db, 'posts', postId, 'likes'),
+                orderBy('timestamp', 'desc'),
+                limit(maxResults)
+            );
+            const likesSnap = await getDocs(likesQuery);
+            const userIds = likesSnap.docs.map(d => d.id);
+
+            if (userIds.length === 0) return [];
+
+            // Fetch user profiles in parallel
+            const users = await Promise.all(
+                userIds.map(uid => this.getUserById(uid))
+            );
+            return users.filter((u): u is import('../types').User => u !== null);
+        } catch (error) {
+            console.error('[DB] Error getting liked by users:', error);
+            return [];
+        }
+    }
+
+    /**
+     * Get preview comments for feed cards (limited, most recent first)
+     */
+    static async getPreviewComments(postId: string, previewLimit: number = 2): Promise<AppComment[]> {
+        try {
+            const q = query(
+                collection(db, 'comments'),
+                where('postId', '==', postId),
+                orderBy('createdAt', 'desc'),
+                limit(previewLimit)
+            );
+            const snapshot = await getDocs(q);
+            return snapshot.docs.map(d => {
+                const data = d.data();
+                return {
+                    ...data,
+                    id: d.id,
+                    createdAt: data.createdAt?.toMillis?.() || Date.now()
+                } as AppComment;
+            }).reverse(); // Show oldest first in preview
+        } catch (error) {
+            console.error('[DB] Error getting preview comments:', error);
+            return [];
+        }
+    }
+
     static async getPosts(): Promise<import('../types').Post[]> {
         const q = query(collection(db, 'posts'), orderBy('createdAt', 'desc'), limit(100));
         const querySnapshot = await getDocs(q);
@@ -1648,8 +1731,28 @@ export class DBService {
         const chatId = this.getChatId(messageData.senderId!, messageData.receiverId!);
         const messageRef = doc(collection(db, 'chats', chatId, 'messages'), messageData.id);
 
+        // ─── E2EE: Encrypt text messages ────────────────────────
+        let encryptedText = messageData.text;
+        let encryptionMeta: { encrypted?: boolean; iv?: string } = {};
+
+        if (messageData.type === 'text' && messageData.text && isE2EEReady()) {
+            try {
+                const sharedKey = await getSharedKey(messageData.receiverId!);
+                if (sharedKey) {
+                    const { ciphertext, iv } = await encrypt(messageData.text, sharedKey);
+                    encryptedText = ciphertext;
+                    encryptionMeta = { encrypted: true, iv };
+                    console.log('[E2EE] Message encrypted for:', messageData.receiverId);
+                }
+            } catch (e) {
+                console.warn('[E2EE] Encryption failed, sending plaintext:', e);
+            }
+        }
+
         const firestoreMessage = {
             ...messageData,
+            text: encryptedText,
+            ...encryptionMeta,
             timestamp: Timestamp.fromMillis(messageData.timestamp)
         };
 
@@ -1669,9 +1772,12 @@ export class DBService {
         console.log('[sendMessage] Updating chat doc with unreadCounts for receiver:', messageData.receiverId);
 
         // First ensure the chat doc exists with basic info
+        // Use original plaintext for lastMessage preview (not ciphertext)
         await setDoc(chatRef, {
             participants: [messageData.senderId, messageData.receiverId],
-            lastMessage: messageData.type === 'text' ? messageData.text : `Sent a ${messageData.type}`,
+            lastMessage: messageData.type === 'text'
+                ? (encryptionMeta.encrypted ? '🔒 Encrypted message' : messageData.text)
+                : `Sent a ${messageData.type}`,
             lastMessageTime: firestoreMessage.timestamp,
             lastSenderId: messageData.senderId
         }, { merge: true });
@@ -1684,7 +1790,10 @@ export class DBService {
         // Trigger Push Notification via Vercel (Free Tier Backend)
         const senderProfile = await this.getUserById(messageData.senderId);
         const senderName = senderProfile?.fullName || "New Message";
-        const msgBody = messageData.type === 'text' ? messageData.text : `Sent a ${messageData.type}`;
+        // Push notification body: don't leak plaintext if encrypted
+        const msgBody = messageData.type === 'text'
+            ? (encryptionMeta.encrypted ? '🔒 Encrypted message' : messageData.text)
+            : `Sent a ${messageData.type}`;
 
         this.sendPushNotification({
             receiverId: messageData.receiverId!,
@@ -1707,7 +1816,7 @@ export class DBService {
         );
 
         const querySnapshot = await getDocs(q);
-        return querySnapshot.docs.map(doc => {
+        const messages = querySnapshot.docs.map(doc => {
             const data = doc.data();
             // Handle both number and Timestamp types - ensure we always get a number
             let timestamp: number;
@@ -1727,6 +1836,27 @@ export class DBService {
                 timestamp
             } as import('../types').Message;
         }).reverse();
+
+        // ─── E2EE: Decrypt encrypted messages ────────────────────
+        const currentUser = auth.currentUser;
+        if (currentUser && isE2EEReady()) {
+            for (const msg of messages) {
+                if (msg.encrypted && msg.iv && msg.text) {
+                    try {
+                        const remoteUserId = msg.senderId === currentUser.uid ? (msg.receiverId || userId2) : msg.senderId;
+                        const sharedKey = await getSharedKey(remoteUserId);
+                        if (sharedKey) {
+                            msg.text = await decrypt(msg.text, msg.iv, sharedKey);
+                        }
+                    } catch (e) {
+                        console.warn('[E2EE] Decryption failed for message:', msg.id, e);
+                        msg.text = '🔒 Unable to decrypt';
+                    }
+                }
+            }
+        }
+
+        return messages;
     }
 
     // Real-time subscription for messages - enables instant status updates
@@ -1744,7 +1874,7 @@ export class DBService {
         );
 
         const unsubscribe = onSnapshot(q,
-            (snapshot) => {
+            async (snapshot) => {
                 const messages = snapshot.docs.map(doc => {
                     const data = doc.data();
                     // Handle both number and Timestamp types - ensure we always get a number
@@ -1765,6 +1895,26 @@ export class DBService {
                         timestamp
                     } as import('../types').Message;
                 }).reverse();
+
+                // ─── E2EE: Decrypt encrypted messages in real-time ──
+                const currentUser = auth.currentUser;
+                if (currentUser && isE2EEReady()) {
+                    for (const msg of messages) {
+                        if (msg.encrypted && msg.iv && msg.text) {
+                            try {
+                                const remoteUserId = msg.senderId === currentUser.uid ? (msg.receiverId || userId2) : msg.senderId;
+                                const sharedKey = await getSharedKey(remoteUserId);
+                                if (sharedKey) {
+                                    msg.text = await decrypt(msg.text, msg.iv, sharedKey);
+                                }
+                            } catch (e) {
+                                console.warn('[E2EE] Decryption failed for message:', msg.id, e);
+                                msg.text = '🔒 Unable to decrypt';
+                            }
+                        }
+                    }
+                }
+
                 callback(messages);
             },
             (error) => {
@@ -2419,6 +2569,36 @@ export class DBService {
         }
     }
 
+    /**
+     * Save call record to dedicated calls collection
+     */
+    static async saveCallRecord(callData: {
+        callerId: string;
+        receiverId: string;
+        type: 'audio' | 'video';
+        status: 'calling' | 'ringing' | 'connected' | 'missed' | 'rejected' | 'ended';
+        startedAt: number;
+        endedAt?: number;
+        duration?: number;
+    }): Promise<string> {
+        try {
+            const callRef = doc(collection(db, 'calls'));
+            await setDoc(callRef, {
+                id: callRef.id,
+                ...callData,
+                startedAt: Timestamp.fromMillis(callData.startedAt),
+                endedAt: callData.endedAt ? Timestamp.fromMillis(callData.endedAt) : null,
+                duration: callData.duration || 0,
+                createdAt: serverTimestamp(),
+            });
+            console.log('[DB] Saved call record:', callRef.id, 'status:', callData.status);
+            return callRef.id;
+        } catch (error) {
+            console.error('[DB] Error saving call record:', error);
+            return '';
+        }
+    }
+
     // ===== WebRTC Signaling (BroadcastChannel + localStorage for cross-tab) =====
 
     private static signalChannel: BroadcastChannel | null = null;
@@ -2532,6 +2712,7 @@ export class DBService {
         });
         if (!response.ok) throw new Error('Failed to restore content');
     }
+
 }
 
 // ==================== CIRCLE SERVICE ====================

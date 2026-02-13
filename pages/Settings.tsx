@@ -60,16 +60,27 @@ const Settings: React.FC<SettingsProps> = ({
 
   // Notifications State
   const [notifPrefs, setNotifPrefs] = useState({
-    email: true,
-    push: true,
-    frequency: 'realtime',
-    types: {
+    email: currentUser.notificationSettings?.email ?? true,
+    push: currentUser.notificationSettings?.push ?? true,
+    frequency: currentUser.notificationSettings?.frequency || 'realtime',
+    types: currentUser.notificationSettings?.types || {
       followers: true,
       messages: true,
       likes: true,
       mentions: true
     }
   });
+
+  const updateNotificationSettings = async (newPrefs: typeof notifPrefs) => {
+    setNotifPrefs(newPrefs);
+    try {
+        await DBService.updateProfile(currentUser.id, { notificationSettings: newPrefs });
+        onUpdateUser({ ...currentUser, notificationSettings: newPrefs });
+    } catch (error) {
+        console.error("Failed to save notification settings", error);
+        toast.error("Failed to save settings");
+    }
+  };
 
   // Dialog State
   const [dialogState, setDialogState] = useState<{
@@ -449,7 +460,7 @@ const Settings: React.FC<SettingsProps> = ({
                   </div>
                 </div>
                 <div
-                  onClick={() => setNotifPrefs({ ...notifPrefs, push: !notifPrefs.push })}
+                  onClick={() => updateNotificationSettings({ ...notifPrefs, push: !notifPrefs.push })}
                   className={`w-12 h-7 rounded-full cursor-pointer transition-colors relative ${notifPrefs.push ? 'bg-green-500' : 'bg-gray-200 dark:bg-gray-700'}`}
                 >
                   <div className={`absolute top-1 w-5 h-5 bg-white rounded-full transition-transform ${notifPrefs.push ? 'left-6' : 'left-1'}`} />
@@ -467,7 +478,7 @@ const Settings: React.FC<SettingsProps> = ({
                   </div>
                 </div>
                 <div
-                  onClick={() => setNotifPrefs({ ...notifPrefs, email: !notifPrefs.email })}
+                  onClick={() => updateNotificationSettings({ ...notifPrefs, email: !notifPrefs.email })}
                   className={`w-12 h-7 rounded-full cursor-pointer transition-colors relative ${notifPrefs.email ? 'bg-green-500' : 'bg-gray-200 dark:bg-gray-700'}`}
                 >
                   <div className={`absolute top-1 w-5 h-5 bg-white rounded-full transition-transform ${notifPrefs.email ? 'left-6' : 'left-1'}`} />
@@ -478,7 +489,7 @@ const Settings: React.FC<SettingsProps> = ({
                 <h4 className="font-bold mb-3 uppercase text-xs text-gray-400">Notify me about</h4>
                 <div className="space-y-3">
                   {Object.entries(notifPrefs.types).map(([key, value]) => (
-                    <div key={key} className="flex items-center justify-between" onClick={() => setNotifPrefs({ ...notifPrefs, types: { ...notifPrefs.types, [key]: !value } })}>
+                    <div key={key} className="flex items-center justify-between" onClick={() => updateNotificationSettings({ ...notifPrefs, types: { ...notifPrefs.types, [key as keyof typeof notifPrefs.types]: !value } })}>
                       <span className="capitalize font-medium dark:text-white">{key}</span>
                       <div className={`w-5 h-5 rounded-md border-2 flex items-center justify-center ${value ? 'bg-black border-black dark:bg-white dark:border-white' : 'border-gray-300'}`}>
                         {value && <div className="w-2 h-2 bg-white dark:bg-black rounded-sm" />}
@@ -512,7 +523,10 @@ const Settings: React.FC<SettingsProps> = ({
             </div>
 
             {/* Switch Account */}
-            <div className="bg-white dark:bg-dark-card p-6 rounded-[32px] shadow-sm flex items-center justify-between cursor-pointer" onClick={() => onSwitchAccount(currentUser.id)}>
+            <div className="bg-white dark:bg-dark-card p-6 rounded-[32px] shadow-sm flex items-center justify-between cursor-pointer" onClick={() => {
+                onSwitchAccount(currentUser.id);
+                toast.info("Switching accounts coming soon!");
+            }}>
               <div className="flex items-center gap-3">
                 <div className="p-2 bg-purple-50 dark:bg-purple-900/20 rounded-full text-purple-600">
                   <Users className="w-6 h-6" />

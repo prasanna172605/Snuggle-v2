@@ -49,23 +49,44 @@ const BottomNav: React.FC<BottomNavProps> = ({ unreadCount, unreadMessagesCount 
 
   return (
     <>
-      <div className="fixed bottom-0 left-0 right-0 flex justify-center z-30 pb-safe safe-bottom pointer-events-none">
-        <div className="bg-white/90 dark:bg-black/80 backdrop-blur-xl border border-white/20 dark:border-white/10 shadow-soft shadow-xl rounded-t-3xl md:rounded-full md:bottom-6 md:mb-6 px-6 py-3 flex items-center justify-around md:justify-center md:gap-8 w-full md:max-w-lg pointer-events-auto h-[80px]">
-
-          <NavItem to="/" icon={Image} label="Memories" />
-          <NavItem to="/messages" icon={MessageCircle} label="Messages" />
-
-          {/* Create Button - Centered & Distinct */}
-          <button
-            onClick={() => setShowUploadModal(true)}
-            className="w-14 h-14 -mt-6 bg-primary text-white rounded-full flex items-center justify-center shadow-xl shadow-primary/30 transform hover:scale-105 active:scale-95 transition-all mx-2 ring-4 ring-warm-neutral dark:ring-black"
-            aria-label="Create post"
+      <div className="fixed bottom-0 left-0 right-0 z-50 pointer-events-none">
+        
+        {/* SVG Background Layer */}
+        <div className="absolute bottom-0 w-full h-[80px] drop-shadow-[0_-5px_10px_rgba(0,0,0,0.05)] text-white dark:text-black pointer-events-auto">
+          <svg
+            viewBox="0 0 375 80"
+            className="w-full h-full fill-current"
+            preserveAspectRatio="none"
           >
-            <Plus className="w-8 h-8" strokeWidth={2.5} />
-          </button>
+            <path d="M0,0 L140,0 C155,0 160,35 187.5,35 C215,35 220,0 235,0 L375,0 L375,80 L0,80 Z" />
+          </svg>
+        </div>
 
-          <NavItem to="/notifications" icon={Bell} label="Notifications" />
-          <NavItem to="/profile" icon={User} label="Profile" />
+        {/* Content Layer */}
+        <div className="relative w-full h-[80px] max-w-lg mx-auto flex items-center justify-between px-6 pointer-events-auto">
+          
+          {/* Left Icons */}
+          <div className="flex gap-8 mb-2">
+            <NavItem to="/" icon={Image} label="Memories" />
+            <NavItem to="/messages" icon={MessageCircle} label="Messages" />
+          </div>
+
+          {/* Center FAB */}
+          <div className="absolute left-1/2 -top-6 -translate-x-1/2">
+             <button
+              onClick={() => setShowUploadModal(true)}
+              className="w-14 h-14 bg-accent rounded-full flex items-center justify-center shadow-lg shadow-accent/40 transform hover:scale-105 active:scale-95 transition-all"
+              aria-label="Create post"
+            >
+              <Plus className="w-8 h-8 text-white" strokeWidth={2.5} />
+            </button>
+          </div>
+
+          {/* Right Icons */}
+          <div className="flex gap-8 mb-2">
+            <NavItem to="/notifications" icon={Bell} label="Notifications" />
+            <NavItem to="/profile" icon={User} label="Profile" />
+          </div>
 
         </div>
       </div>

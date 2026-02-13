@@ -35,6 +35,7 @@ import CallOverlay from './components/CallOverlay';
 import { CallProvider } from './context/CallContext';
 import { AnimatePresence } from 'framer-motion';
 import PageTransition from './components/common/PageTransition';
+import SplashScreen from './components/common/SplashScreen';
 
 const LoadingFallback = () => (
   <div className="min-h-screen flex items-center justify-center bg-light-background dark:bg-dark-background">
@@ -276,8 +277,14 @@ const AppContent = ({
 const App = () => {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [showSplash, setShowSplash] = useState(true);
   const [authView, setAuthView] = useState<'LOGIN' | 'SIGNUP' | 'GOOGLE_SETUP'>('LOGIN');
   const [tempGoogleUser, setTempGoogleUser] = useState<any>(null);
+
+  useEffect(() => {
+    // Hide splash screen after authentication check if it's already done
+    // but the SplashScreen component itself handles its own timer.
+  }, []);
 
   useEffect(() => {
     const storedUser = localStorage.getItem('currentUser');
@@ -395,33 +402,52 @@ const App = () => {
   }
 
   return (
-    <ThemeProvider>
-      <AuthProvider>
-        <NotificationProvider>
-          <InteractionProvider>
-            <CallProvider currentUser={currentUser}>
-              <AppContent
-                currentUser={currentUser}
-                onLogout={onLogout}
-                onUpdateUser={(user) => {
-                  setCurrentUser(user);
-                  localStorage.setItem('currentUser', JSON.stringify(user));
-                }}
-                onDeleteAccount={onLogout}
-                onSwitchAccount={(userId) => {
-                  // Switch account logic
-                }}
-                onAddAccount={() => {
-                  // Add account logic
-                }}
-              />
+    <>
+      <AnimatePresence>
+        {showSplash && (
+          <SplashScreen onComplete={() => setShowSplash(false)} />
+        )}
+      </AnimatePresence>
 
-              <Toaster position="top-right" richColors closeButton />
-            </CallProvider>
-          </InteractionProvider>
-        </NotificationProvider>
-      </AuthProvider>
-    </ThemeProvider>
+      <ThemeProvider>
+        <AuthProvider>
+          <NotificationProvider>
+            <InteractionProvider>
+              <CallProvider currentUser={currentUser}>
+                <AppContent
+                  currentUser={currentUser}
+                  onLogout={onLogout}
+                  onUpdateUser={(user) => {
+                    setCurrentUser(user);
+                    localStorage.setItem('currentUser', JSON.stringify(user));
+                  }}
+                  onDeleteAccount={async () => {
+                    if (currentUser) {
+                      try {
+                        await DBService.deleteUser(currentUser.id);
+                        toast.success('Account deleted successfully');
+                        onLogout();
+                      } catch (error: any) {
+                        console.error('Failed to delete account:', error);
+                        toast.error(error.message || 'Failed to delete account');
+                      }
+                    }
+                  }}
+                  onSwitchAccount={(userId) => {
+                    // Switch account logic
+                  }}
+                  onAddAccount={() => {
+                    // Add account logic
+                  }}
+                />
+
+                <Toaster position="top-right" richColors closeButton />
+              </CallProvider>
+            </InteractionProvider>
+          </NotificationProvider>
+        </AuthProvider>
+      </ThemeProvider>
+    </>
   );
 };
 

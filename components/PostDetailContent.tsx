@@ -9,6 +9,7 @@ import {
 } from 'lucide-react';
 import { formatRelativeTime } from '../utils/dateUtils';
 import { toast } from 'sonner';
+import LikedBySheet from './LikedBySheet';
 
 interface PostDetailContentProps {
     post: Post;
@@ -17,7 +18,6 @@ interface PostDetailContentProps {
     isOwner: boolean;
     onPostUpdated?: () => void;
     onPostDeleted?: () => void;
-    // Optional callbacks that might be used by the parent
     onClose?: () => void;
 }
 
@@ -39,12 +39,14 @@ const PostDetailContent: React.FC<PostDetailContentProps> = ({
     const [showEditModal, setShowEditModal] = useState(false);
     const [editCaption, setEditCaption] = useState(post.caption);
     const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+    const [showLikedBy, setShowLikedBy] = useState(false);
 
     // Interaction Context
     const { isLiked: checkIsLiked, isSaved: checkIsSaved, toggleLike, toggleSave } = useInteractions();
     const isLiked = checkIsLiked(post.id);
     const isSaved = checkIsSaved(post.id);
     const [likeCount, setLikeCount] = useState(post.likeCount || (Array.isArray(post.likes) ? post.likes.length : 0));
+    const [favouritesCount, setFavouritesCount] = useState(post.favouritesCount || 0);
 
     useEffect(() => {
         loadComments();
@@ -76,11 +78,15 @@ const PostDetailContent: React.FC<PostDetailContentProps> = ({
     };
 
     const handleSave = async () => {
+        // Optimistic update
+        setFavouritesCount(prev => isSaved ? Math.max(0, prev - 1) : prev + 1);
         try {
             const nowSaved = await toggleSave(post.id);
-            toast.success(nowSaved ? 'Post saved!' : 'Removed from saved');
+            toast.success(nowSaved ? 'Added to favourites!' : 'Removed from favourites');
         } catch (e) {
-            toast.error('Failed to update save');
+            // Revert
+            setFavouritesCount(prev => isSaved ? prev + 1 : Math.max(0, prev - 1));
+            toast.error('Failed to update favourite');
         }
     };
 
@@ -141,6 +147,7 @@ const PostDetailContent: React.FC<PostDetailContentProps> = ({
     };
 
     return (
+        <>
         <div className="bg-white dark:bg-dark-surface w-full h-full flex flex-col md:flex-row rounded-lg overflow-hidden shadow-2xl relative">
             {/* Left Side - Media */}
             <div className="md:w-[60%] bg-black flex items-center justify-center relative min-h-[300px] md:min-h-full">
@@ -260,14 +267,22 @@ const PostDetailContent: React.FC<PostDetailContentProps> = ({
                             </button>
                         </div>
                         <button onClick={handleSave} className="hover:opacity-70 transition-opacity">
-                            <Star className={`w-6 h-6 ${isSaved ? 'fill-warm text-warm' : 'text-black dark:text-white'}`} />
+                            <Star className={`w-6 h-6 ${isSaved ? 'fill-amber-500 text-amber-500' : 'text-black dark:text-white'}`} />
                         </button>
                     </div>
 
-                    {/* Like count */}
-                    <p className="font-bold text-sm text-gray-900 dark:text-white mb-1">
-                        {likeCount} likes
-                    </p>
+                    {/* Like count — clickable to see who liked */}
+                    <button
+                        onClick={() => setShowLikedBy(true)}
+                        className="font-bold text-sm text-gray-900 dark:text-white mb-1 hover:text-gray-500 dark:hover:text-gray-400 transition-colors cursor-pointer text-left"
+                    >
+                        {likeCount} {likeCount === 1 ? 'like' : 'likes'}
+                    </button>
+                    {favouritesCount > 0 && (
+                        <p className="text-xs text-gray-400 mb-1">
+                            ★ {favouritesCount} {favouritesCount === 1 ? 'favourite' : 'favourites'}
+                        </p>
+                    )}
                     <p className="text-xs text-gray-400 mb-3">{formatRelativeTime(post.createdAt)}</p>
 
                     {/* Comment Input */}
@@ -396,6 +411,14 @@ const PostDetailContent: React.FC<PostDetailContentProps> = ({
                 </div>
             )}
         </div>
+
+        {/* Liked By Sheet */}
+        <LikedBySheet
+            postId={post.id}
+            isOpen={showLikedBy}
+            onClose={() => setShowLikedBy(false)}
+        />
+        </>
     );
 };
 

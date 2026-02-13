@@ -2,14 +2,20 @@
 import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
 import { User, SignalingMessage, CallType } from '../types';
 import { DBService } from '../services/database';
+import { getSafetyNumber, isE2EEReady } from '../services/keyManager';
+import { playRingback, playIncomingRing, playConnectedTone, playEndedTone, stopAll as stopCallAudio } from '../services/callAudio';
+
+export type CallState = 'idle' | 'calling' | 'ringing' | 'connected' | 'ended';
 
 interface CallContextType {
   isInCall: boolean;
+  callState: CallState;
   incomingCall: { callerId: string; type: CallType } | null;
   activeCall: { userId: string; type: CallType } | null;
   localStream: MediaStream | null;
   remoteStream: MediaStream | null;
   connectionQuality: 'high' | 'medium' | 'low';
+  securityCode: string | null;
   startCall: (receiverId: string, type: CallType) => Promise<void>;
   acceptCall: () => Promise<void>;
   rejectCall: () => void;
@@ -34,6 +40,8 @@ export const CallProvider: React.FC<{ children: React.ReactNode; currentUser: Us
   const [isCameraOff, setIsCameraOff] = useState(false);
   const [isScreenSharing, setIsScreenSharing] = useState(false);
   const [connectionQuality, setConnectionQuality] = useState<'high' | 'medium' | 'low'>('high');
+  const [securityCode, setSecurityCode] = useState<string | null>(null);
+  const [callState, setCallState] = useState<CallState>('idle');
 
   const peerConnection = useRef<RTCPeerConnection | null>(null);
   const callStartTime = useRef<number>(0);
@@ -41,6 +49,8 @@ export const CallProvider: React.FC<{ children: React.ReactNode; currentUser: Us
   const iceCandidatesQueue = useRef<RTCIceCandidateInit[]>([]);
   const qualityMonitorInterval = useRef<NodeJS.Timeout | null>(null);
   const remoteUserIdRef = useRef<string>(''); // Track remote user ID synchronously for ICE candidates
+  const callTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null); // 30s call timeout
+  const callRecordStartTime = useRef<number>(0); // When the call attempt started (for records)
 
   // Generate unique device ID to prevent multi-device conflicts
   const deviceId = useRef<string>(
@@ -155,6 +165,24 @@ export const CallProvider: React.FC<{ children: React.ReactNode; currentUser: Us
         if (callStartTime.current === 0) {
           callStartTime.current = Date.now();
         }
+        // Clear timeout & stop ringtones on connection
+        if (callTimeoutRef.current) {
+          clearTimeout(callTimeoutRef.current);
+          callTimeoutRef.current = null;
+        }
+        stopCallAudio();
+        playConnectedTone();
+        setCallState('connected');
+        console.log('[CallState] → connected');
+        // Generate E2EE safety number for call verification
+        if (isE2EEReady() && remoteUserIdRef.current) {
+          getSafetyNumber(remoteUserIdRef.current).then(code => {
+            if (code) {
+              setSecurityCode(code);
+              console.log('[E2EE] Call security code generated');
+            }
+          }).catch(e => console.warn('[E2EE] Safety number generation failed:', e));
+        }
       } else if (pc.connectionState === 'disconnected' || pc.connectionState === 'failed') {
         console.error('[WebRTC] ❌ Connection FAILED or DISCONNECTED');
         stopQualityMonitoring();
@@ -262,18 +290,35 @@ export const CallProvider: React.FC<{ children: React.ReactNode; currentUser: Us
     }
   }
 
+  // HD media constraints
+  const getMediaConstraints = (type: CallType): MediaStreamConstraints => ({
+    video: type === 'video' ? {
+      width: { ideal: 1280 },
+      height: { ideal: 720 },
+      frameRate: { ideal: 30 },
+    } : false,
+    audio: {
+      echoCancellation: true,
+      noiseSuppression: true,
+      autoGainControl: true,
+    },
+  });
+
   const startCall = async (receiverId: string, type: CallType) => {
     if (!currentUser) return;
     callStartTime.current = 0; // Reset timer
+    callRecordStartTime.current = Date.now();
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: type === 'video',
-        audio: true,
-      });
+      const stream = await navigator.mediaDevices.getUserMedia(getMediaConstraints(type));
       setLocalStream(stream);
-      setIsCameraOff(type === 'audio'); // If audio call, camera effectively off initially for logic
+      setIsCameraOff(type === 'audio');
 
       setActiveCall({ userId: receiverId, type });
+      setCallState('calling');
+      console.log('[CallState] → calling');
+
+      // Play ringback tone for caller
+      playRingback();
 
       // Set ref BEFORE creating peer connection so ICE candidates know where to go
       remoteUserIdRef.current = receiverId;
@@ -297,6 +342,56 @@ export const CallProvider: React.FC<{ children: React.ReactNode; currentUser: Us
         timestamp: Date.now(),
       });
 
+      // Save call record as "calling"
+      DBService.saveCallRecord({
+        callerId: currentUser.id,
+        receiverId,
+        type,
+        status: 'calling',
+        startedAt: callRecordStartTime.current,
+      }).catch(e => console.warn('[CallRecord] Save failed:', e));
+
+      // ─── 30-second timeout ───────────────────────────────────
+      callTimeoutRef.current = setTimeout(() => {
+        console.log('[CallTimeout] 30s elapsed — marking as missed');
+        if (callState === 'calling' || callState === 'ringing') {
+          // Stop ringtone
+          stopCallAudio();
+
+          // Send end signal
+          DBService.sendSignal({
+            type: 'end',
+            senderId: currentUser!.id,
+            receiverId,
+            timestamp: Date.now(),
+          });
+
+          // Save as missed call in chat history
+          const chatId = [currentUser!.id, receiverId].sort().join('_');
+          DBService.saveCallHistory(chatId, {
+            type,
+            duration: 0,
+            status: 'missed',
+            participants: [currentUser!.id, receiverId],
+            callerId: currentUser!.id,
+          }).catch(e => console.error('[CallHistory] Missed save error:', e));
+
+          // Save call record as missed
+          DBService.saveCallRecord({
+            callerId: currentUser!.id,
+            receiverId,
+            type,
+            status: 'missed',
+            startedAt: callRecordStartTime.current,
+            endedAt: Date.now(),
+            duration: 0,
+          }).catch(e => console.warn('[CallRecord] Missed save error:', e));
+
+          setCallState('ended');
+          cleanupCall();
+        }
+      }, 30000);
+
       // Send Push Notification
       const senderName = currentUser.fullName || "Incoming Call";
       DBService.sendPushNotification({
@@ -309,6 +404,7 @@ export const CallProvider: React.FC<{ children: React.ReactNode; currentUser: Us
       });
     } catch (err) {
       console.error('Error starting call:', err);
+      setCallState('idle');
       alert('Could not access camera/microphone');
     }
   };
@@ -325,6 +421,12 @@ export const CallProvider: React.FC<{ children: React.ReactNode; currentUser: Us
           type: data.callType || 'audio'
         });
         (window as any).pendingOffer = data.sdp;
+        // Play incoming ringtone
+        if (!activeCall) {
+          setCallState('ringing');
+          playIncomingRing();
+          console.log('[CallState] → ringing');
+        }
       }
     } else if (data.type === 'answer') {
       if (peerConnection.current && data.sdp) {
@@ -407,10 +509,7 @@ export const CallProvider: React.FC<{ children: React.ReactNode; currentUser: Us
       (window as any).pendingOffer = savedOffer; // Restore pending offer for the new call
 
       try {
-        const stream = await navigator.mediaDevices.getUserMedia({
-          video: type === 'video', // Use the type from the incoming call
-          audio: true,
-        });
+        const stream = await navigator.mediaDevices.getUserMedia(getMediaConstraints(type));
         setLocalStream(stream);
         setIsCameraOff(type === 'audio'); // Set camera off if it's an audio call
 
@@ -464,10 +563,19 @@ export const CallProvider: React.FC<{ children: React.ReactNode; currentUser: Us
       const callerId = incomingCall.callerId;
       const type = incomingCall.type;
 
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: type === 'video',
-        audio: true,
-      });
+      // Stop incoming ringtone
+      stopCallAudio();
+
+      const stream = await navigator.mediaDevices.getUserMedia(getMediaConstraints(type));
+
+      // Try earpiece audio routing (Chrome desktop)
+      try {
+        const audioEl = document.querySelector('audio');
+        if (audioEl && 'setSinkId' in audioEl) {
+          // Default output device is earpiece on mobile
+          (audioEl as any).setSinkId('default');
+        }
+      } catch { /* setSinkId not supported, ignored */ }
 
       console.log('[CallContext] Got local stream with', stream.getTracks().length, 'tracks');
       setLocalStream(stream);
@@ -518,18 +626,35 @@ export const CallProvider: React.FC<{ children: React.ReactNode; currentUser: Us
 
   const rejectCall = () => {
     if (incomingCall && currentUser) {
+      stopCallAudio();
       DBService.sendSignal({
         type: 'reject',
         senderId: currentUser.id,
         receiverId: incomingCall.callerId,
         timestamp: Date.now(),
       });
+
+      // Save call record as rejected
+      DBService.saveCallRecord({
+        callerId: incomingCall.callerId,
+        receiverId: currentUser.id,
+        type: incomingCall.type,
+        status: 'rejected',
+        startedAt: Date.now(),
+        endedAt: Date.now(),
+        duration: 0,
+      }).catch(e => console.warn('[CallRecord] Reject save error:', e));
+
       setIncomingCall(null);
+      setCallState('idle');
     }
   };
 
   const endCall = () => {
     if (activeCall && currentUser) {
+      stopCallAudio();
+      playEndedTone();
+
       DBService.sendSignal({
         type: 'end',
         senderId: currentUser.id,
@@ -537,24 +662,43 @@ export const CallProvider: React.FC<{ children: React.ReactNode; currentUser: Us
         timestamp: Date.now(),
       });
 
+      const duration = callStartTime.current > 0 ? Math.round((Date.now() - callStartTime.current) / 1000) : 0;
+
       // Save history for the ended call
       const chatId = [currentUser.id, activeCall.userId].sort().join('_');
       DBService.saveCallHistory(chatId, {
         type: activeCall.type,
-        duration: callStartTime.current > 0 ? Math.round((Date.now() - callStartTime.current) / 1000) : 0,
+        duration,
         status: 'completed',
         participants: [currentUser.id, activeCall.userId],
         callerId: callInitiator.current
       }).catch(err => console.error('Error saving call history:', err));
+
+      // Save call record as ended
+      DBService.saveCallRecord({
+        callerId: callInitiator.current,
+        receiverId: activeCall.userId,
+        type: activeCall.type,
+        status: 'ended',
+        startedAt: callRecordStartTime.current || callStartTime.current,
+        endedAt: Date.now(),
+        duration,
+      }).catch(e => console.warn('[CallRecord] End save error:', e));
+
+      setCallState('ended');
       cleanupCall();
     };
   }
 
   function cleanupCall() {
-    if (activeCall) {
-      // Send end signal if we were in a call
-      // Only if locally active? No, endCall handles signal. cleanup is internal.
+    // Clear call timeout
+    if (callTimeoutRef.current) {
+      clearTimeout(callTimeoutRef.current);
+      callTimeoutRef.current = null;
     }
+
+    // Stop any playing tones
+    stopCallAudio();
 
     stopQualityMonitoring(); // Stop quality monitoring
 
@@ -562,18 +706,23 @@ export const CallProvider: React.FC<{ children: React.ReactNode; currentUser: Us
       localStream.getTracks().forEach((track) => track.stop());
       setLocalStream(null);
     }
-    remoteStream?.getTracks().forEach(track => track.stop()); // Keep this line
+    remoteStream?.getTracks().forEach(track => track.stop());
     setRemoteStream(null);
     setActiveCall(null);
     setIncomingCall(null);
     setIsMicMuted(false);
     setIsCameraOff(false);
-    setIsScreenSharing(false); // Reset screen share state
-    setConnectionQuality('high'); // Reset quality
-    callStartTime.current = 0; // Reset timer
+    setIsScreenSharing(false);
+    setConnectionQuality('high');
+    callStartTime.current = 0;
     callInitiator.current = '';
-    remoteUserIdRef.current = ''; // Reset remote user ID ref
-    iceCandidatesQueue.current = []; // Reset ICE candidates queue
+    remoteUserIdRef.current = '';
+    iceCandidatesQueue.current = [];
+    setSecurityCode(null);
+    callRecordStartTime.current = 0;
+
+    // Reset call state to idle after a brief delay (so UI can show 'ended' state)
+    setTimeout(() => setCallState('idle'), 500);
 
     if (peerConnection.current) {
       peerConnection.current.close();
@@ -665,11 +814,13 @@ export const CallProvider: React.FC<{ children: React.ReactNode; currentUser: Us
     <CallContext.Provider
       value={{
         isInCall: !!activeCall,
+        callState,
         incomingCall,
         activeCall,
         localStream,
         remoteStream,
         connectionQuality,
+        securityCode,
         startCall,
         acceptCall,
         rejectCall,

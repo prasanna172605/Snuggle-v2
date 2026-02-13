@@ -489,30 +489,30 @@ const Feed: React.FC<FeedProps> = ({ currentUser, onUserClick }) => {
                                     )}
 
                                     {/* Overlay Actions */}
-                                    <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover/card:opacity-100 transition-opacity duration-300 flex items-end justify-between p-6">
+                                    <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover/card:opacity-100 transition-opacity duration-300 flex items-end justify-between p-6 pointer-events-none">
                                         <div className="flex items-center gap-4">
                                             <button
                                                 onClick={() => handleLike(post.id)}
-                                                className="w-12 h-12 rounded-full bg-white/10 backdrop-blur-md flex items-center justify-center hover:bg-white/20 transition-all group/btn"
+                                                className="w-12 h-12 rounded-full bg-white/10 backdrop-blur-md flex items-center justify-center hover:bg-white/20 transition-all group/btn pointer-events-auto"
                                             >
                                                 <Heart className={`w-6 h-6 ${isLiked ? 'fill-red-500 text-red-500' : 'text-white group-hover/btn:scale-110 transition-transform'}`} />
                                             </button>
                                             <button
                                                 onClick={() => setCommentsPost(post)}
-                                                className="w-12 h-12 rounded-full bg-white/10 backdrop-blur-md flex items-center justify-center hover:bg-white/20 transition-all text-white"
+                                                className="w-12 h-12 rounded-full bg-white/10 backdrop-blur-md flex items-center justify-center hover:bg-white/20 transition-all text-white pointer-events-auto"
                                             >
                                                 <MessageSquare className="w-6 h-6" />
                                             </button>
                                             <button
                                                 onClick={() => setSharePost(post)}
-                                                className="w-12 h-12 rounded-full bg-white/10 backdrop-blur-md flex items-center justify-center hover:bg-white/20 transition-all text-white"
+                                                className="w-12 h-12 rounded-full bg-white/10 backdrop-blur-md flex items-center justify-center hover:bg-white/20 transition-all text-white pointer-events-auto"
                                             >
                                                 <Send className="w-6 h-6" />
                                             </button>
                                         </div>
                                         <button
                                             onClick={() => handleSave(post)}
-                                            className="w-12 h-12 rounded-full bg-white/10 backdrop-blur-md flex items-center justify-center hover:bg-white/20 transition-all text-white"
+                                            className="w-12 h-12 rounded-full bg-white/10 backdrop-blur-md flex items-center justify-center hover:bg-white/20 transition-all text-white pointer-events-auto"
                                         >
                                             <Bookmark className={`w-6 h-6 ${isSaved ? 'fill-white text-white' : 'text-white'}`} />
                                         </button>

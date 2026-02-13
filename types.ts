@@ -41,6 +41,17 @@ export interface User {
   isActive?: boolean;
   emailVerified?: boolean;
   fcmToken?: string;
+  notificationSettings?: {
+    email: boolean;
+    push: boolean;
+    frequency: 'realtime' | 'daily' | 'weekly';
+    types: {
+      followers: boolean;
+      messages: boolean;
+      likes: boolean;
+      mentions: boolean;
+    };
+  };
 }
 
 export interface GoogleSetupData {
@@ -57,6 +68,10 @@ export interface Message {
   receiverId?: string;
   timestamp: number;
   read: boolean;
+  // E2EE fields
+  encrypted?: boolean;
+  iv?: string;              // Base64 initialization vector for AES-GCM
+  senderPublicKey?: string; // JWK thumbprint for key verification
   status?: 'sent' | 'delivered' | 'read';
   type?: 'text' | 'image' | 'video' | 'audio' | 'post' | 'call';
   post?: {
@@ -65,6 +80,10 @@ export interface Message {
     caption?: string;
   };
   fileUrl?: string;
+  thumbnailUrl?: string;      // Generated thumbnail for video messages
+  fileName?: string;          // Original file name
+  fileSize?: number;          // File size in bytes
+  mediaDuration?: number;     // Duration in seconds for audio/video
   reactions?: Record<string, string>; // userId -> emoji
   callType?: 'audio' | 'video';
   callDuration?: number;
@@ -102,6 +121,7 @@ export interface Post {
   deletedAt?: any;
   isDeleted?: boolean;
   tags?: string[];
+  favouritesCount?: number;  // Atomic counter for saves/favourites
 }
 
 export interface Story {
@@ -146,6 +166,7 @@ export interface Comment {
   username: string;
   userAvatar?: string;
   text: string;
+  parentCommentId?: string;  // For threaded replies
   createdAt: any;
 }
 
