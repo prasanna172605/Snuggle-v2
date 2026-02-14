@@ -89,7 +89,7 @@ export const config: AppConfig = {
     logging: {
         level: (getEnvVar('VITE_LOG_LEVEL', 'info') as 'debug' | 'info' | 'warn' | 'error'),
     },
-    version: '1.0.7', 
+    version: '1.0.8', 
 };
 
 /**
