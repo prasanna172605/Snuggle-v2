@@ -84,7 +84,7 @@ const CallOverlay: React.FC = () => {
 
   if (incomingCall && caller) {
     return (
-      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
+      <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
         <div className="bg-white rounded-3xl p-6 w-full max-w-sm flex flex-col items-center shadow-2xl animate-in zoom-in-95 duration-200">
           <div className="relative mb-6">
             <div className="absolute inset-0 bg-snuggle-400 rounded-full animate-ping opacity-20"></div>
@@ -124,7 +124,7 @@ const CallOverlay: React.FC = () => {
     const showRemoteVideo = isVideoCall && remoteStream && !isCameraOff;
 
     return (
-      <div className="fixed inset-0 z-50 bg-gray-900 flex flex-col">
+      <div className="fixed inset-0 z-[100] bg-gray-900 flex flex-col">
         {/* Main Content Area */}
         <div className="flex-1 relative overflow-hidden flex items-center justify-center">
 
