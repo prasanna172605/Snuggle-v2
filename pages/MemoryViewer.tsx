@@ -223,47 +223,6 @@ const MemoryViewer: React.FC = () => {
                 )}
             </div>
 
-            {/* Bottom Overlay Actions & Caption */}
-            <div className="absolute bottom-0 left-0 right-0 z-20 pointer-events-none">
-                <div className="bg-gradient-to-t from-black/90 via-black/40 to-transparent pt-12 pb-4 px-4">
-                    <div className="flex flex-col gap-4 pointer-events-auto">
-                        {/* Caption */}
-                        <div className="max-w-[85%]">
-                             <p className="text-white text-sm leading-snug line-clamp-3 font-medium drop-shadow-md">
-                                <span className="font-bold mr-2 text-lg block mb-1">{memory.user?.username}</span>
-                                {memory.caption}
-                            </p>
-                        </div>
-
-                        {/* Horizontal Actions Row (Like, Comment, Share) */}
-                        <div className="flex items-center gap-6">
-                            <button onClick={handleLike} className="flex items-center gap-2 group">
-                                <Heart 
-                                    className={`w-7 h-7 transition-transform group-active:scale-75 drop-shadow-lg ${memory.isLiked ? 'fill-red-500 text-red-500' : 'text-white'}`} 
-                                    strokeWidth={2}
-                                />
-                                {memory.likesCount > 0 && (
-                                    <span className="text-sm font-bold text-white drop-shadow-md">{memory.likesCount}</span>
-                                )}
-                            </button>
-                            
-                            <button 
-                                onClick={() => setShowComments(true)}
-                                className="flex items-center gap-2 group"
-                            >
-                                <MessageSquare className="w-7 h-7 text-white transition-transform group-active:scale-75 drop-shadow-lg" strokeWidth={2} />
-                                {memory.commentsCount > 0 && (
-                                    <span className="text-sm font-bold text-white drop-shadow-md">{memory.commentsCount}</span>
-                                )}
-                            </button>
-
-                            <button onClick={handleShare} className="flex items-center gap-2 group">
-                                <Send className="w-7 h-7 text-white transition-transform group-active:scale-75 -rotate-12 drop-shadow-lg" strokeWidth={2} />
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            </div>
 
             {/* Comments Sheet */}
             {showComments && currentUser && (
