@@ -22,7 +22,9 @@ interface ShareSheetProps {
 
 const ShareSheet: React.FC<ShareSheetProps> = ({ isOpen, onClose, content, currentUser }) => {
     const [recentChats, setRecentChats] = useState<User[]>([]);
+    const [searchResults, setSearchResults] = useState<User[]>([]);
     const [loading, setLoading] = useState(true);
+    const [searching, setSearching] = useState(false);
     const [searchTerm, setSearchTerm] = useState('');
     const [selectedUsers, setSelectedUsers] = useState<Set<string>>(new Set());
     const [sending, setSending] = useState(false);
@@ -31,8 +33,32 @@ const ShareSheet: React.FC<ShareSheetProps> = ({ isOpen, onClose, content, curre
         if (isOpen) {
             loadRecentChats();
             setSelectedUsers(new Set()); // Reset selection on open
+            setSearchTerm('');
+            setSearchResults([]);
         }
     }, [isOpen]);
+
+    // Debounced search effect
+    useEffect(() => {
+        const timer = setTimeout(async () => {
+            if (searchTerm.trim().length > 1) {
+                setSearching(true);
+                try {
+                    const results = await DBService.searchUsers(searchTerm);
+                    // Filter out current user from results
+                    setSearchResults(results.filter(u => u.id !== currentUser.id));
+                } catch (error) {
+                    console.error("Search failed", error);
+                } finally {
+                    setSearching(false);
+                }
+            } else {
+                setSearchResults([]);
+            }
+        }, 500);
+
+        return () => clearTimeout(timer);
+    }, [searchTerm, currentUser.id]);
 
     const loadRecentChats = async () => {
         setLoading(true);
@@ -141,11 +167,6 @@ const ShareSheet: React.FC<ShareSheetProps> = ({ isOpen, onClose, content, curre
 
     if (!isOpen) return null;
 
-    const filteredUsers = recentChats.filter(user => 
-        user.username.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        user.displayName?.toLowerCase().includes(searchTerm.toLowerCase())
-    );
-
     return (
         <div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center pointer-events-none">
             {/* Backdrop */}
@@ -182,15 +203,15 @@ const ShareSheet: React.FC<ShareSheetProps> = ({ isOpen, onClose, content, curre
                 {/* Users Grid */}
                 <div className="overflow-y-auto mb-6 flex-1 min-h-[200px]">
                     <div className="grid grid-cols-4 gap-4">
-                        {loading ? (
+                        {loading || searching ? (
                              Array.from({ length: 8 }).map((_, i) => (
                                 <div key={i} className="flex flex-col items-center gap-2">
                                     <div className="w-14 h-14 rounded-full bg-white/5 animate-pulse" />
                                     <div className="w-12 h-3 bg-white/5 rounded animate-pulse" />
                                 </div>
                              ))
-                        ) : filteredUsers.length > 0 ? (
-                            filteredUsers.map(user => {
+                        ) : (searchTerm ? searchResults : recentChats).length > 0 ? (
+                            (searchTerm ? searchResults : recentChats).map(user => {
                                 const isSelected = selectedUsers.has(user.id);
                                 return (
                                     <button 
@@ -219,7 +240,7 @@ const ShareSheet: React.FC<ShareSheetProps> = ({ isOpen, onClose, content, curre
                             })
                         ) : (
                             <div className="col-span-4 text-center py-8 text-gray-500 text-sm">
-                                {searchTerm ? 'No users found matching search' : 'Follow people to see them here!'}
+                                {searchTerm ? 'No users found' : 'Follow people to share quickly! Use search to find others.'}
                             </div>
                         )}
                     </div>
