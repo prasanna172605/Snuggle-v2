@@ -11,10 +11,12 @@ import CallButton from '../components/CallButton';
 import CallHistoryMessage from '../components/CallHistoryMessage';
 import { ArrowLeft, Phone, Video, Send, Image as ImageIcon, Smile, Check, CheckCheck, Mic, Trash2, Camera, Trash, Plus, Copy } from 'lucide-react';
 import { SkeletonChat } from '../components/common/Skeleton';
+import TypingBubble from '../components/TypingBubble';
 import { formatDateHeader } from '../utils/dateUtils';
 import { uploadFile, FileCategory, formatFileSize } from '../services/fileUpload';
 import MediaViewer from '../components/MediaViewer';
 import ForwardSheet from '../components/ForwardSheet';
+import MemoryPreview from '../components/MemoryPreview';
 import { toast } from 'sonner';
 
 interface ChatProps {
@@ -581,7 +583,7 @@ const Chat: React.FC<ChatProps> = ({ currentUser, otherUser, onBack }) => {
               return (
                 <React.Fragment key={msg.id}>
                   {showDate && (
-                    <div className="flex justify-center my-4 sticky top-0 z-0">
+                    <div className="flex justify-center my-4 z-0">
                       <span className="bg-gray-100 dark:bg-slate-800 text-xs px-3 py-1 rounded-full text-gray-500 dark:text-gray-400 font-medium border border-gray-200 dark:border-slate-700 shadow-sm">
                         {dateHeader}
                       </span>
@@ -743,27 +745,20 @@ const Chat: React.FC<ChatProps> = ({ currentUser, otherUser, onBack }) => {
                                     />
                                   </div>
                                 ) : msg.type === 'post' && msg.post ? (
-                                  <div
-                                    className="bg-white dark:bg-dark-card rounded-xl overflow-hidden border border-gray-200 dark:border-dark-border cursor-pointer hover:opacity-95 transition-opacity max-w-[260px] my-1"
-                                    onClick={() => navigate(`/post/${msg.post?.id}`)}
-                                  >
-                                    {msg.post.imageUrl && (
-                                      <div className="w-full h-32 overflow-hidden bg-gray-100 dark:bg-dark-bg">
-                                        <img src={msg.post.imageUrl} className="w-full h-full object-cover" alt="Post preview" />
-                                      </div>
-                                    )}
-                                    <div className="p-3">
-                                      <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Shared Post</p>
-                                      <p className="text-sm font-medium text-black dark:text-white line-clamp-2 leading-snug">
-                                        {msg.post.caption || 'Check out this post'}
-                                      </p>
-                                    </div>
-                                  </div>
+                                  <MemoryPreview memoryId={msg.post.id} />
                                 ) : (
-                                  <span className="text-[15px] leading-relaxed break-words whitespace-pre-wrap font-medium">
-                                    {msg.text}
-                                    <span className="inline-block w-12 h-0"></span>
-                                  </span>
+                                  <div className="flex flex-col">
+                                    <span className="text-[15px] leading-relaxed break-words whitespace-pre-wrap font-medium">
+                                      {msg.text}
+                                      <span className="inline-block w-12 h-0"></span>
+                                    </span>
+                                    
+                                    {/* Link Preview for Memories */}
+                                    {msg.text && msg.text.includes('/memory/') && (() => {
+                                        const match = msg.text.match(/\/memory\/([a-zA-Z0-9_-]+)/);
+                                        return match ? <MemoryPreview memoryId={match[1]} /> : null;
+                                    })()}
+                                  </div>
                                 )}
     
                                 <div className={`flex items-center gap-1 self-end mt-1.5 ml-auto ${isMe ? 'text-white/80' : 'text-gray-400 dark:text-gray-500'}`}>
@@ -800,38 +795,15 @@ const Chat: React.FC<ChatProps> = ({ currentUser, otherUser, onBack }) => {
                 </React.Fragment>
               );
             })}
+            
+            <AnimatePresence>
+                {isOtherUserTyping && (
+                    <TypingBubble key="typing-indicator" avatar={otherUser.avatar} />
+                )}
+            </AnimatePresence>
           </AnimatePresence>
         )}
 
-        <AnimatePresence>
-          {isOtherUserTyping && (
-            <motion.div
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: 10 }}
-              className="flex justify-start mt-2"
-            >
-              <div className="w-8 mr-2 flex-shrink-0 flex items-end">
-                <img src={otherUser.avatar} className="w-8 h-8 rounded-full shadow-sm" />
-              </div>
-              <div className="bg-white dark:bg-dark-border px-4 py-3 rounded-2xl rounded-tl-md shadow-sm flex items-center space-x-1.5 border border-gray-100 dark:border-gray-700">
-                {[0, 1, 2].map((i) => (
-                  <motion.div
-                    key={i}
-                    className="w-1.5 h-1.5 bg-gray-400 rounded-full"
-                    animate={{ y: [0, -5, 0] }}
-                    transition={{
-                      duration: 0.6,
-                      repeat: Infinity,
-                      delay: i * 0.2,
-                      ease: "easeInOut"
-                    }}
-                  />
-                ))}
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
         <div ref={messagesEndRef} />
       </div>
 

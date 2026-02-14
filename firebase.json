@@ -5,6 +5,9 @@
   "database": {
     "rules": "database.rules.json"
   },
+  "storage": {
+    "rules": "storage.rules"
+  },
   "hosting": {
     "public": "dist",
     "ignore": [
@@ -48,6 +51,19 @@
           {
             "key": "Cache-Control",
             "value": "max-age=31536000, immutable"
+          }
+        ]
+      },
+      {
+        "source": "**/*.zip",
+        "headers": [
+          {
+            "key": "Access-Control-Allow-Origin",
+            "value": "*"
+          },
+          {
+            "key": "Cache-Control",
+            "value": "no-cache"
           }
         ]
       }

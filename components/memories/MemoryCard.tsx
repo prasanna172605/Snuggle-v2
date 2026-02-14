@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Heart, MessageSquare, Send, Star, MoreHorizontal, Play, Volume2, VolumeX, Maximize2 } from 'lucide-react';
+import { Heart, MessageSquare, Send, Star, MoreHorizontal, Play, Volume2, VolumeX, Edit3, Trash2, Flag, Copy } from 'lucide-react';
 import { Memory } from '../../types';
 import { DBService } from '../../services/database';
 import { formatDistanceToNow } from 'date-fns';
@@ -10,13 +10,17 @@ interface MemoryCardProps {
   memory: Memory;
   currentUserId: string;
   onMemoryUpdate?: (updatedMemory: Memory) => void;
+  onCommentClick?: (memory: Memory) => void;
+  onEdit?: (memory: Memory) => void;
+  onDelete?: (memory: Memory) => void;
 }
 
-const MemoryCard: React.FC<MemoryCardProps> = ({ memory, currentUserId, onMemoryUpdate }) => {
+const MemoryCard: React.FC<MemoryCardProps> = ({ memory, currentUserId, onMemoryUpdate, onCommentClick, onEdit, onDelete }) => {
   const navigate = useNavigate();
   const [isLiked, setIsLiked] = useState(memory.isLiked || false);
   const [likeCount, setLikeCount] = useState(memory.likesCount || 0);
   const [isMuted, setIsMuted] = useState(true);
+  const [showMenu, setShowMenu] = useState(false);
 
   const [isSaved, setIsSaved] = useState(memory.isSaved || false);
 
@@ -52,17 +56,9 @@ const MemoryCard: React.FC<MemoryCardProps> = ({ memory, currentUserId, onMemory
   };
 
   const handleShare = () => {
-    if (navigator.share) {
-      navigator.share({
-        title: `Snuggle Memory by ${memory.user?.username}`,
-        text: memory.caption,
-        url: window.location.origin + `/memory/${memory.id}`
-      });
-    } else {
-        // Fallback or internal share
-        toast.success('Link copied to clipboard');
-        navigator.clipboard.writeText(window.location.origin + `/memory/${memory.id}`);
-    }
+    const link = `${window.location.origin}/memory/${memory.id}`;
+    navigator.clipboard.writeText(link);
+    toast.success('Link copied to clipboard');
   };
 
   const renderMedia = () => {
@@ -80,60 +76,36 @@ const MemoryCard: React.FC<MemoryCardProps> = ({ memory, currentUserId, onMemory
       );
     }
 
-    if (memory.type === 'video') {
+    if (memory.type === 'video' || memory.type === 'reel') {
          return (
-            <div className="relative w-full aspect-video bg-black rounded-[24px] overflow-hidden group">
-                <video
-                    src={memory.mediaUrl}
-                    className="w-full h-full object-contain"
-                    loop
-                    muted={isMuted}
-                    playsInline
-                    crossOrigin="anonymous"
-                    onClick={(e) => {
-                        const vid = e.target as HTMLVideoElement;
-                        vid.paused ? vid.play() : vid.pause();
-                    }}
-                />
-                <button 
-                    onClick={() => setIsMuted(!isMuted)}
-                    className="absolute bottom-4 right-4 p-2 bg-black/50 rounded-full text-white opacity-0 group-hover:opacity-100 transition-opacity"
-                >
-                    {isMuted ? <VolumeX size={20} /> : <Volume2 size={20} />}
-                </button>
-                <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                     <Play className="w-12 h-12 text-white/50 opacity-0 group-hover:opacity-100 transition-opacity" fill="currentColor" />
-                </div>
-            </div>
-         );
-    }
-
-    if (memory.type === 'reel') {
-        return (
             <div 
-                className="relative w-full aspect-[9/16] bg-black rounded-[24px] overflow-hidden cursor-pointer"
-                onClick={() => navigate(`/memory/${memory.id}`)} // Open full screen viewer
+                className="relative w-full aspect-[4/5] bg-black rounded-[24px] overflow-hidden cursor-pointer group"
+                onClick={() => navigate(`/memory/${memory.id}`)}
             >
                 <video
                     src={memory.mediaUrl}
                     className="w-full h-full object-cover"
                     muted
                     loop
+                    playsInline
                     crossOrigin="anonymous"
                     onMouseOver={(e) => (e.target as HTMLVideoElement).play().catch(() => {})}
                     onMouseOut={(e) => (e.target as HTMLVideoElement).pause()}
                 />
-                 <div className="absolute bottom-4 left-4 bg-black/60 px-3 py-1 rounded-full flex items-center gap-2">
+                <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                     <Play className="w-12 h-12 text-white/80 opacity-0 group-hover:opacity-100 transition-opacity drop-shadow-lg" fill="currentColor" />
+                </div>
+                 <div className="absolute bottom-4 left-4 bg-black/60 px-3 py-1 rounded-full flex items-center gap-2 pointer-events-none">
                     <Play size={12} className="fill-white text-white" />
-                    <span className="text-xs font-medium text-white">Reel</span>
+                    <span className="text-xs font-medium text-white">Watch Video</span>
                 </div>
             </div>
-        );
+         );
     }
   };
 
   return (
-    <div className="bg-transparent mb-8">
+    <div className="bg-transparent mb-8 relative">
       {/* Header */}
       <div className="flex items-start justify-between p-4 pb-2">
         <div 
@@ -169,7 +141,10 @@ const MemoryCard: React.FC<MemoryCardProps> = ({ memory, currentUserId, onMemory
             )}
           </div>
         </div>
-        <button className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 mt-1">
+        <button 
+            onClick={() => setShowMenu(true)}
+            className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 mt-1"
+        >
           <MoreHorizontal className="w-5 h-5" />
         </button>
       </div>
@@ -186,7 +161,7 @@ const MemoryCard: React.FC<MemoryCardProps> = ({ memory, currentUserId, onMemory
                 <Heart className={`w-[26px] h-[26px] transition-all group-active:scale-75 ${isLiked ? 'fill-red-500 text-red-500' : 'text-gray-900 dark:text-white hover:text-red-500'}`} />
                 {likeCount > 0 && <span className="text-xs font-bold text-gray-900 dark:text-white">{likeCount}</span>}
              </button>
-             <button onClick={() => navigate(`/memory/${memory.id}`)} className="flex items-center gap-1.5 group">
+             <button onClick={() => onCommentClick?.(memory)} className="flex items-center gap-1.5 group">
                 <MessageSquare className="w-5 h-5 text-gray-900 dark:text-white hover:text-snuggle-500 transition-colors" />
                 {memory.commentsCount > 0 && <span className="text-xs font-bold text-gray-900 dark:text-white">{memory.commentsCount}</span>}
              </button>
@@ -198,6 +173,49 @@ const MemoryCard: React.FC<MemoryCardProps> = ({ memory, currentUserId, onMemory
             <Star className={`w-[26px] h-[26px] ${isSaved ? 'fill-amber-500 text-amber-500' : ''}`} />
         </button>
       </div>
+
+      {/* Dropdown Menu */}
+      {showMenu && (
+        <div className="absolute top-12 right-4 z-50 bg-white dark:bg-dark-surface rounded-xl shadow-xl border border-gray-100 dark:border-dark-border overflow-hidden min-w-[180px] animate-in fade-in zoom-in-95 duration-200">
+            <div className="py-1">
+                {currentUserId === memory.userId && (
+                    <>
+                    <button 
+                        onClick={() => { setShowMenu(false); onEdit?.(memory); }}
+                        className="w-full px-4 py-2.5 text-left text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-dark-hover flex items-center gap-2"
+                    >
+                        <Edit3 className="w-4 h-4" /> Edit
+                    </button>
+                    <button 
+                         onClick={() => { setShowMenu(false); onDelete?.(memory); }}
+                        className="w-full px-4 py-2.5 text-left text-sm font-medium text-red-600 hover:bg-gray-50 dark:hover:bg-dark-hover flex items-center gap-2"
+                    >
+                        <Trash2 className="w-4 h-4" /> Delete
+                    </button>
+                    </>
+                )}
+                 <button 
+                    onClick={() => { setShowMenu(false); handleShare(); }}
+                    className="w-full px-4 py-2.5 text-left text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-dark-hover flex items-center gap-2"
+                >
+                    <Copy className="w-4 h-4" /> Copy Link
+                </button>
+                 <button 
+                    onClick={() => { setShowMenu(false); toast.info("Reported"); }}
+                    className="w-full px-4 py-2.5 text-left text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-dark-hover flex items-center gap-2"
+                >
+                    <Flag className="w-4 h-4" /> Report
+                </button>
+                 <button 
+                    onClick={() => setShowMenu(false)}
+                    className="w-full px-4 py-2.5 text-left text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-dark-hover border-t border-gray-100 dark:border-dark-border"
+                >
+                    Cancel
+                </button>
+            </div>
+        </div>
+      )}
+      {showMenu && <div className="fixed inset-0 z-40" onClick={() => setShowMenu(false)} />}
     </div>
   );
 };

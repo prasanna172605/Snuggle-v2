@@ -37,6 +37,7 @@ import Sidebar from './components/Sidebar';
 import CallOverlay from './components/CallOverlay';
 import { CallProvider } from './context/CallContext';
 import { AnimatePresence } from 'framer-motion';
+import { Updater } from './components/Updater';
 import PageTransition from './components/common/PageTransition';
 import SplashScreen from './components/common/SplashScreen';
 
@@ -268,6 +269,7 @@ const AppContent = ({
               </Routes>
             </Suspense>
           </AnimatePresence>
+          <Updater />
         </div>
 
         {!isBottomNavHidden && (

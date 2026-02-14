@@ -1,11 +1,10 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { User, Post } from '../types';
+import { User, Memory } from '../types';
 import { Settings, Grid, Edit3, Share2, MessageCircle, UserPlus, UserMinus, UserCheck, Camera, Save, X as XIcon, MapPin, Calendar, Link as LinkIcon, Phone, Bookmark, Play, Film, UserSquare2, Heart, Twitter, Instagram } from 'lucide-react';
 import { DBService } from '../services/database';
 import { SkeletonProfile } from '../components/common/Skeleton';
-import PostDetailModal from '../components/PostDetailModal';
 
 interface ProfileProps {
     user?: User;
@@ -18,7 +17,7 @@ const Profile: React.FC<ProfileProps> = ({ user: propUser, currentUser, isOwnPro
     const { userId } = useParams();
     const navigate = useNavigate();
     const [user, setUser] = useState<User | null>(isOwnProfile ? currentUser : null);
-    const [userPosts, setUserPosts] = useState<Post[]>([]);
+    const [userMemories, setUserMemories] = useState<Memory[]>([]);
     const [loading, setLoading] = useState(true);
     const [isFollowing, setIsFollowing] = useState(false);
     const [followLoading, setFollowLoading] = useState(false);
@@ -33,9 +32,8 @@ const Profile: React.FC<ProfileProps> = ({ user: propUser, currentUser, isOwnPro
     const [avatarFile, setAvatarFile] = useState<File | null>(null);
     const [previewAvatar, setPreviewAvatar] = useState<string | null>(null);
     const [editError, setEditError] = useState('');
-    const [activeTab, setActiveTab] = useState<'posts' | 'reels' | 'favourites' | 'tagged'>('posts');
-    const [savedPosts, setSavedPosts] = useState<Post[]>([]);
-    const [selectedPost, setSelectedPost] = useState<Post | null>(null);
+    const [activeTab, setActiveTab] = useState<'memories' | 'favourites' | 'tagged'>('memories');
+    const [savedMemories, setSavedMemories] = useState<Memory[]>([]);
 
     useEffect(() => {
         const loadProfile = async () => {
@@ -56,8 +54,8 @@ const Profile: React.FC<ProfileProps> = ({ user: propUser, currentUser, isOwnPro
                 }
 
                 if (targetUser) {
-                    const posts = await DBService.getUserPosts(targetUser.id);
-                    setUserPosts(posts);
+                    const memories = await DBService.getUserMemories(targetUser.id);
+                    setUserMemories(memories);
                 }
             } catch (error) {
                 console.error("Error loading profile:", error);
@@ -71,7 +69,7 @@ const Profile: React.FC<ProfileProps> = ({ user: propUser, currentUser, isOwnPro
 
     useEffect(() => {
         if (activeTab === 'favourites' && isOwnProfile && currentUser) {
-            DBService.getSavedPosts(currentUser.id).then(setSavedPosts);
+            DBService.getSavedMemories(currentUser.id).then(setSavedMemories);
         }
     }, [activeTab, isOwnProfile, currentUser]);
 
@@ -331,8 +329,8 @@ const Profile: React.FC<ProfileProps> = ({ user: propUser, currentUser, isOwnPro
                      {/* Stats Row */}
                      <div className="flex justify-center gap-8 md:gap-16 border-t border-gray-100 dark:border-dark-border pt-6">
                         <div className="text-center">
-                            <span className="block font-black text-xl text-gray-900 dark:text-white">{userPosts.length}</span>
-                            <span className="text-sm text-gray-500 font-medium uppercase tracking-wide">Posts</span>
+                            <span className="block font-black text-xl text-gray-900 dark:text-white">{userMemories.length}</span>
+                            <span className="text-sm text-gray-500 font-medium uppercase tracking-wide">Memories</span>
                         </div>
                         <div className="text-center cursor-pointer hover:opacity-70" onClick={() => openFollowList('followers')}>
                             <span className="block font-black text-xl text-gray-900 dark:text-white">{user.followers?.length || 0}</span>
@@ -350,22 +348,13 @@ const Profile: React.FC<ProfileProps> = ({ user: propUser, currentUser, isOwnPro
             <div className="px-4 mb-4">
                 <div className="bg-white dark:bg-dark-card p-1.5 rounded-[24px] flex shadow-sm">
                     <button
-                        onClick={() => setActiveTab('posts')}
-                        className={`flex-1 py-2.5 rounded-[20px] font-bold text-sm transition-all ${activeTab === 'posts'
+                        onClick={() => setActiveTab('memories')}
+                        className={`flex-1 py-2.5 rounded-[20px] font-bold text-sm transition-all ${activeTab === 'memories'
                             ? 'bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-white shadow-sm'
                             : 'text-gray-500 hover:bg-gray-50 dark:hover:bg-white/5'
                             }`}
                     >
-                        Posts
-                    </button>
-                    <button
-                        onClick={() => setActiveTab('reels')}
-                        className={`flex-1 py-2.5 rounded-[20px] font-bold text-sm transition-all ${activeTab === 'reels'
-                            ? 'bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-white shadow-sm'
-                            : 'text-gray-500 hover:bg-gray-50 dark:hover:bg-white/5'
-                            }`}
-                    >
-                        Reels
+                        Memories
                     </button>
                     {isOwnProfile && (
                          <button
@@ -381,50 +370,51 @@ const Profile: React.FC<ProfileProps> = ({ user: propUser, currentUser, isOwnPro
                 </div>
             </div>
 
-            {/* Posts Grid */}
+            {/* Memories Grid */}
             <div className="max-w-4xl mx-auto px-4 pb-20">
                 <div className="grid grid-cols-3 gap-1.5 container-round">
-                    {activeTab === 'posts' && userPosts.map(post => (
+                    {activeTab === 'memories' && userMemories.map(memory => (
                         <div
-                            key={post.id}
-                            onClick={() => setSelectedPost(post)}
+                            key={memory.id}
+                            onClick={() => navigate(`/memory/${memory.id}`)}
                             className="aspect-square relative group cursor-pointer overflow-hidden bg-gray-100 dark:bg-gray-800 rounded-2xl"
                         >
-                            {post.mediaType === 'video' ? (
+                            {memory.type === 'video' || memory.type === 'reel' ? (
                                 <>
-                                    <video src={post.imageUrl} className="w-full h-full object-cover" />
+                                    <video src={memory.mediaUrl} className="w-full h-full object-cover" />
                                     <div className="absolute top-2 right-2">
                                         <Play className="w-5 h-5 text-white fill-white drop-shadow-md" />
                                     </div>
                                 </>
                             ) : (
-                                <img src={post.imageUrl} className="w-full h-full object-cover" alt="" />
+                                <img src={memory.mediaUrl} className="w-full h-full object-cover" alt="" />
                             )}
                         </div>
                     ))}
-                     {activeTab === 'reels' && (
+                    {activeTab === 'memories' && userMemories.length === 0 && (
                         <div className="col-span-3 py-12 text-center text-gray-400">
-                            <Film className="w-12 h-12 mx-auto mb-2 opacity-50" />
-                            <p>No reels yet</p>
+                             <Grid className="w-12 h-12 mx-auto mb-2 opacity-50" />
+                            <p>No memories yet</p>
                         </div>
                     )}
+
                     {activeTab === 'favourites' && isOwnProfile && (
-                        savedPosts.length > 0 ? (
-                            savedPosts.map(post => (
+                        savedMemories.length > 0 ? (
+                            savedMemories.map(memory => (
                                 <div
-                                    key={post.id}
-                                    onClick={() => setSelectedPost(post)}
+                                    key={memory.id}
+                                    onClick={() => navigate(`/memory/${memory.id}`)}
                                     className="aspect-square relative group cursor-pointer overflow-hidden bg-gray-100 dark:bg-gray-800 rounded-2xl"
                                 >
-                                    {post.mediaType === 'video' ? (
+                                    {(memory.type === 'video' || memory.type === 'reel') ? (
                                         <>
-                                            <video src={post.imageUrl} className="w-full h-full object-cover" />
+                                            <video src={memory.mediaUrl} className="w-full h-full object-cover" />
                                             <div className="absolute top-2 right-2">
                                                 <Play className="w-5 h-5 text-white fill-white drop-shadow-md" />
                                             </div>
                                         </>
                                     ) : (
-                                        <img src={post.imageUrl} className="w-full h-full object-cover" alt="" />
+                                        <img src={memory.mediaUrl} className="w-full h-full object-cover" alt="" />
                                     )}
                                 </div>
                             ))
@@ -437,26 +427,6 @@ const Profile: React.FC<ProfileProps> = ({ user: propUser, currentUser, isOwnPro
                     )}
                 </div>
             </div>
-
-            {/* Post Detail Modal */}
-            {selectedPost && user && (
-                <PostDetailModal
-                    post={selectedPost}
-                    user={user}
-                    currentUser={currentUser}
-                    isOwner={isOwnProfile}
-                    onClose={() => setSelectedPost(null)}
-                    onPostUpdated={() => {
-                        if (user) {
-                            DBService.getUserPosts(user.id).then(setUserPosts);
-                        }
-                    }}
-                    onPostDeleted={() => {
-                        setUserPosts(prev => prev.filter(p => p.id !== selectedPost.id));
-                        setSelectedPost(null);
-                    }}
-                />
-            )}
 
             {/* Follow List Modal */}
             {showFollowList && (

@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Loader2, RefreshCw } from 'lucide-react';
+import { Loader2, RefreshCw, Trash2 } from 'lucide-react';
 import { DBService } from '../services/database';
 import { Memory, Story, User } from '../types';
 import { useAuth } from '../context/AuthContext';
@@ -9,6 +9,84 @@ import { onAuthStateChanged } from 'firebase/auth';
 import MemoryCard from '../components/memories/MemoryCard';
 import { toast } from 'sonner';
 import StoryViewer from '../components/StoryViewer';
+import CommentsSheet from '../components/CommentsSheet';
+
+// Modals
+const EditMemoryModal: React.FC<{
+    memory: Memory;
+    onSave: (caption: string) => void;
+    onClose: () => void;
+}> = ({ memory, onSave, onClose }) => {
+    const [caption, setCaption] = useState(memory.caption);
+    const [saving, setSaving] = useState(false);
+
+    const handleSave = async () => {
+        setSaving(true);
+        await onSave(caption);
+        setSaving(false);
+    };
+
+    return (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center">
+            <div className="absolute inset-0 bg-black/60" onClick={onClose} />
+            <div className="relative w-full max-w-lg mx-4 bg-white dark:bg-dark-surface rounded-2xl overflow-hidden z-10">
+                <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-dark-border">
+                    <button onClick={onClose} className="text-gray-500 font-medium">Cancel</button>
+                    <h3 className="font-bold text-lg text-black dark:text-white">Edit Memory</h3>
+                    <button
+                        onClick={handleSave}
+                        disabled={saving}
+                        className="text-snuggle-500 font-bold disabled:opacity-50"
+                    >
+                        {saving ? <Loader2 className="w-5 h-5 animate-spin" /> : 'Done'}
+                    </button>
+                </div>
+                <div className="p-4">
+                    <textarea
+                        value={caption}
+                        onChange={(e) => setCaption(e.target.value)}
+                        className="w-full h-32 bg-gray-100 dark:bg-dark-bg rounded-xl p-4 text-sm focus:outline-none focus:ring-2 focus:ring-snuggle-500/30 resize-none text-black dark:text-white"
+                        placeholder="Write a caption..."
+                    />
+                </div>
+            </div>
+        </div>
+    );
+};
+
+const DeleteConfirmModal: React.FC<{
+    onConfirm: () => void;
+    onClose: () => void;
+}> = ({ onConfirm, onClose }) => {
+    return (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center">
+            <div className="absolute inset-0 bg-black/60" onClick={onClose} />
+            <div className="relative w-full max-w-sm mx-4 bg-white dark:bg-dark-surface rounded-2xl overflow-hidden text-center z-10">
+                <div className="p-6">
+                    <Trash2 className="w-12 h-12 text-red-500 mx-auto mb-4" />
+                    <h3 className="font-bold text-lg text-black dark:text-white mb-2">Delete Memory?</h3>
+                    <p className="text-sm text-gray-500 mb-6">
+                        This memory will be moved to Recently Deleted. You can restore it within 30 days.
+                    </p>
+                    <div className="flex gap-3">
+                        <button
+                            onClick={onClose}
+                            className="flex-1 py-3 bg-gray-100 dark:bg-dark-bg rounded-xl font-medium text-gray-700 dark:text-gray-300"
+                        >
+                            Cancel
+                        </button>
+                        <button
+                            onClick={onConfirm}
+                            className="flex-1 py-3 bg-red-500 text-white rounded-xl font-bold"
+                        >
+                            Delete
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+};
 
 // Stories Bento Component (Inline for now or import if extracted)
 // Reusing logic from Feed.tsx
@@ -84,12 +162,16 @@ const FeedMemories: React.FC = () => {
     const [storyUsers, setStoryUsers] = useState<User[]>([]);
     const [viewingStoryUserId, setViewingStoryUserId] = useState<string | null>(null);
 
+    // Interaction State
+    const [commentsMemory, setCommentsMemory] = useState<Memory | null>(null);
+    const [editMemory, setEditMemory] = useState<Memory | null>(null);
+    const [deleteMemory, setDeleteMemory] = useState<Memory | null>(null);
+
     // Hooks must be called before early returns
     useEffect(() => {
         if (!currentUser) return;
         
         // Wait for Firebase Auth to be ready before querying Firestore
-        // to avoid "Missing or insufficient permissions" error
         const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
             if (firebaseUser) {
                 loadMemories(true);
@@ -187,6 +269,19 @@ const FeedMemories: React.FC = () => {
         setMemories(prev => prev.map(m => m.id === updatedMemory.id ? updatedMemory : m));
     };
 
+    const handleDelete = async () => {
+        if (!deleteMemory || !currentUser) return;
+        try {
+            await DBService.softDeletePost(deleteMemory.id, currentUser.id); // Reusing post soft delete for memories
+            setMemories(prev => prev.filter(m => m.id !== deleteMemory.id));
+            toast.success("Memory deleted");
+            setDeleteMemory(null);
+        } catch (error) {
+            console.error(error);
+            toast.error("Failed to delete memory");
+        }
+    };
+
     // Group stories
     const storiesByUser = allStories.reduce((acc, story) => {
         if (!acc[story.userId]) acc[story.userId] = [];
@@ -195,6 +290,16 @@ const FeedMemories: React.FC = () => {
     }, {} as Record<string, Story[]>);
 
     if (!currentUser) return null;
+
+    // Adapt Memory to Post type for CommentsSheet compatibility
+    // TODO: Update CommentsSheet to accept Memory type directly
+    const memoryToPost = (memory: Memory): any => ({
+        ...memory,
+        likes: memory.likesCount,
+        comments: memory.commentsCount,
+        imageUrl: memory.mediaUrl, // Mapping for compatibility
+        mediaType: memory.type === 'image' ? 'image' : 'video' 
+    });
 
     return (
         <div className="min-h-screen bg-gray-50 dark:bg-black pb-20 md:pb-0">
@@ -251,6 +356,9 @@ const FeedMemories: React.FC = () => {
                                 memory={memory} 
                                 currentUserId={currentUser?.id || ''}
                                 onMemoryUpdate={handleMemoryUpdate}
+                                onCommentClick={setCommentsMemory}
+                                onEdit={setEditMemory}
+                                onDelete={setDeleteMemory}
                             />
                         ))}
                     </div>
@@ -270,6 +378,47 @@ const FeedMemories: React.FC = () => {
                     onClose={() => setViewingStoryUserId(null)}
                 />
             )}
+
+            {/* Modals */}
+            {commentsMemory && (
+                <CommentsSheet 
+                    post={memoryToPost(commentsMemory)}
+                    currentUser={currentUser}
+                    onClose={() => setCommentsMemory(null)}
+                    onCommentAdded={() => {
+                        // Optimistic or refresh
+                        handleMemoryUpdate({ 
+                            ...commentsMemory, 
+                            commentsCount: commentsMemory.commentsCount + 1 
+                        });
+                    }}
+                />
+            )}
+
+            {editMemory && (
+                <EditMemoryModal
+                    memory={editMemory}
+                    onSave={async (caption) => {
+                        try {
+                            await DBService.updatePost(editMemory.id, { caption }); // Reusing updatePost
+                            handleMemoryUpdate({ ...editMemory, caption });
+                            toast.success("Updated!");
+                            setEditMemory(null);
+                        } catch (e) {
+                            toast.error("Failed to update");
+                        }
+                    }}
+                    onClose={() => setEditMemory(null)}
+                />
+            )}
+
+            {deleteMemory && (
+                <DeleteConfirmModal
+                    onConfirm={handleDelete}
+                    onClose={() => setDeleteMemory(null)}
+                />
+            )}
+
         </div>
     );
 };

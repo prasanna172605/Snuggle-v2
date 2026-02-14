@@ -32,6 +32,9 @@ service cloud.firestore {
       match /likedPosts/{postId} {
         allow read, write: if isOwner(userId);
       }
+      match /chatSettings/{settingId} {
+        allow read, write: if isOwner(userId);
+      }
     }
     
     // Posts collection
@@ -64,23 +67,32 @@ service cloud.firestore {
     }
     
     // Chats & Messages
+    // Chats & Messages
     match /chats/{chatId} {
-      allow read: if isSignedIn() && request.auth.uid in resource.data.participants;
-      // Allow create/update if user is in the participants array being written OR already exists
+      // Allow read if user is a participant OR if checking for existence (resource == null)
+      allow read: if isSignedIn() && (resource == null || request.auth.uid in resource.data.participants);
+      
+      // Allow create if user is in the participants array
       allow create: if isSignedIn() && request.auth.uid in request.resource.data.participants;
+      
+      // Allow update if user is a participant (e.g., updating lastMessage, typing indicators)
       allow update: if isSignedIn() && (
         (resource.data != null && request.auth.uid in resource.data.participants) ||
         (request.resource.data != null && request.auth.uid in request.resource.data.participants)
       );
+      
       // Allow delete if user is a participant
       allow delete: if isSignedIn() && request.auth.uid in resource.data.participants;
+
+      // Chat Settings (e.g., mute, background)
+      match /chat_settings/{settingId} {
+         allow read, write: if isSignedIn();
+      }
 
       match /messages/{messageId} {
          allow read: if isSignedIn();
          allow create: if isSignedIn() && request.resource.data.senderId == request.auth.uid;
-         // Allow update by sender OR for reactions by any authenticated user
          allow update: if isSignedIn();
-         // Allow delete by any authenticated user (for chat deletion)
          allow delete: if isSignedIn(); 
       }
     }

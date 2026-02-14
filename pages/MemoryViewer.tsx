@@ -1,11 +1,12 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { X, Heart, MessageSquare, Send, MoreVertical, Play, Pause, ChevronLeft, Volume2, VolumeX } from 'lucide-react';
+import { X, Heart, MessageSquare, Send, MoreVertical, Play, Pause, ChevronLeft, Volume2, VolumeX, Copy, Flag } from 'lucide-react';
 import { DBService } from '../services/database';
-import { Memory } from '../types';
+import { Memory, Comment as AppComment } from '../types';
 import { useAuth } from '../context/AuthContext';
 import { toast } from 'sonner';
+import CommentsSheet from '../components/CommentsSheet';
 
 const MemoryViewer: React.FC = () => {
     const { memoryId } = useParams<{ memoryId: string }>();
@@ -15,6 +16,8 @@ const MemoryViewer: React.FC = () => {
     const [loading, setLoading] = useState(true);
     const [isPlaying, setIsPlaying] = useState(true);
     const [isMuted, setIsMuted] = useState(false);
+    const [showComments, setShowComments] = useState(false);
+    const [showMenu, setShowMenu] = useState(false);
 
     const videoRef = useRef<HTMLVideoElement>(null);
 
@@ -70,6 +73,14 @@ const MemoryViewer: React.FC = () => {
         }
     };
 
+    const handleShare = () => {
+        if (!memory) return;
+        const link = `${window.location.origin}/memory/${memory.id}`;
+        navigator.clipboard.writeText(link);
+        toast.success('Link copied to clipboard');
+        setShowMenu(false);
+    };
+
     if (loading) {
         return (
             <div className="fixed inset-0 bg-black z-50 flex flex-col items-center justify-center text-white">
@@ -97,11 +108,19 @@ const MemoryViewer: React.FC = () => {
         );
     }
 
+    // Adapt Memory to Post type for CommentsSheet compatibility
+    // This is a temporary mapping until types are fully unified or CommentsSheet is updated
+    const memoryAsPost: any = {
+        ...memory,
+        likes: memory.likesCount, // CommentsSheet might expect this structure
+        comments: memory.commentsCount
+    };
+
     return (
         <div className="fixed inset-0 bg-black z-50 flex flex-col">
             {/* Top Bar */}
-            <div className="absolute top-0 left-0 right-0 p-4 pt-8 flex items-center justify-between z-20 bg-gradient-to-b from-black/60 to-transparent">
-                <div className="flex items-center gap-3">
+            <div className="absolute top-0 left-0 right-0 p-4 pt-8 flex items-center justify-between z-20 bg-gradient-to-b from-black/60 to-transparent pointer-events-none">
+                <div className="flex items-center gap-3 pointer-events-auto">
                     <button onClick={() => navigate(-1)} className="text-white hover:opacity-80 transition-opacity">
                         <ChevronLeft size={28} />
                     </button>
@@ -113,9 +132,33 @@ const MemoryViewer: React.FC = () => {
                         <span className="font-semibold text-white text-sm shadow-sm">{memory.user?.username}</span>
                     </div>
                 </div>
-                <button className="text-white hover:opacity-80 transition-opacity">
-                    <MoreVertical size={24} />
-                </button>
+                <div className="relative pointer-events-auto">
+                    <button 
+                        onClick={() => setShowMenu(!showMenu)}
+                        className="text-white hover:opacity-80 transition-opacity"
+                    >
+                        <MoreVertical size={24} />
+                    </button>
+                    
+                    {/* Menu Dropdown */}
+                    {showMenu && (
+                        <div className="absolute top-10 right-0 bg-white dark:bg-dark-surface rounded-xl shadow-xl border border-gray-100 dark:border-dark-border overflow-hidden min-w-[160px] animate-in fade-in zoom-in-95 duration-200">
+                             <button 
+                                onClick={handleShare}
+                                className="w-full px-4 py-3 text-left text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-dark-hover flex items-center gap-2"
+                            >
+                                <Copy className="w-4 h-4" /> Copy Link
+                            </button>
+                             <button 
+                                onClick={() => { setShowMenu(false); toast.info("Reported"); }}
+                                className="w-full px-4 py-3 text-left text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-dark-hover flex items-center gap-2"
+                            >
+                                <Flag className="w-4 h-4" /> Report
+                            </button>
+                        </div>
+                    )}
+                     {showMenu && <div className="fixed inset-0 z-10" onClick={() => setShowMenu(false)} />}
+                </div>
             </div>
 
             {/* Media Content */}
@@ -149,7 +192,7 @@ const MemoryViewer: React.FC = () => {
                         )}
                         <button 
                             onClick={(e) => { e.stopPropagation(); setIsMuted(!isMuted); }}
-                            className="absolute bottom-20 right-4 p-2 bg-black/50 rounded-full text-white z-30"
+                            className="absolute bottom-32 right-4 p-2 bg-black/50 rounded-full text-white z-30 opacity-0 hover:opacity-100 transition-opacity"
                         >
                             {isMuted ? <VolumeX size={20} /> : <Volume2 size={20} />}
                         </button>
@@ -177,18 +220,33 @@ const MemoryViewer: React.FC = () => {
                             <span className="text-xs font-medium text-white drop-shadow-md">{memory.likesCount}</span>
                         </button>
                         
-                        <button className="flex flex-col items-center gap-1 group">
+                        <button 
+                            onClick={() => setShowComments(true)}
+                            className="flex flex-col items-center gap-1 group"
+                        >
                             <MessageSquare className="w-8 h-8 text-white transition-transform group-active:scale-75 drop-shadow-lg" strokeWidth={1.5} />
                             <span className="text-xs font-medium text-white drop-shadow-md">{memory.commentsCount}</span>
                         </button>
 
-                        <button className="flex flex-col items-center gap-1 group">
+                        <button onClick={handleShare} className="flex flex-col items-center gap-1 group">
                             <Send className="w-8 h-8 text-white transition-transform group-active:scale-75 -rotate-12 drop-shadow-lg" strokeWidth={1.5} />
                             <span className="text-xs font-medium text-white drop-shadow-md">Share</span>
                         </button>
                     </div>
                 </div>
             </div>
+
+            {/* Comments Sheet */}
+            {showComments && currentUser && (
+                <CommentsSheet 
+                    post={memoryAsPost}
+                    currentUser={currentUser}
+                    onClose={() => setShowComments(false)}
+                    onCommentAdded={() => {
+                        setMemory(prev => prev ? { ...prev, commentsCount: prev.commentsCount + 1 } : null);
+                    }}
+                />
+            )}
         </div>
     );
 };

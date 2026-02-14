@@ -85,7 +85,7 @@ const Settings: React.FC<SettingsProps> = ({
   // Dialog State
   const [dialogState, setDialogState] = useState<{
     isOpen: boolean;
-    type: 'delete_account' | 'revoke_session' | 'logout' | null;
+    type: 'delete_account' | 'revoke_session' | 'logout' | 'rotate_keys' | null;
     data?: any;
   }>({ isOpen: false, type: null });
 
@@ -171,7 +171,16 @@ const Settings: React.FC<SettingsProps> = ({
       toast.success('Session signed out');
       setDialogState({ isOpen: false, type: null });
     } catch (error) {
-      toast.error('Failed to sign out session');
+    }
+  };
+
+  const handleRotateKeys = async () => {
+    try {
+        await DBService.rotateEncryptionKeys(currentUser.id);
+        toast.success("Encryption keys rotated successfully");
+        setDialogState({ isOpen: false, type: null });
+    } catch (e) {
+        toast.error("Failed to rotate keys");
     }
   };
 
@@ -406,6 +415,28 @@ const Settings: React.FC<SettingsProps> = ({
               </div>
             </div>
 
+            {/* Encryption */}
+            <div className="bg-white dark:bg-dark-card p-6 rounded-[32px] shadow-sm space-y-4">
+              <div className="flex items-center gap-3 mb-2">
+                <div className="p-2 bg-orange-50 dark:bg-orange-900/20 rounded-full text-orange-600">
+                    <Shield className="w-6 h-6" />
+                </div>
+                <div>
+                   <h3 className="font-bold text-lg">End-to-End Encryption</h3>
+                   <p className="text-xs text-gray-500">Manage your encryption keys</p>
+                </div>
+              </div>
+              <button
+                  onClick={() => setDialogState({ isOpen: true, type: 'rotate_keys' })}
+                  className="w-full py-3 border border-orange-200 dark:border-orange-900/30 text-orange-600 font-bold rounded-xl hover:bg-orange-50 dark:hover:bg-orange-900/10 transition-colors flex items-center justify-center gap-2"
+              >
+                  Reset Encryption Keys
+              </button>
+              <p className="text-xs text-gray-400 text-center">
+                  Warning: You will lose access to old encrypted messages on this device.
+              </p>
+            </div>
+
             {/* Active Sessions */}
             <div className="space-y-3">
               <h3 className="font-bold text-lg ml-2">Active Sessions</h3>
@@ -618,6 +649,16 @@ const Settings: React.FC<SettingsProps> = ({
         onConfirm={() => handleRevokeSession(dialogState.data)}
         variant="warning"
         confirmText="Yes, Sign Out"
+      />
+
+      <ConfirmDialog
+        isOpen={dialogState.isOpen && dialogState.type === 'rotate_keys'}
+        onClose={() => setDialogState({ isOpen: false, type: null })}
+        title="Reset Encryption Keys?"
+        message="This will generate new keys. You will NOT be able to decrypt old messages sent to this device unless you have a backup. Proceed?"
+        onConfirm={handleRotateKeys}
+        variant="danger"
+        confirmText="Reset Keys"
       />
 
       <ConfirmDialog

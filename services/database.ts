@@ -32,7 +32,12 @@ import { signInWithEmailAndPassword, signInWithPopup, onAuthStateChanged, signOu
 import { onSnapshot } from 'firebase/firestore';
 import { ref as rtdbRef, set, onDisconnect, serverTimestamp as rtdbServerTimestamp, onValue, off, child, get } from 'firebase/database';
 import { encrypt, decrypt } from './encryptionService';
-import { initializeKeys, getSharedKey, isE2EEReady } from './keyManager';
+import {
+    initializeKeys,
+    getSharedKey,
+    isE2EEReady,
+    rotateKeys
+} from './keyManager';
 
 // Types
 
@@ -109,6 +114,10 @@ export interface DBUser {
 
 // Database Service Class
 export class DBService {
+
+    static async rotateEncryptionKeys(userId: string): Promise<void> {
+        await rotateKeys(userId);
+    }
 
     // ==================== USER OPERATIONS ====================
 
@@ -1664,6 +1673,83 @@ export class DBService {
         return hydratedMemories.sort((a, b) => b.createdAt - a.createdAt);
     }
 
+    static async getUserMemories(userId: string, limitCount = 20): Promise<import('../types').Memory[]> {
+        // Fetch from 'memories' collection
+        const memoriesQuery = query(
+            collection(db, 'memories'),
+            where('userId', '==', userId),
+            orderBy('createdAt', 'desc'),
+            limit(limitCount)
+        );
+
+        const memoriesSnap = await getDocs(memoriesQuery);
+        let memories = memoriesSnap.docs.map(d => ({
+            id: d.id,
+            ...d.data(),
+            _isLegacy: false
+        } as any));
+
+        // Fallback: Fetch legacy posts if not enough memories
+        if (memories.length < limitCount) {
+             const postsQuery = query(
+                collection(db, 'posts'),
+                where('userId', '==', userId),
+                orderBy('createdAt', 'desc'),
+                limit(limitCount - memories.length)
+             );
+             
+             const postsSnap = await getDocs(postsQuery);
+             const legacyPosts = postsSnap.docs.map(d => {
+                 const data = d.data();
+                 return {
+                     id: d.id,
+                     userId: data.userId,
+                     type: data.mediaType === 'video' ? 'video' : 'image',
+                     caption: data.caption || '',
+                     mediaUrl: data.imageUrl || '',
+                     likesCount: typeof data.likes === 'number' ? data.likes : (Array.isArray(data.likes) ? data.likes.length : 0),
+                     commentsCount: data.comments || 0,
+                     createdAt: data.createdAt,
+                     _isLegacy: true
+                 };
+             });
+             memories = [...memories, ...legacyPosts];
+        }
+
+        const hydratedMemories = await Promise.all(memories.map(async (data) => {
+            const memory = {
+                ...data,
+                createdAt: data.createdAt?.toMillis?.() || (typeof data.createdAt === 'number' ? data.createdAt : Date.now())
+            } as import('../types').Memory;
+
+            // Hydrate User
+            const user = await this.getUserById(memory.userId);
+            if (user) memory.user = user;
+
+            // Hydrate Interactions
+            if (auth.currentUser) {
+                if (data._isLegacy) {
+                    const userSnap = await getDoc(doc(db, 'users', auth.currentUser.uid));
+                    if (userSnap.exists()) {
+                        const userData = userSnap.data();
+                        memory.isLiked = userData.likedPosts?.includes(memory.id);
+                        memory.isSaved = userData.savedPosts?.includes(memory.id);
+                    }
+                } else {
+                    const likeSnap = await getDoc(doc(db, 'memories', memory.id, 'likes', auth.currentUser.uid));
+                    memory.isLiked = likeSnap.exists();
+                    
+                    const saveSnap = await getDoc(doc(db, 'users', auth.currentUser.uid, 'savedMemories', memory.id));
+                    memory.isSaved = saveSnap.exists();
+                }
+            }
+
+            return memory;
+        }));
+
+        return hydratedMemories.sort((a, b) => b.createdAt - a.createdAt);
+    }
+
     static async toggleMemoryLike(memoryId: string, userId: string): Promise<boolean> {
         const likeRef = doc(db, 'memories', memoryId, 'likes', userId);
         const memoryRef = doc(db, 'memories', memoryId);
@@ -1704,9 +1790,36 @@ export class DBService {
             await deleteDoc(saveRef);
             return false;
         } else {
+            // Check if it's a legacy post
+            const memoryRef = doc(db, 'memories', memoryId);
+            const memorySnap = await getDoc(memoryRef);
+            
+            if (!memorySnap.exists()) {
+                // Try legacy save
+                return await this.toggleSave(memoryId, userId);
+            }
+
             await setDoc(saveRef, { timestamp: serverTimestamp() });
             return true;
         }
+    }
+
+    static async getSavedMemories(userId: string): Promise<import('../types').Memory[]> {
+        const savedMemoriesRef = collection(db, 'users', userId, 'savedMemories');
+        const savedSnap = await getDocs(savedMemoriesRef);
+        
+        const memoryIds = savedSnap.docs.map(d => d.id);
+        
+        // Also get legacy saved posts
+        const user = await this.getUserById(userId);
+        if (user && user.savedPosts) {
+            memoryIds.push(...user.savedPosts);
+        }
+
+        const uniqueIds = Array.from(new Set(memoryIds));
+        
+        const memories = await Promise.all(uniqueIds.map(id => this.getMemory(id)));
+        return memories.filter(m => m !== null) as import('../types').Memory[];
     }
 
     static async getMemory(memoryId: string): Promise<import('../types').Memory | null> {
@@ -2115,9 +2228,13 @@ export class DBService {
                         if (sharedKey) {
                             msg.text = await decrypt(msg.text, msg.iv, sharedKey);
                         }
-                    } catch (e) {
-                        console.warn('[E2EE] Decryption failed for message:', msg.id, e);
-                        msg.text = '🔒 Unable to decrypt';
+                    } catch (e: any) {
+                        if (e.name === 'OperationError') {
+                             console.warn(`[E2EE] Key mismatch for msg ${msg.id} (likely old session).`);
+                        } else {
+                             console.warn('[E2EE] Decryption failed:', msg.id, e);
+                        }
+                        msg.text = '🔒 Unable to decrypt (Key changed)';
                     }
                 }
             }
@@ -2174,8 +2291,13 @@ export class DBService {
                                 if (sharedKey) {
                                     msg.text = await decrypt(msg.text, msg.iv, sharedKey);
                                 }
-                            } catch (e) {
-                                console.warn('[E2EE] Decryption failed for message:', msg.id, e);
+                            } catch (e: any) {
+                                if (e.name === 'OperationError') {
+                                     // Common when keys are rotated or session cleared
+                                     console.warn(`[E2EE] RT decryption failed (OperationError) for ${msg.id}`);
+                                } else {
+                                     console.warn('[E2EE] RT Decryption failed:', msg.id, e);
+                                }
                                 msg.text = '🔒 Unable to decrypt';
                             }
                         }
