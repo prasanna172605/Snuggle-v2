@@ -1,6 +1,17 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
+    // --- App Update & Config (Publicly Readable) ---
+    match /app_updates/{docId} {
+      allow read: if true;
+      allow write: if false;
+    }
+    match /app_config/{docId} {
+      allow read: if true;
+      allow write: if false;
+    }
+
+    // --- Existing Rules ---
     
     // Helper functions
     function isSignedIn() {

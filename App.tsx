@@ -38,6 +38,7 @@ import CallOverlay from './components/CallOverlay';
 import { CallProvider } from './context/CallContext';
 import { AnimatePresence } from 'framer-motion';
 import { Updater } from './components/Updater';
+import { UpdateManager } from './services/UpdateManager';
 import PageTransition from './components/common/PageTransition';
 import SplashScreen from './components/common/SplashScreen';
 
@@ -293,6 +294,7 @@ const App = () => {
   useEffect(() => {
     // Hide splash screen after authentication check if it's already done
     // but the SplashScreen component itself handles its own timer.
+    UpdateManager.run();
   }, []);
 
   useEffect(() => {
@@ -378,38 +380,6 @@ const App = () => {
     return <LoadingFallback />;
   }
 
-  if (!currentUser) {
-    return (
-      <Suspense fallback={<LoadingFallback />}>
-        {authView === 'LOGIN' && (
-          <Login
-            onLogin={handleLogin}
-            onNavigate={(view) => setAuthView(view as 'LOGIN' | 'SIGNUP' | 'GOOGLE_SETUP')}
-            onSwitchToSignup={() => setAuthView('SIGNUP')}
-            onGoogleSetup={(googleUser) => {
-              setTempGoogleUser(googleUser);
-              setAuthView('GOOGLE_SETUP');
-            }}
-          />
-        )}
-        {authView === 'SIGNUP' && (
-          <Signup
-            onSignup={handleLogin}
-            onNavigate={(view) => setAuthView(view as 'LOGIN' | 'SIGNUP' | 'GOOGLE_SETUP')}
-            onSwitchToLogin={() => setAuthView('LOGIN')}
-          />
-        )}
-        {authView === 'GOOGLE_SETUP' && tempGoogleUser && (
-          <GoogleUsernameSetup
-            googleData={tempGoogleUser}
-            onSignup={handleLogin}
-            onCancel={() => setAuthView('LOGIN')}
-          />
-        )}
-      </Suspense>
-    );
-  }
-
   return (
     <>
       <AnimatePresence>
@@ -423,32 +393,62 @@ const App = () => {
           <NotificationProvider>
             <InteractionProvider>
               <CallProvider currentUser={currentUser}>
-                <AppContent
-                  currentUser={currentUser}
-                  onLogout={onLogout}
-                  onUpdateUser={(user) => {
-                    setCurrentUser(user);
-                    localStorage.setItem('currentUser', JSON.stringify(user));
-                  }}
-                  onDeleteAccount={async () => {
-                    if (currentUser) {
-                      try {
-                        await DBService.deleteUser(currentUser.id);
-                        toast.success('Account deleted successfully');
-                        onLogout();
-                      } catch (error: any) {
-                        console.error('Failed to delete account:', error);
-                        toast.error(error.message || 'Failed to delete account');
+                {currentUser ? (
+                  <AppContent
+                    currentUser={currentUser}
+                    onLogout={onLogout}
+                    onUpdateUser={(user) => {
+                      setCurrentUser(user);
+                      localStorage.setItem('currentUser', JSON.stringify(user));
+                    }}
+                    onDeleteAccount={async () => {
+                      if (currentUser) {
+                        try {
+                          await DBService.deleteUser(currentUser.id);
+                          toast.success('Account deleted successfully');
+                          onLogout();
+                        } catch (error: any) {
+                          console.error('Failed to delete account:', error);
+                          toast.error(error.message || 'Failed to delete account');
+                        }
                       }
-                    }
-                  }}
-                  onSwitchAccount={(userId) => {
-                    // Switch account logic
-                  }}
-                  onAddAccount={() => {
-                    // Add account logic
-                  }}
-                />
+                    }}
+                    onSwitchAccount={(userId) => {
+                      // Switch account logic
+                    }}
+                    onAddAccount={() => {
+                      // Add account logic
+                    }}
+                  />
+                ) : (
+                  <Suspense fallback={<LoadingFallback />}>
+                    {authView === 'LOGIN' && (
+                      <Login
+                        onLogin={handleLogin}
+                        onNavigate={(view) => setAuthView(view as 'LOGIN' | 'SIGNUP' | 'GOOGLE_SETUP')}
+                        onSwitchToSignup={() => setAuthView('SIGNUP')}
+                        onGoogleSetup={(googleUser) => {
+                          setTempGoogleUser(googleUser);
+                          setAuthView('GOOGLE_SETUP');
+                        }}
+                      />
+                    )}
+                    {authView === 'SIGNUP' && (
+                      <Signup
+                        onSignup={handleLogin}
+                        onNavigate={(view) => setAuthView(view as 'LOGIN' | 'SIGNUP' | 'GOOGLE_SETUP')}
+                        onSwitchToLogin={() => setAuthView('LOGIN')}
+                      />
+                    )}
+                    {authView === 'GOOGLE_SETUP' && tempGoogleUser && (
+                      <GoogleUsernameSetup
+                        googleData={tempGoogleUser}
+                        onSignup={handleLogin}
+                        onCancel={() => setAuthView('LOGIN')}
+                      />
+                    )}
+                  </Suspense>
+                )}
 
                 <Updater />
                 <Toaster position="top-right" richColors closeButton />

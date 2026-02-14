@@ -171,15 +171,22 @@ const FeedMemories: React.FC = () => {
     useEffect(() => {
         if (!currentUser) return;
         
-        // Wait for Firebase Auth to be ready before querying Firestore
-        const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
+        console.log('[FeedMemories] Synchronizing with Firebase Auth...');
+        
+        // Wait for Firebase Auth to be ready before querying Firestore.
+        // This prevents "Missing or insufficient permissions" on native apps 
+        // where the SDK takes a moment to recover the session.
+        const authUnsubscribe = onAuthStateChanged(DBService.getAuth(), (firebaseUser: any) => {
             if (firebaseUser) {
+                // Assuming Chat type and setChats/chats state are defined elsewhere if this block is fully intended.
+                // For now, only applying the onAuthStateChanged change as per instruction.
+                console.log('[FeedMemories] Auth synced. Loading initial feed...');
                 loadMemories(true);
                 loadStories();
             }
         });
 
-        return () => unsubscribe();
+        return () => authUnsubscribe();
     }, [currentUser]); 
 
     const loadMemories = async (isRefresh = false) => {
@@ -240,11 +247,7 @@ const FeedMemories: React.FC = () => {
         }
     };
 
-    useEffect(() => {
-        if (!currentUser) return;
-        loadMemories(true);
-        loadStories();
-    }, [currentUser]); 
+    // --- Redundant useEffect removed to prevent race conditions ---
 
     // Infinite Scroll
     useEffect(() => {

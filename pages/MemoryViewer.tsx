@@ -3,6 +3,8 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { X, Heart, MessageSquare, Send, MoreVertical, Play, Pause, ChevronLeft, Volume2, VolumeX, Copy, Flag } from 'lucide-react';
 import { DBService } from '../services/database';
+import { onAuthStateChanged } from 'firebase/auth';
+import { auth } from '../services/firebase';
 import { Memory, Comment as AppComment } from '../types';
 import { useAuth } from '../context/AuthContext';
 import { toast } from 'sonner';
@@ -24,9 +26,16 @@ const MemoryViewer: React.FC = () => {
     const videoRef = useRef<HTMLVideoElement>(null);
 
     useEffect(() => {
-        if (memoryId) {
-            loadMemory(memoryId);
-        }
+        if (!memoryId) return;
+
+        // Guard against race conditions on native builds
+        const unsubscribe = onAuthStateChanged(DBService.getAuth(), (firebaseUser: any) => {
+            if (firebaseUser) {
+                loadMemory(memoryId);
+            }
+        });
+
+        return () => unsubscribe();
     }, [memoryId]);
 
     useEffect(() => {

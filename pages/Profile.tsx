@@ -1,6 +1,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+import { onAuthStateChanged } from 'firebase/auth';
 import { User, Memory } from '../types';
 import { Settings, Grid, Edit3, Share2, MessageCircle, UserPlus, UserMinus, UserCheck, Camera, Save, X as XIcon, MapPin, Calendar, Link as LinkIcon, Phone, Bookmark, Play, Film, UserSquare2, Heart, Twitter, Instagram, Search } from 'lucide-react';
 import { DBService } from '../services/database';
@@ -64,12 +65,24 @@ const Profile: React.FC<ProfileProps> = ({ user: propUser, currentUser, isOwnPro
             }
         };
 
-        loadProfile();
+        // Guard against race conditions on native builds
+        const unsubscribe = onAuthStateChanged(DBService.getAuth(), (firebaseUser: any) => {
+            if (firebaseUser) {
+                loadProfile();
+            }
+        });
+
+        return () => unsubscribe();
     }, [userId, currentUser, isOwnProfile]);
 
     useEffect(() => {
         if (activeTab === 'favourites' && isOwnProfile && currentUser) {
-            DBService.getSavedMemories(currentUser.id).then(setSavedMemories);
+            const unsubscribe = onAuthStateChanged(DBService.getAuth(), (firebaseUser: any) => {
+                if (firebaseUser) {
+                    DBService.getSavedMemories(currentUser.id).then(setSavedMemories);
+                }
+            });
+            return () => unsubscribe();
         }
     }, [activeTab, isOwnProfile, currentUser]);
 

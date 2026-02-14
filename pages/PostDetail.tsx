@@ -4,6 +4,8 @@ import { Post, User } from '../types';
 import { DBService } from '../services/database';
 import PostDetailContent from '../components/PostDetailContent';
 import { Loader2, ArrowLeft } from 'lucide-react';
+import { onAuthStateChanged } from 'firebase/auth';
+import { auth } from '../services/firebase';
 import { toast } from 'sonner';
 
 interface PostDetailProps {
@@ -39,7 +41,14 @@ const PostDetail: React.FC<PostDetailProps> = ({ currentUser }) => {
             }
         };
 
-        loadPostData();
+        // Guard against race conditions on native builds
+        const unsubscribe = onAuthStateChanged(DBService.getAuth(), (firebaseUser: any) => {
+            if (firebaseUser) {
+                loadPostData();
+            }
+        });
+
+        return () => unsubscribe();
     }, [postId, navigate]);
 
     if (loading) {

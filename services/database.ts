@@ -119,6 +119,10 @@ export class DBService {
         await rotateKeys(userId);
     }
 
+    static getAuth() {
+        return auth;
+    }
+
     // ==================== USER OPERATIONS ====================
 
     static async createUser(userId: string, userData: Partial<DBUser>): Promise<User> {
@@ -2126,10 +2130,10 @@ export class DBService {
         const chatId = this.getChatId(messageData.senderId!, messageData.receiverId!);
         const messageRef = doc(collection(db, 'chats', chatId, 'messages'), messageData.id);
 
-        // ─── E2EE: Encrypt text messages ────────────────────────
-        let encryptedText = messageData.text;
-        let encryptionMeta: { encrypted?: boolean; iv?: string } = {};
-
+        // ─── E2EE: Encryption disabled as per user request ────────
+        // Previously: Encrypted text messages using ECDH/AES-GCM
+        // To restore, uncomment the block below and ensure key sync is working.
+        /*
         if (messageData.type === 'text' && messageData.text && isE2EEReady()) {
             try {
                 const sharedKey = await getSharedKey(messageData.receiverId!);
@@ -2143,6 +2147,9 @@ export class DBService {
                 console.warn('[E2EE] Encryption failed, sending plaintext:', e);
             }
         }
+        */
+        let encryptedText = messageData.text;
+        let encryptionMeta: { encrypted?: boolean; iv?: string } = {};
 
         const firestoreMessage: any = {
             ...messageData,
@@ -2174,11 +2181,11 @@ export class DBService {
         console.log('[sendMessage] Updating chat doc with unreadCounts for receiver:', messageData.receiverId);
 
         // First ensure the chat doc exists with basic info
-        // Use original plaintext for lastMessage preview (not ciphertext)
+        // Use plaintext for lastMessage preview as requested
         await setDoc(chatRef, {
             participants: [messageData.senderId, messageData.receiverId],
             lastMessage: messageData.type === 'text'
-                ? (encryptionMeta.encrypted ? '🔒 Encrypted message' : messageData.text)
+                ? messageData.text
                 : `Sent a ${messageData.type}`,
             lastMessageTime: firestoreMessage.timestamp,
             lastSenderId: messageData.senderId
@@ -2192,9 +2199,9 @@ export class DBService {
         // Trigger Push Notification via Vercel (Free Tier Backend)
         const senderProfile = await this.getUserById(messageData.senderId);
         const senderName = senderProfile?.fullName || "New Message";
-        // Push notification body: don't leak plaintext if encrypted
+        // Push notification body: Use plaintext as requested
         const msgBody = messageData.type === 'text'
-            ? (encryptionMeta.encrypted ? '🔒 Encrypted message' : messageData.text)
+            ? messageData.text
             : `Sent a ${messageData.type}`;
 
         this.sendPushNotification({
@@ -2239,28 +2246,6 @@ export class DBService {
             } as import('../types').Message;
         }).reverse();
 
-        // ─── E2EE: Decrypt encrypted messages ────────────────────
-        const currentUser = auth.currentUser;
-        if (currentUser && isE2EEReady()) {
-            for (const msg of messages) {
-                if (msg.encrypted && msg.iv && msg.text) {
-                    try {
-                        const remoteUserId = msg.senderId === currentUser.uid ? (msg.receiverId || userId2) : msg.senderId;
-                        const sharedKey = await getSharedKey(remoteUserId);
-                        if (sharedKey) {
-                            msg.text = await decrypt(msg.text, msg.iv, sharedKey);
-                        }
-                    } catch (e: any) {
-                        if (e.name === 'OperationError') {
-                             console.warn(`[E2EE] Key mismatch for msg ${msg.id} (likely old session).`);
-                        } else {
-                             console.warn('[E2EE] Decryption failed:', msg.id, e);
-                        }
-                        msg.text = '🔒 Unable to decrypt (Key changed)';
-                    }
-                }
-            }
-        }
 
         return messages;
     }
@@ -2302,29 +2287,6 @@ export class DBService {
                     } as import('../types').Message;
                 }).reverse();
 
-                // ─── E2EE: Decrypt encrypted messages in real-time ──
-                const currentUser = auth.currentUser;
-                if (currentUser && isE2EEReady()) {
-                    for (const msg of messages) {
-                        if (msg.encrypted && msg.iv && msg.text) {
-                            try {
-                                const remoteUserId = msg.senderId === currentUser.uid ? (msg.receiverId || userId2) : msg.senderId;
-                                const sharedKey = await getSharedKey(remoteUserId);
-                                if (sharedKey) {
-                                    msg.text = await decrypt(msg.text, msg.iv, sharedKey);
-                                }
-                            } catch (e: any) {
-                                if (e.name === 'OperationError') {
-                                     // Common when keys are rotated or session cleared
-                                     console.warn(`[E2EE] RT decryption failed (OperationError) for ${msg.id}`);
-                                } else {
-                                     console.warn('[E2EE] RT Decryption failed:', msg.id, e);
-                                }
-                                msg.text = '🔒 Unable to decrypt';
-                            }
-                        }
-                    }
-                }
 
                 callback(messages);
             },
@@ -2427,11 +2389,18 @@ export class DBService {
 
     static async sendTyping(senderId: string, receiverId: string, isTyping: boolean): Promise<void> {
         try {
-            const typingRef = rtdbRef(realtimeDb, `typing/${senderId}_${receiverId}`);
-            await set(typingRef, {
-                isTyping,
-                timestamp: rtdbServerTimestamp()
-            });
+            const chatId = this.getChatId(senderId, receiverId);
+            const typingRef = rtdbRef(realtimeDb, `typing/${chatId}/${senderId}`);
+            if (isTyping) {
+                await set(typingRef, true);
+                // Auto-remove after 5s if not cleared
+                setTimeout(() => {
+                    off(typingRef);
+                    set(typingRef, null);
+                }, 5000);
+            } else {
+                await set(typingRef, null);
+            }
         } catch (e) {
             console.warn('RTDB typing failed, using local storage fallback');
             const event = new CustomEvent('local-storage-typing', {
@@ -2448,21 +2417,12 @@ export class DBService {
         currentUserId: string,
         callback: (isTyping: boolean) => void
     ): () => void {
-        const typingRef = rtdbRef(realtimeDb, `typing/${otherUserId}_${currentUserId}`);
+        const chatId = this.getChatId(otherUserId, currentUserId);
+        const typingRef = rtdbRef(realtimeDb, `typing/${chatId}/${otherUserId}`);
 
         const listener = onValue(typingRef, (snapshot) => {
-            const data = snapshot.val();
-            if (data && data.isTyping) {
-                // Check if typing event is recent (within 5 seconds)
-                const timestamp = data.timestamp;
-                if (timestamp && Date.now() - timestamp < 5000) {
-                    callback(true);
-                } else {
-                    callback(false);
-                }
-            } else {
-                callback(false);
-            }
+            const isTyping = snapshot.val();
+            callback(!!isTyping);
         }, (error) => {
             console.warn('RTDB typing subscription error:', error);
             callback(false);

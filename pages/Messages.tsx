@@ -4,6 +4,8 @@ import { User, Chat, Message } from '../types';
 import { DBService } from '../services/database';
 import { Search, Edit3, MoreVertical, X, Check, Users, ChevronRight } from 'lucide-react';
 import { SkeletonList } from '../components/common/Skeleton';
+import { onAuthStateChanged } from 'firebase/auth';
+import { auth } from '../services/firebase';
 import { AnimatePresence, motion } from 'framer-motion';
 
 interface MessagesProps {
@@ -29,12 +31,22 @@ const Messages: React.FC<MessagesProps> = ({ currentUser, onChatSelect, onUserCl
     useEffect(() => {
         if (!currentUser?.id) return;
 
-        const unsubscribe = DBService.subscribeToUserChats(currentUser.id, (updatedChats: Chat[]) => {
-            setChats(updatedChats);
-            setLoading(false);
+        let chatUnsubscribe: (() => void) | null = null;
+        
+        // Guard subscription against race conditions on native
+        const authUnsubscribe = onAuthStateChanged(DBService.getAuth(), (firebaseUser: any) => {
+            if (firebaseUser) {
+                chatUnsubscribe = DBService.subscribeToUserChats(currentUser.id, (updatedChats: Chat[]) => {
+                    setChats(updatedChats);
+                    setLoading(false);
+                });
+            }
         });
 
-        return () => unsubscribe();
+        return () => {
+            authUnsubscribe();
+            if (chatUnsubscribe) chatUnsubscribe();
+        };
     }, [currentUser?.id]);
 
     // Search Logic
@@ -46,6 +58,10 @@ const Messages: React.FC<MessagesProps> = ({ currentUser, onChatSelect, onUserCl
             }
 
             try {
+                // Ensure auth is ready before searching
+                const firebaseUser = DBService.getAuth().currentUser;
+                if (!firebaseUser) return;
+                
                 const allUsers = await DBService.getUsers();
                 const filtered = allUsers.filter(u =>
                     u.id !== currentUser.id &&

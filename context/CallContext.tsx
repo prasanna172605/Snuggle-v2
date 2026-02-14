@@ -43,6 +43,16 @@ export const CallProvider: React.FC<{ children: React.ReactNode; currentUser: Us
   const [securityCode, setSecurityCode] = useState<string | null>(null);
   const [callState, setCallState] = useState<CallState>('idle');
 
+  // Refs to fix stale closures in callbacks/effects
+  const activeCallRef = useRef<{ userId: string; type: CallType } | null>(null);
+  const incomingCallRef = useRef<{ callerId: string; type: CallType } | null>(null);
+  const callStateRef = useRef<CallState>('idle');
+
+  // Sync refs with state
+  useEffect(() => { activeCallRef.current = activeCall; }, [activeCall]);
+  useEffect(() => { incomingCallRef.current = incomingCall; }, [incomingCall]);
+  useEffect(() => { callStateRef.current = callState; }, [callState]);
+
   const peerConnection = useRef<RTCPeerConnection | null>(null);
   const callStartTime = useRef<number>(0);
   const callInitiator = useRef<string>(''); // Track who initiated the call
@@ -353,8 +363,11 @@ export const CallProvider: React.FC<{ children: React.ReactNode; currentUser: Us
 
       // ─── 30-second timeout ───────────────────────────────────
       callTimeoutRef.current = setTimeout(() => {
-        console.log('[CallTimeout] 30s elapsed — marking as missed');
-        if (callState === 'calling' || callState === 'ringing') {
+        const currentCallState = callStateRef.current;
+        console.log('[CallTimeout] 30s elapsed. Current state:', currentCallState);
+        
+        if (currentCallState === 'calling' || currentCallState === 'ringing') {
+          console.log('[CallTimeout] Timed out, marking as missed');
           // Stop ringtone
           stopCallAudio();
 
@@ -421,11 +434,14 @@ export const CallProvider: React.FC<{ children: React.ReactNode; currentUser: Us
           type: data.callType || 'audio'
         });
         (window as any).pendingOffer = data.sdp;
-        // Play incoming ringtone
-        if (!activeCall) {
+        // Play incoming ringtone ONLY if not already in a call
+        // Use ref to check current state
+        if (!activeCallRef.current) {
           setCallState('ringing');
           playIncomingRing();
           console.log('[CallState] → ringing');
+        } else {
+             console.log('[CallContext] Received offer while in call (Call Waiting)');
         }
       }
     } else if (data.type === 'answer') {
@@ -448,7 +464,8 @@ export const CallProvider: React.FC<{ children: React.ReactNode; currentUser: Us
       }
     } else if (data.type === 'answered_elsewhere') {
       // Another device answered the call, dismiss UI on this device
-      if (data.deviceId !== deviceId.current && incomingCall) {
+      // Use ref to check incoming call match
+      if (data.deviceId !== deviceId.current && incomingCallRef.current) {
         console.log('[CallContext] Call answered on another device, dismissing');
         setIncomingCall(null);
       }

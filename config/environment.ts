@@ -35,6 +35,7 @@ export interface AppConfig {
     logging: {
         level: 'debug' | 'info' | 'warn' | 'error';
     };
+    version: string;
 }
 
 /**
@@ -88,6 +89,7 @@ export const config: AppConfig = {
     logging: {
         level: (getEnvVar('VITE_LOG_LEVEL', 'info') as 'debug' | 'info' | 'warn' | 'error'),
     },
+    version: '1.0.5', 
 };
 
 /**

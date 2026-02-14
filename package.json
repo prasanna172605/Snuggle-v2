@@ -1,7 +1,7 @@
 {
   "name": "snuggle-app",
   "private": true,
-  "version": "1.0.2",
+  "version": "1.0.5",
   "type": "module",
   "scripts": {
     "dev": "concurrently \"node api/index.js\" \"vite\"",
@@ -13,10 +13,13 @@
     "publish-update": "node scripts/deploy-update.js && firebase deploy --only hosting"
   },
   "dependencies": {
+    "@capacitor-community/file-opener": "^8.0.0",
     "@capacitor/android": "^8.1.0",
     "@capacitor/app": "^8.0.1",
+    "@capacitor/browser": "^8.0.1",
     "@capacitor/cli": "^8.1.0",
     "@capacitor/core": "^8.1.0",
+    "@capacitor/filesystem": "^8.1.2",
     "@capgo/capacitor-updater": "^8.43.2",
     "@dnd-kit/core": "^6.3.1",
     "@dnd-kit/sortable": "^10.0.0",

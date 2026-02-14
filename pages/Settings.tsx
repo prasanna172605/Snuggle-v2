@@ -6,8 +6,8 @@ import {
   MapPin, Calendar, Link as LinkIcon, Save, Moon, Sun, Users, Heart, Bookmark,
   RefreshCw
 } from 'lucide-react';
-import { CapacitorUpdater } from '@capgo/capacitor-updater';
 import { Capacitor } from '@capacitor/core';
+import { UpdateManager } from '../services/UpdateManager';
 import { User } from '../types';
 import { DBService } from '../services/database';
 import { toast } from 'sonner';
@@ -61,6 +61,7 @@ const Settings: React.FC<SettingsProps> = ({
     confirmPassword: ''
   });
   const [sessions, setSessions] = useState<any[]>([]);
+  const [appVersion, setAppVersion] = useState((config as any).version || '1.0.3');
 
   // Notifications State
   const [notifPrefs, setNotifPrefs] = useState({
@@ -178,6 +179,21 @@ const Settings: React.FC<SettingsProps> = ({
     }
   };
 
+  useEffect(() => {
+    const fetchVersion = async () => {
+      if (Capacitor.isNativePlatform()) {
+        try {
+          const { App } = await import('@capacitor/app');
+          const info = await App.getInfo();
+          setAppVersion(info.version);
+        } catch (e) {
+          console.error("Failed to fetch app version", e);
+        }
+      }
+    };
+    fetchVersion();
+  }, []);
+
   // --- Account Handlers ---
   const handleExportData = async () => {
     setIsLoading(true);
@@ -202,20 +218,6 @@ const Settings: React.FC<SettingsProps> = ({
 
   const handleDeleteAccount = async () => {
     // Logic handled in ConfirmDialog onConfirm
-    // Current implementation in confirm dialog uses a prompt or similar logic if needed
-    // but here we just call the API
-    // Since ConfirmDialog handles text confirmation if configured
-    // We also need the password for final deletion, which my ConfirmDialog doesn't natively support prompts for.
-    // For MVP, I'll rely on the API requiring it, but maybe I simplify to just text confirmation of username.
-    // Or I can add a simple prompt here.
-
-    // Let's implement the API call. Note: currently DBService.deleteAccountWithConfirmation takes (confirmUsername, password)
-    // I'll assume for this UI we only ask for username confirmation via the dialog's text input featre.
-    // Password confirmation would require a proper modal with password input.
-    // Simplifying for this iteration: Just username confirmation.
-    // Wait, backend REQUIRES password. I should just use the current user's password if they are logged in? 
-    // No, that's insecure. 
-    // I will assume for now we just show a toast if it fails, but ideally we'd show a modal form.
   };
 
 
@@ -224,31 +226,13 @@ const Settings: React.FC<SettingsProps> = ({
   const handleCheckForUpdates = async () => {
       setIsLoading(true);
       try {
-          if (!Capacitor.isNativePlatform()) {
-              toast.info("Updates are managed by the store/browser in this mode.");
-              return;
+          const updateFound = await UpdateManager.run();
+          if (!updateFound) {
+              toast.success("Everything is up to date!");
           }
-          
-          const res = await fetch('https://snuggle-73465.web.app/version.json');
-          const latest = await res.json();
-          const current = await CapacitorUpdater.current() as any;
-          
-          if (latest.version !== current.version) {
-              const confirm = window.confirm(`Update available: ${latest.version}. Download now?`);
-              if (confirm) {
-                  toast.loading("Downloading update...");
-                  const version = await CapacitorUpdater.download({
-                      url: latest.url,
-                      version: latest.version,
-                  });
-                  await CapacitorUpdater.set(version);
-              }
-          } else {
-              toast.success("App is up to date");
-          }
-      } catch (error) {
+      } catch (error: any) {
           console.error("Update check failed", error);
-          toast.error("Failed to check for updates");
+          toast.error(`Check failed: ${error.message}`);
       } finally {
           setIsLoading(false);
       }
@@ -647,7 +631,7 @@ const Settings: React.FC<SettingsProps> = ({
 
             {/* App Version / Update */}
             <div className="text-center mt-8 pb-8">
-                 <p className="text-xs text-gray-400 font-medium mb-2">Snuggle v{(config as any).version || '1.0.0'}</p>
+                 <p className="text-xs text-gray-400 font-medium mb-2">Snuggle v{appVersion}</p>
                  <button 
                     onClick={handleCheckForUpdates}
                     disabled={isLoading}

@@ -268,3 +268,22 @@ export interface Memory {
   isDeleted?: boolean;
   deletedAt?: any;
 }
+
+// App Update System
+export interface AppUpdateMetadata {
+  latestVersion: string;
+  apkUrl: string;
+  assetUrl?: string; // URL for asset bundle or manifest
+  forceUpdate: boolean;
+  assetVersion: string;
+  configVersion: string;
+  releaseNotes?: string;
+  minVersion?: string;
+}
+
+export interface AppRemoteConfig {
+  memoryUIVersion?: string;
+  chatFixEnabled?: boolean;
+  newEncryptionHandler?: boolean;
+  [key: string]: any;
+}

@@ -8,6 +8,8 @@ import StoryViewer from '../components/StoryViewer';
 import { SkeletonPost, SkeletonAvatar } from '../components/common/Skeleton';
 import { formatRelativeTime } from '../utils/dateUtils';
 import { toast } from 'sonner';
+import { onAuthStateChanged } from 'firebase/auth';
+import { auth } from '../services/firebase';
 import SharePostModal from '../components/SharePostModal';
 import { useNavigate } from 'react-router-dom';
 import CommentsSheet from '../components/CommentsSheet';
@@ -274,8 +276,17 @@ const Feed: React.FC<FeedProps> = ({ currentUser, onUserClick }) => {
     };
 
     useEffect(() => {
-        refreshPosts();
-        loadStories();
+        if (!currentUser?.id) return;
+
+        // Guard against race conditions on native builds
+        const unsubscribe = onAuthStateChanged(DBService.getAuth(), (firebaseUser: any) => {
+            if (firebaseUser) {
+                refreshPosts();
+                loadStories();
+            }
+        });
+
+        return () => unsubscribe();
     }, [currentUser.id]);
 
     const loadStories = async () => {
