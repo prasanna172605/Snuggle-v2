@@ -3,14 +3,18 @@ import { useNavigate } from 'react-router-dom';
 import {
   User as UserIcon, Lock, Bell, Shield, LogOut, Camera, Trash2,
   Download, ChevronRight, Mail, Smartphone, Globe, AlertTriangle,
-  MapPin, Calendar, Link as LinkIcon, Save, Moon, Sun, Users, Heart, Bookmark
+  MapPin, Calendar, Link as LinkIcon, Save, Moon, Sun, Users, Heart, Bookmark,
+  RefreshCw
 } from 'lucide-react';
+import { CapacitorUpdater } from '@capgo/capacitor-updater';
+import { Capacitor } from '@capacitor/core';
 import { User } from '../types';
 import { DBService } from '../services/database';
 import { toast } from 'sonner';
 import ConfirmDialog from '../components/ConfirmDialog';
 import SessionCard from '../components/SessionCard';
 import { useTheme } from '../context/ThemeContext';
+import config from '../config/environment';
 
 interface SettingsProps {
   currentUser: User;
@@ -174,16 +178,6 @@ const Settings: React.FC<SettingsProps> = ({
     }
   };
 
-  const handleRotateKeys = async () => {
-    try {
-        await DBService.rotateEncryptionKeys(currentUser.id);
-        toast.success("Encryption keys rotated successfully");
-        setDialogState({ isOpen: false, type: null });
-    } catch (e) {
-        toast.error("Failed to rotate keys");
-    }
-  };
-
   // --- Account Handlers ---
   const handleExportData = async () => {
     setIsLoading(true);
@@ -222,6 +216,42 @@ const Settings: React.FC<SettingsProps> = ({
     // Wait, backend REQUIRES password. I should just use the current user's password if they are logged in? 
     // No, that's insecure. 
     // I will assume for now we just show a toast if it fails, but ideally we'd show a modal form.
+  };
+
+
+
+  // --- Manual Update Check ---
+  const handleCheckForUpdates = async () => {
+      setIsLoading(true);
+      try {
+          if (!Capacitor.isNativePlatform()) {
+              toast.info("Updates are managed by the store/browser in this mode.");
+              return;
+          }
+          
+          const res = await fetch('https://snuggle-73465.web.app/version.json');
+          const latest = await res.json();
+          const current = await CapacitorUpdater.current() as any;
+          
+          if (latest.version !== current.version) {
+              const confirm = window.confirm(`Update available: ${latest.version}. Download now?`);
+              if (confirm) {
+                  toast.loading("Downloading update...");
+                  const version = await CapacitorUpdater.download({
+                      url: latest.url,
+                      version: latest.version,
+                  });
+                  await CapacitorUpdater.set(version);
+              }
+          } else {
+              toast.success("App is up to date");
+          }
+      } catch (error) {
+          console.error("Update check failed", error);
+          toast.error("Failed to check for updates");
+      } finally {
+          setIsLoading(false);
+      }
   };
 
   // Render Helpers
@@ -415,29 +445,7 @@ const Settings: React.FC<SettingsProps> = ({
               </div>
             </div>
 
-            {/* Encryption */}
-            <div className="bg-white dark:bg-dark-card p-6 rounded-[32px] shadow-sm space-y-4">
-              <div className="flex items-center gap-3 mb-2">
-                <div className="p-2 bg-orange-50 dark:bg-orange-900/20 rounded-full text-orange-600">
-                    <Shield className="w-6 h-6" />
-                </div>
-                <div>
-                   <h3 className="font-bold text-lg">End-to-End Encryption</h3>
-                   <p className="text-xs text-gray-500">Manage your encryption keys</p>
-                </div>
-              </div>
-              <button
-                  onClick={() => setDialogState({ isOpen: true, type: 'rotate_keys' })}
-                  className="w-full py-3 border border-orange-200 dark:border-orange-900/30 text-orange-600 font-bold rounded-xl hover:bg-orange-50 dark:hover:bg-orange-900/10 transition-colors flex items-center justify-center gap-2"
-              >
-                  Reset Encryption Keys
-              </button>
-              <p className="text-xs text-gray-400 text-center">
-                  Warning: You will lose access to old encrypted messages on this device.
-              </p>
-            </div>
-
-            {/* Active Sessions */}
+             {/* Active Sessions */}
             <div className="space-y-3">
               <h3 className="font-bold text-lg ml-2">Active Sessions</h3>
               {sessions.length === 0 ? (
@@ -636,6 +644,19 @@ const Settings: React.FC<SettingsProps> = ({
                 </button>
               </div>
             </div>
+
+            {/* App Version / Update */}
+            <div className="text-center mt-8 pb-8">
+                 <p className="text-xs text-gray-400 font-medium mb-2">Snuggle v{(config as any).version || '1.0.0'}</p>
+                 <button 
+                    onClick={handleCheckForUpdates}
+                    disabled={isLoading}
+                    className="text-xs font-bold text-snuggle-500 hover:text-snuggle-600 flex items-center justify-center gap-1 mx-auto"
+                 >
+                    {isLoading ? <div className="animate-spin w-3 h-3 border-2 border-snuggle-500 border-t-transparent rounded-full"/> : <RefreshCw className="w-3 h-3" />}
+                    Check for Updates
+                 </button>
+            </div>
           </div>
         )}
       </div>
@@ -649,16 +670,6 @@ const Settings: React.FC<SettingsProps> = ({
         onConfirm={() => handleRevokeSession(dialogState.data)}
         variant="warning"
         confirmText="Yes, Sign Out"
-      />
-
-      <ConfirmDialog
-        isOpen={dialogState.isOpen && dialogState.type === 'rotate_keys'}
-        onClose={() => setDialogState({ isOpen: false, type: null })}
-        title="Reset Encryption Keys?"
-        message="This will generate new keys. You will NOT be able to decrypt old messages sent to this device unless you have a backup. Proceed?"
-        onConfirm={handleRotateKeys}
-        variant="danger"
-        confirmText="Reset Keys"
       />
 
       <ConfirmDialog

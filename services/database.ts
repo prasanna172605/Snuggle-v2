@@ -269,8 +269,27 @@ export class DBService {
     }
 
 
-    static async resetPassword(email: string): Promise<void> {
-        await sendPasswordResetEmail(auth, email);
+    static async deleteMemory(memoryId: string): Promise<void> {
+        // Soft delete
+        await updateDoc(doc(db, 'memories', memoryId), {
+            isDeleted: true,
+            deletedAt: serverTimestamp()
+        });
+        
+        // Also update legacy post if it exists (for backward compat if we are dual-writing or referencing)
+        // Check if it exists as a post first
+        try {
+            const postRef = doc(db, 'posts', memoryId);
+            const postSnap = await getDoc(postRef);
+            if (postSnap.exists()) {
+                 await updateDoc(postRef, {
+                    isDeleted: true,
+                    deletedAt: serverTimestamp()
+                });
+            }
+        } catch (e) {
+            // Ignore if not a post
+        }
     }
 
     static async getCurrentToken(): Promise<string | null> {
@@ -1608,6 +1627,10 @@ export class DBService {
         // Fallback or Merge: If we have room, fetch from legacy 'posts'
         // For simplicity in this transition, we'll fetch 'posts' if we are on the first page
         // or if memories are sparse.
+        
+        // Filter out deleted memories incase the index wasn't perfect or for extra safety locally
+        memories = memories.filter(m => !m.isDeleted);
+
         if (memories.length < limitCount) {
              let postsQuery = query(
                 collection(db, 'posts'),
@@ -1925,8 +1948,7 @@ export class DBService {
         try {
             console.log('[DB] Requesting notification permission...');
             if (!('Notification' in window)) {
-                console.error('This browser does not support notifications.');
-                alert('This browser does not support notifications.');
+
                 return null;
             }
 
@@ -2469,6 +2491,26 @@ export class DBService {
         const lastMsg = await this.getLastMessage(chatId_part1, chatId_part2); 
         // We'd need to parse chatId back to userIds or just query the subcollection
         */
+    }
+
+    static async createChat(userId1: string, userId2: string): Promise<string> {
+        const chatId = this.getChatId(userId1, userId2);
+        const chatRef = doc(db, 'chats', chatId);
+        const chatDoc = await getDoc(chatRef);
+
+        if (!chatDoc.exists()) {
+            await setDoc(chatRef, {
+                id: chatId,
+                participants: [userId1, userId2],
+                createdAt: serverTimestamp(),
+                updatedAt: serverTimestamp(),
+                unreadCounts: {
+                    [userId1]: 0,
+                    [userId2]: 0
+                }
+            });
+        }
+        return chatId;
     }
 
     static async getUserChats(userId: string): Promise<import('../types').Chat[]> {

@@ -64,9 +64,9 @@
                 "timestamp"
             ],
             "$chatId": {
-                ".read": "auth != null && root.child('chats/' + $chatId + '/participants/' + auth.uid).exists()",
+                ".read": "auth != null",
                 "$messageId": {
-                    ".write": "auth != null && root.child('chats/' + $chatId + '/participants/' + auth.uid).exists() && (!data.exists() || data.child('senderId').val() === auth.uid)",
+                    ".write": "auth != null && (!data.exists() || data.child('senderId').val() === auth.uid)",
                     ".validate": "newData.hasChildren(['id', 'senderId', 'text', 'timestamp'])",
                     "id": {
                         ".validate": "newData.isString()"
@@ -96,9 +96,9 @@
         },
         "typing": {
             "$chatId": {
-                ".read": "auth != null && root.child('chats/' + $chatId + '/participants/' + auth.uid).exists()",
+                ".read": "auth != null",
                 "$userId": {
-                    ".write": "auth != null && $userId === auth.uid && root.child('chats/' + $chatId + '/participants/' + auth.uid).exists()",
+                    ".write": "auth != null && $userId === auth.uid",
                     ".validate": "newData.isBoolean()"
                 }
             }

@@ -1,5 +1,6 @@
 
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
+import { useLocation } from 'react-router-dom';
 import { User, ViewState } from '../types';
 import { DBService } from '../services/database';
 import CameraCapture from '../components/CameraCapture';
@@ -20,6 +21,18 @@ const Create: React.FC<CreateProps> = ({ currentUser, onNavigate }) => {
     const [loading, setLoading] = useState(false);
     const [showCamera, setShowCamera] = useState(false);
     const fileInputRef = useRef<HTMLInputElement>(null);
+    const location = useLocation();
+
+    useEffect(() => {
+        const params = new URLSearchParams(location.search);
+        const type = params.get('type');
+        if (type === 'story') {
+            setContentType('story');
+            setShowCamera(true);
+        } else if (type === 'reel') {
+             setContentType('reel');
+        }
+    }, [location.search]);
 
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];

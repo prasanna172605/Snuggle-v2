@@ -262,5 +262,9 @@ export interface Memory {
   createdAt: any;
   
   // Hydrated fields
-  user?: User; 
+  user?: User;
+
+  // Soft Delete
+  isDeleted?: boolean;
+  deletedAt?: any;
 }

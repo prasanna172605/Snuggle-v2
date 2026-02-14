@@ -1,5 +1,6 @@
 {
-    "version": "1.0.0",
-    "note": "Initial Release",
-    "url": "https://snuggle-73465.web.app/download/v1.0.0.zip"
+    "version": "1.0.3",
+    "minVersion": "1.0.3",
+    "note": "Critical security updates and Share Sheet. Update required.",
+    "url": "https://snuggle-73465.web.app/download/v1.0.3.zip"
 }

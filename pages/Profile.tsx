@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { User, Memory } from '../types';
-import { Settings, Grid, Edit3, Share2, MessageCircle, UserPlus, UserMinus, UserCheck, Camera, Save, X as XIcon, MapPin, Calendar, Link as LinkIcon, Phone, Bookmark, Play, Film, UserSquare2, Heart, Twitter, Instagram } from 'lucide-react';
+import { Settings, Grid, Edit3, Share2, MessageCircle, UserPlus, UserMinus, UserCheck, Camera, Save, X as XIcon, MapPin, Calendar, Link as LinkIcon, Phone, Bookmark, Play, Film, UserSquare2, Heart, Twitter, Instagram, Search } from 'lucide-react';
 import { DBService } from '../services/database';
 import { SkeletonProfile } from '../components/common/Skeleton';
 
@@ -238,8 +238,8 @@ const Profile: React.FC<ProfileProps> = ({ user: propUser, currentUser, isOwnPro
         <div className="pb-28 bg-warm-neutral dark:bg-black min-h-screen">
              {/* Header with Settings - Overlay on Cover Image */}
              <div className="absolute top-0 left-0 right-0 z-20 p-4 flex justify-between items-center text-white">
-                 <button onClick={() => navigate(-1)} className="p-2 bg-black/20 backdrop-blur-md rounded-full hover:bg-black/30 transition-colors">
-                     <XIcon className="w-6 h-6" />
+                 <button onClick={() => navigate('/search')} className="p-2 bg-black/20 backdrop-blur-md rounded-full hover:bg-black/30 transition-colors">
+                     <Search className="w-6 h-6" />
                  </button>
                  {isOwnProfile && (
                      <button onClick={() => navigate('/settings')} className="p-2 bg-black/20 backdrop-blur-md rounded-full hover:bg-black/30 transition-colors">
@@ -300,7 +300,7 @@ const Profile: React.FC<ProfileProps> = ({ user: propUser, currentUser, isOwnPro
                         </div>
                     )}
 
-                    {/* Actions */}
+            {/* Actions */}
                     <div className="flex justify-center gap-3 mb-8">
                         {isOwnProfile ? (
                             <button 
@@ -310,16 +310,28 @@ const Profile: React.FC<ProfileProps> = ({ user: propUser, currentUser, isOwnPro
                                 Edit Profile
                             </button>
                         ) : (
-                              <button
-                                onClick={handleFollowToggle}
-                                disabled={followLoading}
-                                className={`px-8 py-3 font-bold rounded-2xl transition-all shadow-lg shadow-snuggle-500/20 ${isFollowing
-                                    ? 'bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-white'
-                                    : 'bg-snuggle-600 text-white'
-                                    }`}
-                            >
-                                {isFollowing ? 'Following' : 'Follow'}
-                            </button>
+                            <>
+                                <button
+                                    onClick={handleFollowToggle}
+                                    disabled={followLoading}
+                                    className={`px-8 py-3 font-bold rounded-2xl transition-all shadow-lg shadow-snuggle-500/20 ${isFollowing
+                                        ? 'bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-white'
+                                        : 'bg-snuggle-600 text-white'
+                                        }`}
+                                >
+                                    {isFollowing ? 'Following' : 'Follow'}
+                                </button>
+                                
+                                {/* Message Button - Only if Mutually Following */}
+                                {isFollowing && user.following?.includes(currentUser.id) && (
+                                     <button 
+                                        onClick={() => navigate(`/messages?userId=${user.id}`)}
+                                        className="p-3 bg-snuggle-100 dark:bg-snuggle-900/30 text-snuggle-600 dark:text-snuggle-400 rounded-2xl hover:bg-snuggle-200 dark:hover:bg-snuggle-900/50 transition-colors"
+                                     >
+                                         <MessageCircle className="w-5 h-5" />
+                                     </button>
+                                )}
+                            </>
                         )}
                         <button className="p-3 bg-gray-100 dark:bg-gray-800 rounded-2xl hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-900 dark:text-white">
                             <Share2 className="w-5 h-5" />

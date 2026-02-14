@@ -251,7 +251,7 @@ const AppContent = ({
                 <Route path="/" element={<PageTransition><FeedMemories /></PageTransition>} />
                 
                 {/* Messages */}
-                 <Route path="/messages" element={<PageTransition><Messages currentUser={currentUser} onChatSelect={(user) => React.startTransition(() => navigate(`/chat/${user.id}`))} onUserClick={(userId) => React.startTransition(() => navigate(`/profile/${userId}`))} /></PageTransition>} />
+                 <Route path="/messages" element={<PageTransition><Messages currentUser={currentUser} onChatSelect={(user) => navigate(`/chat/${user.id}`)} onUserClick={(userId) => navigate(`/profile/${userId}`)} /></PageTransition>} />
                 
                 <Route path="/chat/:userId" element={<PageTransition><ChatWrapper currentUser={currentUser} /></PageTransition>} />
                 <Route path="/chat/:chatId/details" element={<PageTransition><ChatDetails currentUser={currentUser} /></PageTransition>} />
@@ -259,7 +259,7 @@ const AppContent = ({
                 <Route path="/profile/:userId" element={<PageTransition><Profile currentUser={currentUser} isOwnProfile={false} /></PageTransition>} />
                 <Route path="/create" element={<PageTransition><CreateMemory /></PageTransition>} />
                 <Route path="/memory/:memoryId" element={<PageTransition><MemoryViewer /></PageTransition>} />
-                 <Route path="/notifications" element={<PageTransition><Notifications currentUser={currentUser} onUserClick={(userId) => React.startTransition(() => navigate(`/profile/${userId}`))} /></PageTransition>} />
+                 <Route path="/notifications" element={<PageTransition><Notifications currentUser={currentUser} onUserClick={(userId) => navigate(`/profile/${userId}`)} /></PageTransition>} />
                 <Route path="/settings" element={<PageTransition><SettingsWrapper currentUser={currentUser} onLogout={onLogout} onUpdateUser={onUpdateUser} onDeleteAccount={onDeleteAccount} onSwitchAccount={onSwitchAccount} onAddAccount={onAddAccount} /></PageTransition>} />
                 <Route path="/activities" element={<PageTransition><Activities currentUser={currentUser} onBack={() => navigate(-1)} /></PageTransition>} />
                 <Route path="/favourites" element={<PageTransition><Favourites currentUser={currentUser} onBack={() => navigate(-1)} /></PageTransition>} />
@@ -450,6 +450,7 @@ const App = () => {
                   }}
                 />
 
+                <Updater />
                 <Toaster position="top-right" richColors closeButton />
               </CallProvider>
             </InteractionProvider>

@@ -86,7 +86,8 @@ const Messages: React.FC<MessagesProps> = ({ currentUser, onChatSelect, onUserCl
         if (existingChat && existingChat.otherUser) {
             onChatSelect(existingChat.otherUser);
         } else {
-            onUserClick(user.id);
+             // Start new chat with this user
+            onChatSelect(user);
         }
         setShowSearch(false);
         setSearchQuery('');

@@ -52,18 +52,7 @@ const UploadModal: React.FC<UploadModalProps> = ({ onClose }) => {
                         </div>
                     </button>
 
-                    <button
-                        onClick={() => handleOption('/create?type=reel')}
-                        className="w-full flex items-center gap-4 p-4 bg-warm-neutral dark:bg-dark-bg rounded-2xl hover:bg-snuggle-50 dark:hover:bg-snuggle-900/20 transition-all group"
-                    >
-                        <div className="w-12 h-12 rounded-full bg-purple-100 dark:bg-purple-900/30 flex items-center justify-center text-purple-600 dark:text-purple-400 group-hover:scale-110 transition-transform">
-                            <Film className="w-6 h-6" />
-                        </div>
-                        <div className="text-left">
-                            <h3 className="font-bold text-gray-900 dark:text-white">Reel</h3>
-                            <p className="text-sm text-gray-500 dark:text-gray-400">Create a short video</p>
-                        </div>
-                    </button>
+
                 </div>
             </div>
         </div>

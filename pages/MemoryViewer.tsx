@@ -7,6 +7,7 @@ import { Memory, Comment as AppComment } from '../types';
 import { useAuth } from '../context/AuthContext';
 import { toast } from 'sonner';
 import CommentsSheet from '../components/CommentsSheet';
+import ShareSheet from '../components/ShareSheet';
 
 const MemoryViewer: React.FC = () => {
     const { memoryId } = useParams<{ memoryId: string }>();
@@ -18,6 +19,7 @@ const MemoryViewer: React.FC = () => {
     const [isMuted, setIsMuted] = useState(false);
     const [showComments, setShowComments] = useState(false);
     const [showMenu, setShowMenu] = useState(false);
+    const [showShareSheet, setShowShareSheet] = useState(false);
 
     const videoRef = useRef<HTMLVideoElement>(null);
 
@@ -74,10 +76,7 @@ const MemoryViewer: React.FC = () => {
     };
 
     const handleShare = () => {
-        if (!memory) return;
-        const link = `${window.location.origin}/memory/${memory.id}`;
-        navigator.clipboard.writeText(link);
-        toast.success('Link copied to clipboard');
+        setShowShareSheet(true);
         setShowMenu(false);
     };
 
@@ -116,8 +115,23 @@ const MemoryViewer: React.FC = () => {
         comments: memory.commentsCount
     };
 
+
+
     return (
         <div className="fixed inset-0 bg-black z-50 flex flex-col">
+            {memory && currentUser && (
+                <ShareSheet 
+                    isOpen={showShareSheet} 
+                    onClose={() => setShowShareSheet(false)}
+                    content={{
+                        id: memory.id,
+                        type: 'memory',
+                        title: memory.caption,
+                        imageUrl: memory.mediaUrl
+                    }}
+                    currentUser={currentUser}
+                />
+            )}
             {/* Top Bar */}
             <div className="absolute top-0 left-0 right-0 p-4 pt-8 flex items-center justify-between z-20 bg-gradient-to-b from-black/60 to-transparent pointer-events-none">
                 <div className="flex items-center gap-3 pointer-events-auto">

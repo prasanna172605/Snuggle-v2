@@ -1,6 +1,11 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Heart, MessageSquare, Send, Star, MoreHorizontal, Play, Volume2, VolumeX, Edit3, Trash2, Flag, Copy } from 'lucide-react';
+import { 
+  Heart, MessageSquare, Send, Star, MoreHorizontal, MoreVertical, Play, Pause, 
+  Volume2, VolumeX, Edit3, Trash2, Flag, Copy, Share2, MessageCircle, Bookmark 
+} from 'lucide-react';
+import ShareSheet from '../ShareSheet';
+import { useTheme } from '../../context/ThemeContext';
 import { Memory } from '../../types';
 import { DBService } from '../../services/database';
 import { formatDistanceToNow } from 'date-fns';
@@ -21,6 +26,7 @@ const MemoryCard: React.FC<MemoryCardProps> = ({ memory, currentUserId, onMemory
   const [likeCount, setLikeCount] = useState(memory.likesCount || 0);
   const [isMuted, setIsMuted] = useState(true);
   const [showMenu, setShowMenu] = useState(false);
+  const [showShareSheet, setShowShareSheet] = useState(false);
 
   const [isSaved, setIsSaved] = useState(memory.isSaved || false);
 
@@ -56,9 +62,7 @@ const MemoryCard: React.FC<MemoryCardProps> = ({ memory, currentUserId, onMemory
   };
 
   const handleShare = () => {
-    const link = `${window.location.origin}/memory/${memory.id}`;
-    navigator.clipboard.writeText(link);
-    toast.success('Link copied to clipboard');
+    setShowShareSheet(true);
   };
 
   const renderMedia = () => {
@@ -106,6 +110,17 @@ const MemoryCard: React.FC<MemoryCardProps> = ({ memory, currentUserId, onMemory
 
   return (
     <div className="bg-transparent mb-8 relative">
+        <ShareSheet 
+            isOpen={showShareSheet}
+            onClose={() => setShowShareSheet(false)}
+            content={{
+                id: memory.id,
+                type: 'memory',
+                title: memory.caption,
+                imageUrl: memory.mediaUrl
+            }}
+            currentUser={{ id: currentUserId } as any} // Pass partial user for now or fetch full user in parent
+        />
       {/* Header */}
       <div className="flex items-start justify-between p-4 pb-2">
         <div 
