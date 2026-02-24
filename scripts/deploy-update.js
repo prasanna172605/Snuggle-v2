@@ -7,7 +7,6 @@ const AdmZip = require('adm-zip');
 
 // Configuration
 const DIST_FOLDER = 'dist';
-const PUBLIC_FOLDER = 'public';
 const VERSION_FILE = 'version.json';
 
 // Read package.json to get version
@@ -26,7 +25,7 @@ try {
     process.exit(1);
 }
 
-// 3. Prepare APK for download (Zipped to bypass Firebase Hosting restrictions)
+// 2. Prepare APK for download (Zipped to bypass Firebase Hosting restrictions)
 console.log('🤖 Preparing APK for download (Zipping)...');
 const apkSource = path.join(process.cwd(), 'android', 'app', 'release', 'app-release.apk');
 const debugApkSource = path.join(process.cwd(), 'android', 'app', 'build', 'outputs', 'apk', 'debug', 'app-debug.apk');
@@ -50,6 +49,27 @@ if (apkFileToZip) {
     console.warn('❌ No APK found to zip.');
 }
 
+// 3. Zip the dist folder for OTA (excluding large binaries)
+console.log('🤐 Zipping assets for OTA update...');
+const otaZip = new AdmZip();
+const zipFileName = `v${version}.zip`;
+const zipPath = path.join(DIST_FOLDER, zipFileName);
+
+// Add everything in dist EXCEPT the zips themselves
+const files = fs.readdirSync(DIST_FOLDER);
+files.forEach(file => {
+    if (!file.endsWith('.zip')) {
+        const fullPath = path.join(DIST_FOLDER, file);
+        if (fs.lstatSync(fullPath).isDirectory()) {
+            otaZip.addLocalFolder(fullPath, file);
+        } else {
+            otaZip.addLocalFile(fullPath);
+        }
+    }
+});
+otaZip.writeZip(zipPath);
+console.log('✅ OTA bundle created.');
+
 // 4. Update version.json
 console.log('📝 Updating version.json...');
 const versionData = {
@@ -59,10 +79,11 @@ const versionData = {
     apkUrl: `https://snuggle-73465.web.app/snuggle-app.zip` // APK zip download link
 };
 
-// Write to dist folder so it overrides the one in public during deployment
+// Write to dist folder
 fs.writeFileSync(path.join(DIST_FOLDER, VERSION_FILE), JSON.stringify(versionData, null, 2));
 
 console.log('✅ Update bundle created!');
-console.log(`👉 Zip: ${zipPath}`);
+console.log(`👉 OTA Zip: ${zipPath}`);
+console.log(`👉 APK Zip: ${apkZipDest}`);
 console.log(`👉 Version: ${version}`);
 console.log('Run "firebase deploy --only hosting" to publish.');
