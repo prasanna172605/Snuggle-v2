@@ -26,28 +26,28 @@ try {
     process.exit(1);
 }
 
-// 2. Zip the dist folder
-console.log('🤐 Zipping dist folder...');
-const zip = new AdmZip();
-zip.addLocalFolder(DIST_FOLDER);
-const zipFileName = `v${version}.zip`;
-const zipPath = path.join(DIST_FOLDER, zipFileName); // We put it in dist so it gets deployed
-zip.writeZip(zipPath);
-
-// 3. Copy APK to dist for download link
-console.log('🤖 Copying APK for download...');
+// 3. Prepare APK for download (Zipped to bypass Firebase Hosting restrictions)
+console.log('🤖 Preparing APK for download (Zipping)...');
 const apkSource = path.join(process.cwd(), 'android', 'app', 'release', 'app-release.apk');
 const debugApkSource = path.join(process.cwd(), 'android', 'app', 'build', 'outputs', 'apk', 'debug', 'app-debug.apk');
-const apkDest = path.join(DIST_FOLDER, 'snuggle.apk');
+const apkZipDest = path.join(DIST_FOLDER, 'snuggle-app.zip');
 
+let apkFileToZip = null;
 if (fs.existsSync(apkSource)) {
-    fs.copyFileSync(apkSource, apkDest);
-    console.log('✅ Release APK copied.');
+    apkFileToZip = apkSource;
+    console.log('✅ Release APK found.');
 } else if (fs.existsSync(debugApkSource)) {
-    fs.copyFileSync(debugApkSource, apkDest);
-    console.log('⚠️ Release APK not found, copied Debug APK instead.');
+    apkFileToZip = debugApkSource;
+    console.log('⚠️ Release APK not found, using Debug APK instead.');
+}
+
+if (apkFileToZip) {
+    const apkZip = new AdmZip();
+    apkZip.addLocalFile(apkFileToZip);
+    apkZip.writeZip(apkZipDest);
+    console.log('✅ APK zipped successfully.');
 } else {
-    console.warn('❌ No APK found to copy.');
+    console.warn('❌ No APK found to zip.');
 }
 
 // 4. Update version.json
@@ -56,7 +56,7 @@ const versionData = {
     version: version,
     note: `Update v${version} - ${new Date().toLocaleTimeString()}`,
     url: `https://snuggle-73465.web.app/${zipFileName}`, // OTA bundle
-    apkUrl: `https://snuggle-73465.web.app/snuggle.apk` // APK download link
+    apkUrl: `https://snuggle-73465.web.app/snuggle-app.zip` // APK zip download link
 };
 
 // Write to dist folder so it overrides the one in public during deployment

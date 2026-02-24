@@ -79,7 +79,7 @@
     ],
     "rewrites": [
       {
-        "source": "**",
+        "source": "!**/*.@(json|apk|zip|png|jpg|jpeg|gif|svg|js|css|html)",
         "destination": "/index.html"
       }
     ]

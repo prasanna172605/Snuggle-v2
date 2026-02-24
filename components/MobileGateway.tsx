@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Smartphone, Download, ExternalLink, X } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
-const APK_DOWNLOAD_URL = 'https://snuggle-73465.web.app/snuggle.apk'; // Update with actual URL
+const APK_DOWNLOAD_URL = 'https://snuggle-73465.web.app/snuggle-app.zip'; // Zipped to bypass Hosting restrictions
 
 export const MobileGateway: React.FC = () => {
     const [isVisible, setIsVisible] = useState(false);
