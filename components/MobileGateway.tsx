@@ -22,19 +22,32 @@ export const MobileGateway: React.FC = () => {
             setStatus('REDIRECTING');
             
             // 1. Attempt professional direct redirection
-            // We use the same URL as current page but the OS will catch it via App Links
-            const currentUrl = window.location.href;
+            // First try the custom scheme which is more likely to work for direct opening
+            window.location.href = 'snuggle://home';
             
-            // Give the browser a moment to try launching the app
+            // 2. Also try the HTTPS App Link as a secondary check
             setTimeout(() => {
-                // If we are still here, the app isn't handling it (or not installed)
+                // If not redirected by scheme, try the HTTPS link
+                // browsers sometimes block scheme redirection without user gesture, 
+                // but App Links might work.
+                console.log('[MobileGateway] Attempting HTTPS fallback...');
+            }, 1000);
+
+            // Give the browser a moment to try launching the app
+            const timer = setTimeout(() => {
                 setStatus('DOWNLOAD');
-            }, 2500);
+            }, 3000);
+
+            return () => clearTimeout(timer);
         }
     }, []);
 
     const handleOpenApp = () => {
-        window.location.href = window.location.href;
+        // Force the app open via custom scheme (most reliable for manual trigger)
+        window.location.href = 'snuggle://home';
+        
+        // No secondary HTTPS reload here as it just causes the reload the user complained about
+        console.log('[MobileGateway] Opening via custom scheme...');
     };
 
     if (!isVisible) return null;

@@ -34,12 +34,29 @@ const zipFileName = `v${version}.zip`;
 const zipPath = path.join(DIST_FOLDER, zipFileName); // We put it in dist so it gets deployed
 zip.writeZip(zipPath);
 
-// 3. Update version.json
+// 3. Copy APK to dist for download link
+console.log('🤖 Copying APK for download...');
+const apkSource = path.join(process.cwd(), 'android', 'app', 'release', 'app-release.apk');
+const debugApkSource = path.join(process.cwd(), 'android', 'app', 'build', 'outputs', 'apk', 'debug', 'app-debug.apk');
+const apkDest = path.join(DIST_FOLDER, 'snuggle.apk');
+
+if (fs.existsSync(apkSource)) {
+    fs.copyFileSync(apkSource, apkDest);
+    console.log('✅ Release APK copied.');
+} else if (fs.existsSync(debugApkSource)) {
+    fs.copyFileSync(debugApkSource, apkDest);
+    console.log('⚠️ Release APK not found, copied Debug APK instead.');
+} else {
+    console.warn('❌ No APK found to copy.');
+}
+
+// 4. Update version.json
 console.log('📝 Updating version.json...');
 const versionData = {
     version: version,
     note: `Update v${version} - ${new Date().toLocaleTimeString()}`,
-    url: `https://snuggle-73465.web.app/${zipFileName}` // It will be at root of deployment
+    url: `https://snuggle-73465.web.app/${zipFileName}`, // OTA bundle
+    apkUrl: `https://snuggle-73465.web.app/snuggle.apk` // APK download link
 };
 
 // Write to dist folder so it overrides the one in public during deployment

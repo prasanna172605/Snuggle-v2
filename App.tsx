@@ -133,6 +133,27 @@ const AppContent = ({
     };
   }, []);
 
+  // Handle Deep Links
+  useEffect(() => {
+    if (!Capacitor.isNativePlatform()) return;
+
+    const urlListener = CapApp.addListener('appUrlOpen', ({ url }: { url: string }) => {
+      console.log('[Native] App opened with URL:', url);
+      
+      // Handle snuggle:// or https:// links
+      const slug = url.split('.app').pop() || url.split('snuggle://').pop();
+      if (slug) {
+          const path = slug.startsWith('/') ? slug : `/${slug}`;
+          console.log('[Native] Navigating to deep link path:', path);
+          navigate(path);
+      }
+    });
+
+    return () => {
+      urlListener.then(h => h.remove());
+    };
+  }, [navigate]);
+
   // Handle App State Changes (Re-sync on Resume)
   useEffect(() => {
     if (!Capacitor.isNativePlatform()) return;
