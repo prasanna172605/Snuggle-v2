@@ -35,6 +35,7 @@ import { CallProvider } from './context/CallContext';
 import { AnimatePresence } from 'framer-motion';
 import { Updater } from './components/Updater';
 import { UpdateManager } from './services/UpdateManager';
+import { MobileGateway } from './components/MobileGateway';
 import PageTransition from './components/common/PageTransition';
 import SplashScreen from './components/common/SplashScreen';
 import { Camera } from '@capacitor/camera'; // For native permission check
@@ -426,6 +427,7 @@ const App = () => {
         <AuthProvider>
           <NotificationProvider>
             <InteractionProvider>
+              <MobileGateway />
               <CallProvider currentUser={currentUser}>
                 {currentUser ? (
                   <AppContent
