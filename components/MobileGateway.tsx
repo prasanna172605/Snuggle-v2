@@ -6,42 +6,35 @@ const APK_DOWNLOAD_URL = 'https://snuggle-73465.web.app/snuggle.apk'; // Update 
 
 export const MobileGateway: React.FC = () => {
     const [isVisible, setIsVisible] = useState(false);
-    const [isMobile, setIsMobile] = useState(false);
+    const [status, setStatus] = useState<'INITIAL' | 'REDIRECTING' | 'DOWNLOAD'>('INITIAL');
 
     useEffect(() => {
         // Detect mobile device
-        const userAgent = navigator.userAgent || navigator.vendor || (window as any).opera;
-        const mobileCheck = /android|iphone|ipad|ipod/i.test(userAgent.toLowerCase());
+        const userAgent = (navigator.userAgent || navigator.vendor || (window as any).opera).toLowerCase();
+        const mobileCheck = /android|iphone|ipad|ipod/i.test(userAgent);
         
-        // Don't show if already in standalone/native mode
+        // Don't show if already in standalone/native mode or Capacitor
         const isStandalone = window.matchMedia('(display-mode: standalone)').matches || (window.navigator as any).standalone;
-        
-        if (mobileCheck && !isStandalone) {
-            setIsMobile(true);
+        const isNative = (window as any).Capacitor?.isNativePlatform();
+
+        if (mobileCheck && !isStandalone && !isNative) {
+            setIsVisible(true);
+            setStatus('REDIRECTING');
             
-            // Show gateway after a short delay
-            const timer = setTimeout(() => {
-                const hasClosed = localStorage.getItem('snuggle_gateway_dismissed');
-                if (!hasClosed) setIsVisible(true);
-            }, 2000);
+            // 1. Attempt professional direct redirection
+            // We use the same URL as current page but the OS will catch it via App Links
+            const currentUrl = window.location.href;
             
-            return () => clearTimeout(timer);
+            // Give the browser a moment to try launching the app
+            setTimeout(() => {
+                // If we are still here, the app isn't handling it (or not installed)
+                setStatus('DOWNLOAD');
+            }, 2500);
         }
     }, []);
 
     const handleOpenApp = () => {
-        // Attempt to open via custom scheme
-        window.location.href = 'snuggle://home';
-        
-        // Fallback timer: if app doesn't open, stay on page or show download
-        setTimeout(() => {
-            console.log('[MobileGateway] App failed to open, staying on gateway');
-        }, 1500);
-    };
-
-    const handleDismiss = () => {
-        setIsVisible(false);
-        localStorage.setItem('snuggle_gateway_dismissed', 'true');
+        window.location.href = window.location.href;
     };
 
     if (!isVisible) return null;
@@ -49,47 +42,57 @@ export const MobileGateway: React.FC = () => {
     return (
         <AnimatePresence>
             <motion.div 
-                initial={{ y: '100%' }}
-                animate={{ y: 0 }}
-                exit={{ y: '100%' }}
-                className="fixed inset-x-0 bottom-0 z-[100] p-4 pb-8 md:hidden"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                className="fixed inset-0 z-[9999] bg-white dark:bg-zinc-950 flex flex-col items-center justify-center p-6 text-center"
             >
-                <div className="bg-white dark:bg-zinc-900 rounded-[32px] p-6 shadow-2xl border border-gray-200 dark:border-white/10 flex flex-col items-center text-center">
-                    <button 
-                        onClick={handleDismiss}
-                        className="absolute top-4 right-4 p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200"
+                <div className="max-w-xs w-full">
+                    <motion.div 
+                        initial={{ scale: 0.8, y: 20 }}
+                        animate={{ scale: 1, y: 0 }}
+                        className="w-24 h-24 bg-[#00f5d4]/10 rounded-[32px] flex items-center justify-center mb-8 mx-auto"
                     >
-                        <X className="w-5 h-5" />
-                    </button>
+                        <Smartphone className="w-12 h-12 text-[#00f5d4]" />
+                    </motion.div>
 
-                    <div className="w-16 h-16 bg-[#00f5d4]/10 rounded-3xl flex items-center justify-center mb-4">
-                        <Smartphone className="w-8 h-8 text-[#00f5d4]" />
-                    </div>
-
-                    <h2 className="text-xl font-black text-gray-900 dark:text-white mb-2">
-                        Get the Snuggle App
-                    </h2>
+                    <h1 className="text-3xl font-black text-gray-900 dark:text-white mb-4 leading-tight">
+                        Snuggle is better <br/> in the app
+                    </h1>
                     
-                    <p className="text-gray-500 dark:text-gray-400 text-sm mb-6 px-4">
-                        Experience Snuggle at its best with notifications, faster performance, and more!
+                    <p className="text-gray-500 dark:text-zinc-400 text-lg mb-10 px-2">
+                        {status === 'REDIRECTING' 
+                            ? "Opening Snuggle..." 
+                            : "The web version is no longer supported on mobile. Please use our native app for the full experience."}
                     </p>
 
-                    <div className="flex flex-col gap-3 w-full">
-                        <button 
-                            onClick={handleOpenApp}
-                            className="w-full py-4 bg-[#00f5d4] text-black font-bold rounded-2xl flex items-center justify-center gap-2 active:scale-95 transition-transform shadow-lg shadow-[#00f5d4]/20"
-                        >
-                            <ExternalLink className="w-5 h-5" />
-                            Open in App
-                        </button>
+                    <div className="flex flex-col gap-4 w-full">
+                        {status === 'REDIRECTING' ? (
+                            <div className="flex items-center justify-center py-4">
+                                <div className="w-8 h-8 border-4 border-[#00f5d4] border-t-transparent rounded-full animate-spin"></div>
+                            </div>
+                        ) : (
+                            <>
+                                <a 
+                                    href={APK_DOWNLOAD_URL}
+                                    className="w-full py-5 bg-[#00f5d4] text-black font-black text-lg rounded-2xl flex items-center justify-center gap-3 active:scale-95 transition-transform shadow-xl shadow-[#00f5d4]/30"
+                                >
+                                    <Download className="w-6 h-6" />
+                                    Download App
+                                </a>
 
-                        <a 
-                            href={APK_DOWNLOAD_URL}
-                            className="w-full py-4 bg-gray-100 dark:bg-zinc-800 text-gray-900 dark:text-white font-bold rounded-2xl flex items-center justify-center gap-2 active:scale-95 transition-transform"
-                        >
-                            <Download className="w-5 h-5" />
-                            Download APK
-                        </a>
+                                <button 
+                                    onClick={handleOpenApp}
+                                    className="w-full py-4 text-gray-500 dark:text-zinc-500 font-bold hover:text-[#00f5d4] transition-colors flex items-center justify-center gap-2"
+                                >
+                                    <ExternalLink className="w-4 h-4" />
+                                    Already have the app?
+                                </button>
+                            </>
+                        )}
+                    </div>
+
+                    <div className="mt-12 text-zinc-400 dark:text-zinc-600 text-sm">
+                        v{APK_DOWNLOAD_URL.split('/').pop()?.replace('.apk', '') || 'Latest'}
                     </div>
                 </div>
             </motion.div>
