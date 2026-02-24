@@ -18,21 +18,17 @@ import { InteractionProvider } from './context/InteractionContext';
 const Login = React.lazy(() => import('./pages/Login'));
 const Signup = React.lazy(() => import('./pages/Signup'));
 const GoogleUsernameSetup = React.lazy(() => import('./pages/GoogleUsernameSetup'));
-const FeedMemories = React.lazy(() => import('./pages/FeedMemories'));
-const CreateMemory = React.lazy(() => import('./pages/CreateMemory'));
-const MemoryViewer = React.lazy(() => import('./pages/MemoryViewer'));
 const Messages = React.lazy(() => import('./pages/Messages'));
 const Profile = React.lazy(() => import('./pages/Profile'));
 const Chat = React.lazy(() => import('./pages/Chat'));
 const Settings = React.lazy(() => import('./pages/Settings'));
-const Create = React.lazy(() => import('./pages/Create')); 
 const Notifications = React.lazy(() => import('./pages/Notifications'));
-const Activities = React.lazy(() => import('./pages/Activities'));
-const Favourites = React.lazy(() => import('./pages/Favourites'));
-const RecentlyDeleted = React.lazy(() => import('./pages/RecentlyDeleted'));
-const PostDetail = React.lazy(() => import('./pages/PostDetail'));
 const ChatDetails = React.lazy(() => import('./pages/ChatDetails'));
+const CreateMoment = React.lazy(() => import('./pages/CreateMoment'));
+const ViewMoment = React.lazy(() => import('./pages/ViewMoment'));
 const BottomNav = React.lazy(() => import('./components/BottomNav'));
+import { App as CapApp } from '@capacitor/app';
+import { Capacitor } from '@capacitor/core';
 import Sidebar from './components/Sidebar';
 import CallOverlay from './components/CallOverlay';
 import { CallProvider } from './context/CallContext';
@@ -41,6 +37,7 @@ import { Updater } from './components/Updater';
 import { UpdateManager } from './services/UpdateManager';
 import PageTransition from './components/common/PageTransition';
 import SplashScreen from './components/common/SplashScreen';
+import { Camera } from '@capacitor/camera'; // For native permission check
 
 const LoadingFallback = () => (
   <div className="min-h-screen flex items-center justify-center bg-light-background dark:bg-dark-background">
@@ -66,11 +63,7 @@ const ChatWrapper = ({ currentUser }: { currentUser: User }) => {
   return <Chat currentUser={currentUser} otherUser={otherUser} onBack={() => navigate(-1)} />;
 };
 
-// Wrapper for Create to handle navigation
-const CreateWrapper = ({ currentUser }: { currentUser: User }) => {
-  const navigate = useNavigate();
-  return <Create currentUser={currentUser} onNavigate={() => navigate('/')} />;
-};
+
 
 // Wrapper for Settings to handle back navigation 
 const SettingsWrapper = ({
@@ -122,6 +115,47 @@ const AppContent = ({
   const location = useLocation();
   const navigate = useNavigate();
 
+  // Handle Native Back Button
+  useEffect(() => {
+    if (!Capacitor.isNativePlatform()) return;
+
+    const backButtonListener = CapApp.addListener('backButton', ({ canGoBack }: { canGoBack: boolean }) => {
+      if (canGoBack) {
+        window.history.back();
+      } else {
+        CapApp.exitApp();
+      }
+    });
+
+    return () => {
+      backButtonListener.then(h => h.remove());
+    };
+  }, []);
+
+  // Handle App State Changes (Re-sync on Resume)
+  useEffect(() => {
+    if (!Capacitor.isNativePlatform()) return;
+
+    const appStateListener = CapApp.addListener('appStateChange', ({ isActive }: { isActive: boolean }) => {
+      if (isActive) {
+        console.log('[Native] App back to active, checking for updates and re-syncing...');
+        UpdateManager.run();
+        // Trigger Presence update
+        if (currentUser?.id) {
+          DBService.updatePresence(currentUser.id, true).catch(console.error);
+        }
+      } else {
+        if (currentUser?.id) {
+          DBService.updatePresence(currentUser.id, false).catch(console.error);
+        }
+      }
+    });
+
+    return () => {
+      appStateListener.then(h => h.remove());
+    };
+  }, [currentUser?.id]);
+
   // Subscribe to unread messages count
   useEffect(() => {
     if (!currentUser?.id) return;
@@ -135,22 +169,32 @@ const AppContent = ({
 
     // Request permissions on launch
     const requestPermissions = async () => {
-      if ('Notification' in window && Notification.permission === 'default') {
-        const permission = await Notification.requestPermission();
-        if (permission === 'granted') {
-          DBService.requestNotificationPermission(currentUser.id);
+      if (Capacitor.isNativePlatform()) {
+        try {
+          // Check for native camera and mic permissions
+          const cameraPerm = await Camera.requestPermissions();
+          console.log('[Native] Camera Permission:', cameraPerm.camera);
+        } catch (e) {
+          console.warn('[Native] Permission request failed:', e);
         }
-      }
+      } else {
+        if ('Notification' in window && Notification.permission === 'default') {
+          const permission = await Notification.requestPermission();
+          if (permission === 'granted') {
+            DBService.requestNotificationPermission(currentUser.id);
+          }
+        }
 
-      try {
-        const hasAskedMedia = localStorage.getItem('snuggle_media_asked');
-        if (!hasAskedMedia) {
-          const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
-          stream.getTracks().forEach(t => t.stop());
-          localStorage.setItem('snuggle_media_asked', 'true');
+        try {
+          const hasAskedMedia = localStorage.getItem('snuggle_media_asked');
+          if (!hasAskedMedia) {
+            const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+            stream.getTracks().forEach(t => t.stop());
+            localStorage.setItem('snuggle_media_asked', 'true');
+          }
+        } catch (e) {
+          console.log('Media permission skipped/denied');
         }
-      } catch (e) {
-        console.log('Media permission skipped/denied');
       }
     };
     requestPermissions();
@@ -218,10 +262,9 @@ const AppContent = ({
 
   const isBottomNavHidden = location.pathname.includes('/chat') ||
     location.pathname === '/settings' ||
-    location.pathname === '/create';
+    location.pathname.startsWith('/moments');
 
-  const isScrollLocked = location.pathname.includes('/chat') ||
-    location.pathname === '/create';
+  const isScrollLocked = location.pathname.includes('/chat');
 
   return (
     <div className="h-[100dvh] w-screen overflow-hidden bg-white dark:bg-dark-bg">
@@ -248,24 +291,18 @@ const AppContent = ({
           <AnimatePresence mode="wait" initial={false}>
             <Suspense fallback={<LoadingFallback />}>
               <Routes location={location} key={location.pathname}>
-                {/* Home -> Feed (Memories) */}
-                <Route path="/" element={<PageTransition><FeedMemories /></PageTransition>} />
-                
-                {/* Messages */}
-                 <Route path="/messages" element={<PageTransition><Messages currentUser={currentUser} onChatSelect={(user) => navigate(`/chat/${user.id}`)} onUserClick={(userId) => navigate(`/profile/${userId}`)} /></PageTransition>} />
+                {/* Home -> Chats */}
+                <Route path="/" element={<PageTransition><Messages currentUser={currentUser} onChatSelect={(user) => navigate(`/chat/${user.id}`)} onUserClick={(userId) => navigate(`/profile/${userId}`)} /></PageTransition>} />
+                <Route path="/messages" element={<Navigate to="/" replace />} />
                 
                 <Route path="/chat/:userId" element={<PageTransition><ChatWrapper currentUser={currentUser} /></PageTransition>} />
                 <Route path="/chat/:chatId/details" element={<PageTransition><ChatDetails currentUser={currentUser} /></PageTransition>} />
                 <Route path="/profile" element={<PageTransition><Profile user={currentUser} currentUser={currentUser} isOwnProfile={true} onLogout={onLogout} /></PageTransition>} />
                 <Route path="/profile/:userId" element={<PageTransition><Profile currentUser={currentUser} isOwnProfile={false} /></PageTransition>} />
-                <Route path="/create" element={<PageTransition><CreateMemory /></PageTransition>} />
-                <Route path="/memory/:memoryId" element={<PageTransition><MemoryViewer /></PageTransition>} />
-                 <Route path="/notifications" element={<PageTransition><Notifications currentUser={currentUser} onUserClick={(userId) => navigate(`/profile/${userId}`)} /></PageTransition>} />
+                <Route path="/notifications" element={<PageTransition><Notifications currentUser={currentUser} onUserClick={(userId) => navigate(`/profile/${userId}`)} /></PageTransition>} />
                 <Route path="/settings" element={<PageTransition><SettingsWrapper currentUser={currentUser} onLogout={onLogout} onUpdateUser={onUpdateUser} onDeleteAccount={onDeleteAccount} onSwitchAccount={onSwitchAccount} onAddAccount={onAddAccount} /></PageTransition>} />
-                <Route path="/activities" element={<PageTransition><Activities currentUser={currentUser} onBack={() => navigate(-1)} /></PageTransition>} />
-                <Route path="/favourites" element={<PageTransition><Favourites currentUser={currentUser} onBack={() => navigate(-1)} /></PageTransition>} />
-                <Route path="/recently-deleted" element={<PageTransition><RecentlyDeleted currentUser={currentUser} onBack={() => navigate(-1)} /></PageTransition>} />
-                <Route path="/post/:postId" element={<PageTransition><PostDetail currentUser={currentUser} /></PageTransition>} />
+                <Route path="/moments/create" element={<PageTransition><CreateMoment currentUser={currentUser} /></PageTransition>} />
+                <Route path="/moments/view" element={<PageTransition><ViewMoment currentUser={currentUser} /></PageTransition>} />
                 <Route path="*" element={<Navigate to="/" replace />} />
               </Routes>
             </Suspense>
@@ -292,8 +329,7 @@ const App = () => {
   const [tempGoogleUser, setTempGoogleUser] = useState<any>(null);
 
   useEffect(() => {
-    // Hide splash screen after authentication check if it's already done
-    // but the SplashScreen component itself handles its own timer.
+    // Re-run updater logic on launch
     UpdateManager.run();
   }, []);
 
@@ -314,7 +350,6 @@ const App = () => {
       }
 
       setCurrentUser(user);
-      // DBService.setUserOnline(user.id, true); // Method doesn't exist - removed
     }
     setIsLoading(false);
   }, []);
@@ -353,7 +388,6 @@ const App = () => {
   const handleLogin = async (user: User) => {
     localStorage.setItem('currentUser', JSON.stringify(user));
     setCurrentUser(user);
-    // await DBService.setUserOnline(user.id, true); // Method doesn't exist - removed
   };
 
   const onLogout = async () => {

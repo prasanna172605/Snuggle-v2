@@ -1,10 +1,10 @@
 /**
  * Key Manager
  * High-level key lifecycle management for E2EE
- * Handles key generation, storage (IndexedDB), sync (Firestore), and derivation caching
+ * Handles key generation, storage (Capacitor Preferences), sync (Firestore), and derivation caching
  */
 
-import { get as idbGet, set as idbSet, del as idbDel } from 'idb-keyval';
+import { Preferences } from '@capacitor/preferences';
 import {
     generateKeyPair,
     exportPublicKey,
@@ -16,13 +16,13 @@ import {
     decryptPrivateKeyFromBackup,
     generateSafetyNumber,
 } from './encryptionService';
-import { db, auth } from './firebase';
+import { db } from './firebase';
 import { doc, getDoc, updateDoc, setDoc } from 'firebase/firestore';
 
 // ─── Constants ──────────────────────────────────────────────────────
 
-const IDB_PRIVATE_KEY = 'snuggle_e2ee_private_key';
-const IDB_PUBLIC_KEY = 'snuggle_e2ee_public_key';
+const STORAGE_PRIVATE_KEY = 'snuggle_e2ee_private_key';
+const STORAGE_PUBLIC_KEY = 'snuggle_e2ee_public_key';
 
 // ─── In-Memory Caches ──────────────────────────────────────────────
 
@@ -32,27 +32,51 @@ const sharedKeyCache = new Map<string, CryptoKey>();
 /** Cache remote public keys: Map<remoteUserId, CryptoKey> */
 const publicKeyCache = new Map<string, CryptoKey>();
 
-/** Local key pair (loaded from IndexedDB on init) */
+/** Local key pair (loaded from storage on init) */
 let localKeyPair: { publicKey: CryptoKey; privateKey: CryptoKey } | null = null;
+
+// ─── Utility: Storage Helpers ───────────────────────────────────────
+
+async function saveKey(keyName: string, value: any): Promise<void> {
+    await Preferences.set({
+        key: keyName,
+        value: JSON.stringify(value)
+    });
+}
+
+async function getKey(keyName: string): Promise<any | null> {
+    const { value } = await Preferences.get({ key: keyName });
+    if (!value) return null;
+    try {
+        return JSON.parse(value);
+    } catch (e) {
+        console.error(`[E2EE] Failed to parse stored key ${keyName}:`, e);
+        return null;
+    }
+}
+
+async function removeKey(keyName: string): Promise<void> {
+    await Preferences.remove({ key: keyName });
+}
 
 // ─── Initialization ─────────────────────────────────────────────────
 
 /**
  * Initialize E2EE keys for the current user
- * - Loads existing key pair from IndexedDB, OR
+ * - Loads existing key pair from secure storage, OR
  * - Generates a new key pair and uploads the public key to Firestore
  */
 export async function initializeKeys(userId: string): Promise<void> {
     try {
-        // Try loading existing keys from IndexedDB
-        const storedPrivateJwk = await idbGet(IDB_PRIVATE_KEY);
-        const storedPublicJwk = await idbGet(IDB_PUBLIC_KEY);
+        // Try loading existing keys from storage
+        const storedPrivateJwk = await getKey(STORAGE_PRIVATE_KEY);
+        const storedPublicJwk = await getKey(STORAGE_PUBLIC_KEY);
 
         if (storedPrivateJwk && storedPublicJwk) {
             const privateKey = await importPrivateKey(storedPrivateJwk);
             const publicKey = await importPublicKey(storedPublicJwk);
             localKeyPair = { publicKey, privateKey };
-            console.log('[E2EE] Loaded existing key pair from IndexedDB');
+            console.log('[E2EE] Loaded existing key pair from secure storage');
             
             // Ensure public key is synced to Firestore
             await syncPublicKeyToFirestore(userId, storedPublicJwk);
@@ -64,12 +88,12 @@ export async function initializeKeys(userId: string): Promise<void> {
         const keyPair = await generateKeyPair();
         localKeyPair = { publicKey: keyPair.publicKey, privateKey: keyPair.privateKey };
 
-        // Export and store in IndexedDB
+        // Export and store in Preferences
         const publicJwk = await exportPublicKey(keyPair.publicKey);
         const privateJwk = await exportPrivateKey(keyPair.privateKey);
 
-        await idbSet(IDB_PRIVATE_KEY, privateJwk);
-        await idbSet(IDB_PUBLIC_KEY, publicJwk);
+        await saveKey(STORAGE_PRIVATE_KEY, privateJwk);
+        await saveKey(STORAGE_PUBLIC_KEY, publicJwk);
 
         // Upload public key to Firestore
         await syncPublicKeyToFirestore(userId, publicJwk);
@@ -188,9 +212,9 @@ export async function rotateKeys(userId: string): Promise<void> {
     const publicJwk = await exportPublicKey(keyPair.publicKey);
     const privateJwk = await exportPrivateKey(keyPair.privateKey);
 
-    // Store in IndexedDB
-    await idbSet(IDB_PRIVATE_KEY, privateJwk);
-    await idbSet(IDB_PUBLIC_KEY, publicJwk);
+    // Store in Preferences
+    await saveKey(STORAGE_PRIVATE_KEY, privateJwk);
+    await saveKey(STORAGE_PUBLIC_KEY, publicJwk);
 
     // Sync to Firestore
     await syncPublicKeyToFirestore(userId, publicJwk);
@@ -246,15 +270,15 @@ export async function restoreKeyBackup(userId: string, passphrase: string): Prom
 
     // We need to re-derive the public key — regenerate the pair from scratch
     // Actually, we can derive the public key from the JWK since it contains both components
-    const publicJwk = { ...privateJwk };
+    const publicJwk = { ...privateJwk } as any;
     delete publicJwk.d; // Remove private component to get public JWK
     const publicKey = await importPublicKey(publicJwk);
 
     localKeyPair = { publicKey, privateKey };
 
-    // Store in IndexedDB
-    await idbSet(IDB_PRIVATE_KEY, privateJwk);
-    await idbSet(IDB_PUBLIC_KEY, publicJwk);
+    // Store in storage
+    await saveKey(STORAGE_PRIVATE_KEY, privateJwk);
+    await saveKey(STORAGE_PUBLIC_KEY, publicJwk);
 
     // Sync public key to Firestore
     await syncPublicKeyToFirestore(userId, publicJwk);
@@ -289,8 +313,8 @@ export async function clearE2EEData(): Promise<void> {
     localKeyPair = null;
     sharedKeyCache.clear();
     publicKeyCache.clear();
-    await idbDel(IDB_PRIVATE_KEY);
-    await idbDel(IDB_PUBLIC_KEY);
+    await removeKey(STORAGE_PRIVATE_KEY);
+    await removeKey(STORAGE_PUBLIC_KEY);
     console.log('[E2EE] All local E2EE data cleared');
 }
 

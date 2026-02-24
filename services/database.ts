@@ -43,8 +43,18 @@ import {
 
 
 // Types
-import { User, Post, Story, Comment as AppComment, CoreContent, ContentType, ContentStatus, ContentPriority, Chat, Message } from '../types';
+import { User, Chat, Message } from '../types';
 import type { Notification } from '../types';
+
+// Stub types for removed social features (methods still exist but are dead code)
+type Post = any;
+type Story = any;
+type AppComment = any;
+type CoreContent = any;
+type ContentType = any;
+type ContentStatus = any;
+type ContentPriority = any;
+type Memory = any;
 
 export interface Call {
     id: string;
@@ -952,7 +962,7 @@ export class DBService {
         return postSnap.exists() ? postSnap.data() as Post : null;
     }
 
-    static async getFeed(userId: string, maxPosts: number = 20): Promise<import('../types').Post[]> {
+    static async getFeed(userId: string, maxPosts: number = 20): Promise<any[]> {
         const user = await this.getUserById(userId);
         if (!user) return [];
         const userFollowing = user.following || []; // Safe access
@@ -978,12 +988,12 @@ export class DBService {
                     createdAt: data.createdAt.toMillis(),
                     timestamp: data.createdAt.toMillis(),
                     isDeleted: data.isDeleted
-                } as import('../types').Post;
+                } as any;
             })
             .filter(post => !post.isDeleted);
     }
 
-    static async getUserPosts(userId: string, maxPosts: number = 20): Promise<import('../types').Post[]> {
+    static async getUserPosts(userId: string, maxPosts: number = 20): Promise<any[]> {
         const q = query(
             collection(db, 'posts'),
             where('userId', '==', userId),
@@ -1005,7 +1015,7 @@ export class DBService {
                     comments: data.commentCount || 0,
                     timestamp: data.createdAt?.toMillis ? data.createdAt.toMillis() : Date.now(),
                     isDeleted: data.isDeleted
-                } as import('../types').Post;
+                } as any;
             })
             .filter(post => !post.isDeleted);
     }
@@ -1570,7 +1580,7 @@ export class DBService {
         }
     }
 
-    static async getPosts(): Promise<import('../types').Post[]> {
+    static async getPosts(): Promise<any[]> {
         const q = query(collection(db, 'posts'), orderBy('createdAt', 'desc'), limit(100));
         const querySnapshot = await getDocs(q);
         return querySnapshot.docs
@@ -1585,14 +1595,14 @@ export class DBService {
                     comments: data.commentCount || 0,
                     timestamp: data.createdAt.toMillis(),
                     isDeleted: data.isDeleted
-                } as import('../types').Post;
+                } as any;
             })
             .filter(post => !post.isDeleted);
     }
 
     // ==================== MEMORY OPERATIONS ====================
 
-    static async createMemory(memory: Omit<import('../types').Memory, 'id' | 'createdAt' | 'likesCount' | 'commentsCount'>): Promise<void> {
+    static async createMemory(memory: Omit<any, 'id' | 'createdAt' | 'likesCount' | 'commentsCount'>): Promise<void> {
         const memoryRef = doc(collection(db, 'memories'));
         const newMemory = {
             ...memory,
@@ -1606,7 +1616,7 @@ export class DBService {
         await setDoc(memoryRef, newMemory);
     }
 
-    static async getMemoriesFeed(lastId?: string, limitCount = 10): Promise<import('../types').Memory[]> {
+    static async getMemoriesFeed(lastId?: string, limitCount = 10): Promise<any[]> {
         // Fetch from 'memories' collection
         let memoriesQuery = query(
             collection(db, 'memories'),
@@ -1666,7 +1676,7 @@ export class DBService {
             const memory = {
                 ...data,
                 createdAt: data.createdAt?.toMillis?.() || (typeof data.createdAt === 'number' ? data.createdAt : Date.now())
-            } as import('../types').Memory;
+            } as any;
 
             // Hydrate User
             const user = await this.getUserById(memory.userId);
@@ -1700,7 +1710,7 @@ export class DBService {
         return hydratedMemories.sort((a, b) => b.createdAt - a.createdAt);
     }
 
-    static async getUserMemories(userId: string, limitCount = 20): Promise<import('../types').Memory[]> {
+    static async getUserMemories(userId: string, limitCount = 20): Promise<any[]> {
         // Fetch from 'memories' collection
         const memoriesQuery = query(
             collection(db, 'memories'),
@@ -1747,7 +1757,7 @@ export class DBService {
             const memory = {
                 ...data,
                 createdAt: data.createdAt?.toMillis?.() || (typeof data.createdAt === 'number' ? data.createdAt : Date.now())
-            } as import('../types').Memory;
+            } as any;
 
             // Hydrate User
             const user = await this.getUserById(memory.userId);
@@ -1794,7 +1804,7 @@ export class DBService {
             
             // Notification
             const memorySnap = await getDoc(memoryRef);
-            const memory = memorySnap.data() as import('../types').Memory;
+            const memory = memorySnap.data() as any;
             if (memory && memory.userId !== userId) {
                  await this.createNotification({
                     userId: memory.userId,
@@ -1831,7 +1841,7 @@ export class DBService {
         }
     }
 
-    static async getSavedMemories(userId: string): Promise<import('../types').Memory[]> {
+    static async getSavedMemories(userId: string): Promise<any[]> {
         const savedMemoriesRef = collection(db, 'users', userId, 'savedMemories');
         const savedSnap = await getDocs(savedMemoriesRef);
         
@@ -1846,10 +1856,10 @@ export class DBService {
         const uniqueIds = Array.from(new Set(memoryIds));
         
         const memories = await Promise.all(uniqueIds.map(id => this.getMemory(id)));
-        return memories.filter(m => m !== null) as import('../types').Memory[];
+        return memories.filter(m => m !== null) as any[];
     }
 
-    static async getMemory(memoryId: string): Promise<import('../types').Memory | null> {
+    static async getMemory(memoryId: string): Promise<any | null> {
         try {
             let docRef = doc(db, 'memories', memoryId);
             let docSnap = await getDoc(docRef);
@@ -1882,7 +1892,7 @@ export class DBService {
                 ...data,
                 createdAt: data.createdAt?.toMillis?.() || (typeof data.createdAt === 'number' ? data.createdAt : Date.now()),
                 _isLegacy: isLegacy
-            } as import('../types').Memory;
+            } as any;
 
             // Hydrate User
             const user = await this.getUserById(memory.userId);
@@ -1914,7 +1924,7 @@ export class DBService {
         }
     }
 
-    static async addMemoryComment(memoryId: string, commentData: Omit<import('../types').Comment, 'id' | 'createdAt'>): Promise<import('../types').Comment> {
+    static async addMemoryComment(memoryId: string, commentData: Omit<any, 'id' | 'createdAt'>): Promise<any> {
         const commentRef = doc(collection(db, 'memories', memoryId, 'comments'));
         const newComment = {
             id: commentRef.id,
@@ -1930,10 +1940,10 @@ export class DBService {
         return {
             ...newComment,
             createdAt: Date.now()
-        } as import('../types').Comment;
+        } as any;
     }
 
-    static async getMemoryComments(memoryId: string): Promise<import('../types').Comment[]> {
+    static async getMemoryComments(memoryId: string): Promise<any[]> {
         const q = query(
             collection(db, 'memories', memoryId, 'comments'),
             orderBy('createdAt', 'desc')
@@ -1943,7 +1953,7 @@ export class DBService {
             id: doc.id,
             ...doc.data(),
             createdAt: doc.data().createdAt?.toMillis?.() || Date.now()
-        })) as import('../types').Comment[];
+        })) as any[];
     }
 
     // ==================== MESSAGE OPERATIONS ====================
@@ -3259,3 +3269,4 @@ export class DBService {
 // ==================== CIRCLE SERVICE ====================
 
 // CircleService removed
+

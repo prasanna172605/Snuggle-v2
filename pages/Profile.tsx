@@ -2,8 +2,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { onAuthStateChanged } from 'firebase/auth';
-import { User, Memory } from '../types';
-import { Settings, Grid, Edit3, Share2, MessageCircle, UserPlus, UserMinus, UserCheck, Camera, Save, X as XIcon, MapPin, Calendar, Link as LinkIcon, Phone, Bookmark, Play, Film, UserSquare2, Heart, Twitter, Instagram, Search } from 'lucide-react';
+import { User } from '../types';
+import { Settings, Grid, Edit3, Share2, MessageCircle, UserPlus, UserMinus, UserCheck, Camera, Save, X as XIcon, MapPin, Calendar, Link as LinkIcon, Phone, Bookmark, Play, Film, UserSquare2, Heart, Twitter, Instagram, Search, ArrowLeft, ChevronRight } from 'lucide-react';
 import { DBService } from '../services/database';
 import { SkeletonProfile } from '../components/common/Skeleton';
 
@@ -18,7 +18,7 @@ const Profile: React.FC<ProfileProps> = ({ user: propUser, currentUser, isOwnPro
     const { userId } = useParams();
     const navigate = useNavigate();
     const [user, setUser] = useState<User | null>(isOwnProfile ? currentUser : null);
-    const [userMemories, setUserMemories] = useState<Memory[]>([]);
+    const [userMemories, setUserMemories] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [isFollowing, setIsFollowing] = useState(false);
     const [followLoading, setFollowLoading] = useState(false);
@@ -34,7 +34,45 @@ const Profile: React.FC<ProfileProps> = ({ user: propUser, currentUser, isOwnPro
     const [previewAvatar, setPreviewAvatar] = useState<string | null>(null);
     const [editError, setEditError] = useState('');
     const [activeTab, setActiveTab] = useState<'memories' | 'favourites' | 'tagged'>('memories');
-    const [savedMemories, setSavedMemories] = useState<Memory[]>([]);
+    const [savedMemories, setSavedMemories] = useState<any[]>([]);
+
+    // Search state
+    const [showUserSearch, setShowUserSearch] = useState(false);
+    const [searchQuery, setSearchQuery] = useState('');
+    const [searchResults, setSearchResults] = useState<User[]>([]);
+    const [searchLoading, setSearchLoading] = useState(false);
+    const searchInputRef = useRef<HTMLInputElement>(null);
+
+    // Debounced user search
+    useEffect(() => {
+        if (!searchQuery.trim()) {
+            setSearchResults([]);
+            return;
+        }
+        setSearchLoading(true);
+        const timer = setTimeout(async () => {
+            try {
+                const results = await DBService.searchUsers(searchQuery.trim().toLowerCase(), 15);
+                // Filter out current user
+                setSearchResults(results.filter(u => u.id !== currentUser.id));
+            } catch (e) {
+                console.error('Search failed:', e);
+            } finally {
+                setSearchLoading(false);
+            }
+        }, 350);
+        return () => clearTimeout(timer);
+    }, [searchQuery, currentUser.id]);
+
+    // Auto-focus search input when opened
+    useEffect(() => {
+        if (showUserSearch) {
+            setTimeout(() => searchInputRef.current?.focus(), 100);
+        } else {
+            setSearchQuery('');
+            setSearchResults([]);
+        }
+    }, [showUserSearch]);
 
     useEffect(() => {
         const loadProfile = async () => {
@@ -249,9 +287,83 @@ const Profile: React.FC<ProfileProps> = ({ user: propUser, currentUser, isOwnPro
     // --- View Mode UI (New Design) ---
     return (
         <div className="pb-28 bg-warm-neutral dark:bg-black min-h-screen">
+            {/* User Search Overlay */}
+            {showUserSearch && (
+                <div className="fixed inset-0 z-50 bg-white dark:bg-black flex flex-col">
+                    {/* Search Header */}
+                    <div className="flex items-center gap-3 p-4 border-b border-gray-200 dark:border-zinc-800">
+                        <button onClick={() => setShowUserSearch(false)} className="p-1">
+                            <ArrowLeft className="w-6 h-6 text-gray-700 dark:text-white" />
+                        </button>
+                        <div className="flex-1 relative">
+                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                            <input
+                                ref={searchInputRef}
+                                type="text"
+                                value={searchQuery}
+                                onChange={(e) => setSearchQuery(e.target.value)}
+                                placeholder="Search users by username..."
+                                className="w-full pl-10 pr-4 py-2.5 bg-gray-100 dark:bg-zinc-900 rounded-xl text-sm text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500/30"
+                            />
+                        </div>
+                        {searchQuery && (
+                            <button onClick={() => setSearchQuery('')} className="p-1">
+                                <XIcon className="w-5 h-5 text-gray-400" />
+                            </button>
+                        )}
+                    </div>
+
+                    {/* Search Results */}
+                    <div className="flex-1 overflow-y-auto">
+                        {searchLoading && (
+                            <div className="flex justify-center py-8">
+                                <div className="w-6 h-6 border-2 border-gray-300 border-t-blue-500 rounded-full animate-spin" />
+                            </div>
+                        )}
+                        {!searchLoading && searchQuery && searchResults.length === 0 && (
+                            <div className="text-center py-12 px-4">
+                                <Search className="w-10 h-10 text-gray-300 dark:text-zinc-600 mx-auto mb-3" />
+                                <p className="text-gray-500 dark:text-zinc-400 font-medium">No users found</p>
+                                <p className="text-gray-400 dark:text-zinc-500 text-sm mt-1">Try a different username</p>
+                            </div>
+                        )}
+                        {!searchLoading && !searchQuery && (
+                            <div className="text-center py-12 px-4">
+                                <Search className="w-10 h-10 text-gray-300 dark:text-zinc-600 mx-auto mb-3" />
+                                <p className="text-gray-400 dark:text-zinc-500 text-sm">Search for people to follow</p>
+                            </div>
+                        )}
+                        {searchResults.map((u) => (
+                            <button
+                                key={u.id}
+                                onClick={() => {
+                                    setShowUserSearch(false);
+                                    navigate(`/profile/${u.id}`);
+                                }}
+                                className="w-full flex items-center gap-3 px-4 py-3 hover:bg-gray-50 dark:hover:bg-zinc-900 transition-colors text-left"
+                            >
+                                <div className="w-12 h-12 rounded-full overflow-hidden bg-gray-200 dark:bg-zinc-800 flex-shrink-0">
+                                    {(u.avatar || u.photoURL) ? (
+                                        <img src={u.avatar || u.photoURL} alt={u.username} className="w-full h-full object-cover" />
+                                    ) : (
+                                        <div className="w-full h-full flex items-center justify-center text-gray-400 font-bold text-lg">
+                                            {(u.fullName || u.username || '?')[0].toUpperCase()}
+                                        </div>
+                                    )}
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                    <p className="font-semibold text-gray-900 dark:text-white truncate">{u.fullName || u.username}</p>
+                                    <p className="text-sm text-gray-500 dark:text-zinc-400 truncate">@{u.username}</p>
+                                </div>
+                                <ChevronRight className="w-4 h-4 text-gray-300 dark:text-zinc-600 flex-shrink-0" />
+                            </button>
+                        ))}
+                    </div>
+                </div>
+            )}
              {/* Header with Settings - Overlay on Cover Image */}
              <div className="absolute top-0 left-0 right-0 z-20 p-4 flex justify-between items-center text-white">
-                 <button onClick={() => navigate('/search')} className="p-2 bg-black/20 backdrop-blur-md rounded-full hover:bg-black/30 transition-colors">
+                 <button onClick={() => setShowUserSearch(true)} className="p-2 bg-black/20 backdrop-blur-md rounded-full hover:bg-black/30 transition-colors">
                      <Search className="w-6 h-6" />
                  </button>
                  {isOwnProfile && (

@@ -1,7 +1,6 @@
-import React, { useState } from 'react';
-import { NavLink, useLocation } from 'react-router-dom';
-import { MessageCircle, User, Plus, Bell, Image } from 'lucide-react';
-import UploadModal from './UploadModal';
+import React from 'react';
+import { NavLink } from 'react-router-dom';
+import { MessageCircle, User, Bell } from 'lucide-react';
 
 interface BottomNavProps {
   unreadCount: number;
@@ -9,8 +8,6 @@ interface BottomNavProps {
 }
 
 const BottomNav: React.FC<BottomNavProps> = ({ unreadCount, unreadMessagesCount = 0 }) => {
-  const [showUploadModal, setShowUploadModal] = useState(false);
-  const location = useLocation();
 
   const NavItem = ({ to, icon: Icon, label }: { to: string; icon: any; label: string }) => {
     return (
@@ -33,7 +30,7 @@ const BottomNav: React.FC<BottomNavProps> = ({ unreadCount, unreadMessagesCount 
                 aria-label="Unread notifications"
               />
             )}
-            {to === '/messages' && unreadMessagesCount > 0 && (
+            {to === '/' && unreadMessagesCount > 0 && (
               <span
                 className="absolute -top-1 -right-1 min-w-[16px] h-[16px] bg-snuggle-500 rounded-full flex items-center justify-center text-[10px] font-bold text-white border-2 border-white dark:border-black"
                 aria-label="Unread messages"
@@ -48,51 +45,15 @@ const BottomNav: React.FC<BottomNavProps> = ({ unreadCount, unreadMessagesCount 
   };
 
   return (
-    <>
-      <div className="fixed bottom-0 left-0 right-0 z-50 pointer-events-none">
-        
-        {/* SVG Background Layer */}
-        <div className="absolute bottom-0 w-full h-[80px] drop-shadow-[0_-5px_10px_rgba(0,0,0,0.05)] text-white dark:text-black pointer-events-auto">
-          <svg
-            viewBox="0 0 375 80"
-            className="w-full h-full fill-current"
-            preserveAspectRatio="none"
-          >
-            <path d="M0,0 L140,0 C155,0 160,35 187.5,35 C215,35 220,0 235,0 L375,0 L375,80 L0,80 Z" />
-          </svg>
-        </div>
-
-        {/* Content Layer */}
-        <div className="relative w-full h-[80px] max-w-lg mx-auto flex items-center justify-between px-6 pointer-events-auto">
-          
-          {/* Left Icons */}
-          <div className="flex gap-8 mb-2">
-            <NavItem to="/" icon={Image} label="Memories" />
-            <NavItem to="/messages" icon={MessageCircle} label="Messages" />
-          </div>
-
-          {/* Center FAB */}
-          <div className="absolute left-1/2 -top-6 -translate-x-1/2">
-             <button
-              onClick={() => setShowUploadModal(true)}
-              className="w-14 h-14 bg-snuggle-500 rounded-full flex items-center justify-center shadow-lg shadow-snuggle-500/40 transform hover:scale-105 active:scale-95 transition-all"
-              aria-label="Create post"
-            >
-              <Plus className="w-8 h-8 text-white" strokeWidth={2.5} />
-            </button>
-          </div>
-
-          {/* Right Icons */}
-          <div className="flex gap-8 mb-2">
-            <NavItem to="/notifications" icon={Bell} label="Notifications" />
-            <NavItem to="/profile" icon={User} label="Profile" />
-          </div>
-
+    <div className="fixed bottom-0 left-0 right-0 z-50">
+      <div className="bg-white/80 dark:bg-black/80 backdrop-blur-xl border-t border-gray-200/50 dark:border-white/10">
+        <div className="w-full max-w-lg mx-auto flex items-center justify-around px-6 py-2">
+          <NavItem to="/" icon={MessageCircle} label="Chats" />
+          <NavItem to="/notifications" icon={Bell} label="Notifications" />
+          <NavItem to="/profile" icon={User} label="Profile" />
         </div>
       </div>
-
-      {showUploadModal && <UploadModal onClose={() => setShowUploadModal(false)} />}
-    </>
+    </div>
   );
 };
 

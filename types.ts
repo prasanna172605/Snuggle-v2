@@ -115,45 +115,112 @@ export interface Chat {
   muted?: boolean; // Hydrated from user settings
 }
 
-export interface Post {
-  id: string;
-  userId: string;
-  username?: string;
-  userAvatar?: string;
-  caption: string;
-  imageUrl?: string;
-  likes: number | string[];  // Can be count or array of user IDs
-  likedBy?: string[];  // Array of user IDs who liked this post
-  likeCount?: number;  // Count from subcollection
-  comments: number;
-  mediaType?: 'image' | 'video';
-  commentCount?: number;
-  createdAt?: any;
-  timestamp?: number;
-  updatedAt?: any;
-  // Soft delete fields
-  deletedAt?: any;
-  isDeleted?: boolean;
-  tags?: string[];
-  favouritesCount?: number;  // Atomic counter for saves/favourites
-}
+// ==================== PULSE SYSTEM ====================
 
-export interface Story {
+export type PulseTheme = 'spark' | 'glow' | 'flame' | 'fusion' | 'infinity';
+
+// Level formula: level = floor(sqrt(totalEnergy / 50))
+// Level thresholds: L1=50, L2=200, L3=450, L4=800, L5=1250
+export const PULSE_LEVELS: { name: string; theme: PulseTheme; minEnergy: number; emoji: string }[] = [
+  { name: 'New',      theme: 'spark',    minEnergy: 0,    emoji: '🤝' },
+  { name: 'Spark',    theme: 'spark',    minEnergy: 50,   emoji: '✨' },
+  { name: 'Glow',     theme: 'glow',     minEnergy: 200,  emoji: '💫' },
+  { name: 'Flame',    theme: 'flame',    minEnergy: 450,  emoji: '🔥' },
+  { name: 'Fusion',   theme: 'fusion',   minEnergy: 800,  emoji: '💜' },
+  { name: 'Infinity', theme: 'infinity', minEnergy: 1250, emoji: '♾️' },
+];
+
+export const ENERGY_VALUES = {
+  text: 1,
+  image: 2,
+  voice: 3,
+  video_call: 4,
+  first_interaction_bonus: 5,
+  reply_within_2min: 2,
+  DAILY_CAP: 50,
+  MAX_TEXT_ENERGY_COUNT: 20,    // Only first 20 texts give energy
+  SPAM_WINDOW_SEC: 30,          // 5+ msgs in this window = spam
+  SPAM_MSG_THRESHOLD: 5,
+  STREAK_MULTIPLIER: 2,         // streakDays × 2
+  MAX_STREAK_BONUS: 30,
+  DECAY_INACTIVE_DAYS: 3,       // Days before decay starts
+  DECAY_RATE: 0.05,             // 5% per inactive day
+} as const;
+
+export interface Pulse {
   id: string;
-  userId: string;
-  username: string;
-  userAvatar?: string;
-  imageUrl: string;
+  user1Id: string;
+  user2Id: string;
+  pulseLevel: number;
+  pulseEnergy: number;        // Today's earned energy
+  totalEnergy: number;        // Lifetime accumulated
+  peakLevel: number;          // Highest level reached (never drops)
+  streakDays: number;
+  lastInteractionDate: string; // YYYY-MM-DD
+  lastInteractionTimestamp: number; // Unix ms — for reply-within-2min check
+  pulseTheme: PulseTheme;
+
+  // Anti-spam tracking
+  dailyTextCount: number;     // Texts counted today for energy
+  recentTimestamps: number[]; // Last N message timestamps for spam detection
+  lastMessageHash: string;    // Hash of last message to detect repeats
+
   createdAt: any;
-  expiresAt: any;
-  viewers?: string[];
-  views?: string[]; // duplicate field used in code
+  updatedAt: any;
 }
 
+// ==================== MOMENTS SYSTEM ====================
+
+export type MomentType = 'image' | 'video' | 'layout' | 'text';
+
+export interface Moment {
+  id: string;
+  userId: string;
+  type: MomentType;
+  mediaUrl?: string;
+  thumbnailUrl?: string;
+  textOverlay?: string;
+  mentions?: string[];
+  filter?: string;
+  viewCount: number;
+  createdAt: any;
+  expiresAt: any;        // 24h from creation
+}
+
+export interface MomentView {
+  momentId: string;
+  viewerId: string;
+  viewedAt: any;
+}
+
+export interface MomentLike {
+  momentId: string;
+  userId: string;
+  createdAt: any;
+}
+
+export interface MomentComment {
+  id: string;
+  momentId: string;
+  userId: string;
+  text: string;
+  createdAt: any;
+}
+
+// ==================== THOUGHTS (NOTES) ====================
+
+export interface Thought {
+  id: string;
+  userId: string;
+  text: string;           // Max 60 chars
+  emoji?: string;
+  createdAt: any;
+  expiresAt: any;         // 24h from creation
+}
 export interface Notification {
   id: string;
   userId: string;
-  type: 'info' | 'success' | 'warning' | 'error' | 'like' | 'comment' | 'follow' | 'mention' | 'system';
+  type: 'info' | 'success' | 'warning' | 'error' | 'like' | 'comment' | 'follow' | 'mention' | 'system' | 'pulse';
   title: string;
   message: string;
   data?: Record<string, any>;
@@ -173,50 +240,13 @@ export interface Notification {
   createdAt: any;
 }
 
-export interface Comment {
-  id: string;
-  postId: string;
-  userId: string;
-  username: string;
-  userAvatar?: string;
-  text: string;
-  parentCommentId?: string;  // For threaded replies
-  createdAt: any;
-}
-
-// Core Content Types
-export type ContentType = 'post' | 'story' | 'reel';
-export type ContentStatus = 'draft' | 'published' | 'archived';
-export type ContentPriority = 'normal' | 'high' | 'featured';
-
-export interface CoreContent {
-  id: string;
-  type: ContentType;
-  status: ContentStatus;
-  priority: ContentPriority;
-  authorId: string;
-  createdAt: number;
-  updatedAt: number;
-  title?: string;
-  description?: string;
-  tags?: string[];
-  metrics?: {
-    views: number;
-    likes: number;
-    shares: number;
-  };
-}
-
 export enum ViewState {
   LOGIN = 'LOGIN',
   SIGNUP = 'SIGNUP',
-  FEED = 'FEED',
   PROFILE = 'PROFILE',
   SETTINGS = 'SETTINGS',
   MESSAGES = 'MESSAGES',
-  CREATE = 'CREATE',
   NOTIFICATIONS = 'NOTIFICATIONS',
-  SEARCH = 'SEARCH',
   EDIT_PROFILE = 'EDIT_PROFILE',
   GOOGLE_USERNAME = 'GOOGLE_USERNAME'
 }
@@ -236,37 +266,6 @@ export interface SignalingMessage {
   deviceId?: string;
   answeringDeviceId?: string;
   callerId?: string;
-}
-// Memories System
-export type MemoryType = 'image' | 'video' | 'reel';
-
-export interface Memory {
-  id: string;
-  userId: string;
-  type: MemoryType;
-  caption: string;
-  mediaUrl: string;
-  thumbnailUrl?: string; // For videos/reels
-  aspectRatio?: number;
-  duration?: number;
-  
-  // Interactions
-  likesCount: number;
-  commentsCount: number;
-  
-  // Auth context (hydrated)
-  isLiked?: boolean;
-  isSaved?: boolean;
-  
-  // Timestamps
-  createdAt: any;
-  
-  // Hydrated fields
-  user?: User;
-
-  // Soft Delete
-  isDeleted?: boolean;
-  deletedAt?: any;
 }
 
 // App Update System

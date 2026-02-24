@@ -1,12 +1,16 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { User, Chat, Message } from '../types';
+import { User, Chat, Message, Thought } from '../types';
 import { DBService } from '../services/database';
 import { Search, Edit3, MoreVertical, X, Check, Users, ChevronRight } from 'lucide-react';
 import { SkeletonList } from '../components/common/Skeleton';
 import { onAuthStateChanged } from 'firebase/auth';
 import { auth } from '../services/firebase';
 import { AnimatePresence, motion } from 'framer-motion';
+import StoriesRow from '../components/StoriesRow';
+import ThoughtBubble from '../components/moments/ThoughtBubble';
+import ThoughtComposer from '../components/moments/ThoughtComposer';
+import { ThoughtService } from '../services/thoughtService';
 
 interface MessagesProps {
     currentUser: User;
@@ -24,6 +28,11 @@ const Messages: React.FC<MessagesProps> = ({ currentUser, onChatSelect, onUserCl
 
     // State for deleting chats
     const [chatToDelete, setChatToDelete] = useState<User | null>(null);
+
+    // Thoughts state
+    const [thoughts, setThoughts] = useState<{ thought: Thought; user: User }[]>([]);
+    const [ownThought, setOwnThought] = useState<Thought | null>(null);
+    const [showThoughtComposer, setShowThoughtComposer] = useState(false);
 
     const navigate = useNavigate();
 
@@ -48,6 +57,32 @@ const Messages: React.FC<MessagesProps> = ({ currentUser, onChatSelect, onUserCl
             if (chatUnsubscribe) chatUnsubscribe();
         };
     }, [currentUser?.id]);
+
+    // Load thoughts
+    useEffect(() => {
+        if (!currentUser?.id) return;
+        const loadThoughts = async () => {
+            try {
+                // Get own thought
+                const myThought = await ThoughtService.getThought(currentUser.id);
+                setOwnThought(myThought);
+
+                // Get chat users' thoughts
+                const chatUserIds = chats.map(c => c.otherUser?.id).filter(Boolean) as string[];
+                if (chatUserIds.length > 0) {
+                    const feedThoughts = await ThoughtService.getFeedThoughts(chatUserIds);
+                    const withUsers = feedThoughts.map(t => {
+                        const chat = chats.find(c => c.otherUser?.id === t.userId);
+                        return chat?.otherUser ? { thought: t, user: chat.otherUser } : null;
+                    }).filter(Boolean) as { thought: Thought; user: User }[];
+                    setThoughts(withUsers);
+                }
+            } catch (err) {
+                console.error('Failed to load thoughts:', err);
+            }
+        };
+        loadThoughts();
+    }, [currentUser?.id, chats]);
 
     // Search Logic
     useEffect(() => {
@@ -168,49 +203,41 @@ const Messages: React.FC<MessagesProps> = ({ currentUser, onChatSelect, onUserCl
                 )}
             </AnimatePresence>
 
-            {/* Header */}
-            <div className="flex items-center justify-between px-6 py-4">
-                <h1 className="text-3xl font-black text-snuggle-600 dark:text-snuggle-400">Messages</h1>
-                <div className="flex items-center gap-2">
-                    <button
-                        onClick={() => setIsEditMode(!isEditMode)}
-                        className={`p-2 rounded-full transition-all ${isEditMode ? 'bg-red-50 text-red-500' : 'hover:bg-gray-100 dark:hover:bg-white/10 text-gray-600 dark:text-gray-300'}`}
-                    >
-                        {isEditMode ? <Check className="w-5 h-5" /> : <Edit3 className="w-5 h-5" />}
+            {/* Header - Classic Style */}
+            <div className="flex items-center justify-between px-4 py-4 sticky top-0 bg-white dark:bg-black z-30">
+                <h1 className="text-2xl font-black text-[#00f5d4] tracking-tight">Messages</h1>
+                
+                <div className="flex items-center gap-5 text-gray-900 dark:text-white">
+                    <button onClick={() => setIsEditMode(!isEditMode)} className="hover:opacity-70 transition-opacity">
+                        <Edit3 className={`w-5 h-5 ${isEditMode ? 'text-[#00f5d4]' : ''}`} />
                     </button>
-                    <button
-                        onClick={() => setShowSearch(!showSearch)}
-                        className={`p-2 rounded-full transition-all ${showSearch ? 'bg-blue-50 text-blue-500' : 'hover:bg-gray-100 dark:hover:bg-white/10 text-gray-600 dark:text-gray-300'}`}
-                    >
-                        {showSearch ? <X className="w-5 h-5" /> : <Search className="w-5 h-5" />}
+                    <button onClick={() => setShowSearch(true)} className="hover:opacity-70 transition-opacity">
+                        <Search className="w-5 h-5" />
                     </button>
-                    <button className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-white/10 text-gray-600 dark:text-gray-300 transition-colors">
+                    <button className="hover:opacity-70 transition-opacity">
                         <MoreVertical className="w-5 h-5" />
                     </button>
                 </div>
             </div>
 
-            {/* Search Bar */}
+
+            {/* Snuggle Moments Row */}
+            <StoriesRow
+                currentUser={currentUser}
+                chatUsers={chats.map(c => c.otherUser).filter((u): u is User => !!u)}
+            />
+
+            {/* Thought Composer Modal */}
             <AnimatePresence>
-                {showSearch && (
-                    <motion.div
-                        initial={{ height: 0, opacity: 0 }}
-                        animate={{ height: 'auto', opacity: 1 }}
-                        exit={{ height: 0, opacity: 0 }}
-                        className="px-4 pb-2"
-                    >
-                        <div className="relative">
-                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-                            <input
-                                type="text"
-                                placeholder="Search messages..."
-                                value={searchQuery}
-                                onChange={(e) => setSearchQuery(e.target.value)}
-                                className="w-full pl-9 pr-4 py-2 bg-gray-100 dark:bg-white/5 border-none rounded-xl text-sm focus:ring-2 focus:ring-blue-500/20 transition-all outline-none text-gray-900 dark:text-white placeholder-gray-500"
-                                autoFocus
-                            />
-                        </div>
-                    </motion.div>
+                {showThoughtComposer && (
+                    <ThoughtComposer
+                        userId={currentUser.id}
+                        existingText={ownThought?.text}
+                        onClose={() => setShowThoughtComposer(false)}
+                        onPublished={() => {
+                            ThoughtService.getThought(currentUser.id).then(setOwnThought);
+                        }}
+                    />
                 )}
             </AnimatePresence>
 

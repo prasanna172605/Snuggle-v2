@@ -4,9 +4,9 @@ import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { User, Message } from '../types';
 import { DBService } from '../services/database';
+import { PulseService } from '../services/pulseService';
 import { DEFAULT_THEMES } from '../constants/themes';
 import { useCall } from '../context/CallContext';
-import CameraCapture from '../components/CameraCapture';
 import CallButton from '../components/CallButton';
 import CallHistoryMessage from '../components/CallHistoryMessage';
 import { ArrowLeft, Phone, Video, Send, Image as ImageIcon, Smile, Check, CheckCheck, Mic, Trash2, Camera, Trash, Plus, Copy } from 'lucide-react';
@@ -16,7 +16,7 @@ import { formatDateHeader } from '../utils/dateUtils';
 import { uploadFile, FileCategory, formatFileSize } from '../services/fileUpload';
 import MediaViewer from '../components/MediaViewer';
 import ForwardSheet from '../components/ForwardSheet';
-import MemoryPreview from '../components/MemoryPreview';
+import SnuggleCamera from '../components/moments/SnuggleCamera';
 import { toast } from 'sonner';
 
 interface ChatProps {
@@ -145,11 +145,6 @@ const Chat: React.FC<ChatProps> = ({ currentUser, otherUser, onBack }) => {
       setIsOtherUserTyping(isTyping);
     });
 
-    const interval = setInterval(() => {
-      loadMessages();
-      checkPresence();
-      // Only keep interval for messages/presence polling if needed, typing is now real-time
-    }, 2000);
 
     window.addEventListener('local-storage-update', handleStorageChange);
     window.addEventListener('local-storage-presence', handleStorageChange);
@@ -159,9 +154,6 @@ const Chat: React.FC<ChatProps> = ({ currentUser, otherUser, onBack }) => {
     return () => {
       unsubscribe(); // Cleanup real-time messages listener
       unsubscribeTyping(); // Cleanup typing listener
-      clearInterval(interval);
-      if (timerRef.current) clearInterval(timerRef.current);
-      if (visualizerIntervalRef.current) clearInterval(visualizerIntervalRef.current);
       window.removeEventListener('local-storage-update', handleStorageChange);
       window.removeEventListener('local-storage-presence', handleStorageChange);
       window.removeEventListener('storage', handleStorageChange);
@@ -261,6 +253,8 @@ const Chat: React.FC<ChatProps> = ({ currentUser, otherUser, onBack }) => {
 
     try {
       await DBService.sendMessage(newMessage);
+      // Track bond energy
+      PulseService.recordInteraction(currentUser.id, otherUser.id, 'text', inputText).catch(console.error);
     } catch (error) {
       console.error('Error sending message:', error);
       alert('Failed to send message: ' + error);
@@ -305,6 +299,8 @@ const Chat: React.FC<ChatProps> = ({ currentUser, otherUser, onBack }) => {
       };
 
       await DBService.sendMessage(newMessage);
+      // Track pulse energy for media
+      PulseService.recordInteraction(currentUser.id, otherUser.id, 'image').catch(console.error);
       setUploadProgress(null);
       toast.dismiss();
       toast.success('Sent!');
@@ -320,19 +316,44 @@ const Chat: React.FC<ChatProps> = ({ currentUser, otherUser, onBack }) => {
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
-  const handleCameraCapture = (dataUrl: string, type: 'image' | 'video') => {
-    const newMessage: Message = {
-      id: Date.now().toString(),
-      senderId: currentUser.id,
-      receiverId: otherUser.id,
-      text: dataUrl,
-      timestamp: Date.now(),
-      status: 'sent',
-      type: type as any,
-      read: false, // Added missing property
-    };
-    DBService.sendMessage(newMessage);
-    setShowCamera(false);
+  const handleCameraCapture = async (media: Blob, type: 'image' | 'video' | 'layout') => {
+    try {
+      setShowCamera(false);
+      toast.loading('Sharing media...');
+      
+      // 1. Upload to Cloudinary
+      const result = await uploadFile(
+        media,
+        currentUser.id,
+        undefined,
+        `camera_capture_${Date.now()}`
+      );
+
+      // 2. Send message
+      const newMessage: Message = {
+        id: Date.now().toString(),
+        senderId: currentUser.id,
+        receiverId: otherUser.id,
+        text: '',
+        timestamp: Date.now(),
+        status: 'sent',
+        type: (type === 'layout' ? 'image' : type) as any,
+        fileUrl: result.url,
+        fileName: result.originalName,
+        thumbnailUrl: result.thumbnailUrl,
+        read: false,
+      };
+
+      await DBService.sendMessage(newMessage);
+      PulseService.recordInteraction(currentUser.id, otherUser.id, type === 'video' ? 'video' : 'image').catch(console.error);
+      
+      toast.dismiss();
+      toast.success('Sent! ✨');
+    } catch (error: any) {
+      console.error('Camera capture upload failed:', error);
+      toast.dismiss();
+      toast.error('Failed to send media');
+    }
   };
 
   const handleEmojiClick = (emoji: string) => {
@@ -519,7 +540,6 @@ const Chat: React.FC<ChatProps> = ({ currentUser, otherUser, onBack }) => {
     >
       {/* Dark Overlay for readability if theme is applied */}
       {themeUrl && <div className="absolute inset-0 bg-black/40 pointer-events-none" />}
-      {showCamera && <CameraCapture onCapture={handleCameraCapture} onClose={() => setShowCamera(false)} />}
 
       {/* Floating Header */}
       <div className="flex-none mx-4 mt-2 px-4 py-3 flex items-center gap-3 backdrop-blur-xl bg-white/70 dark:bg-slate-800/70 shadow-sm border border-white/50 dark:border-white/10 rounded-full z-20 absolute top-0 left-0 right-0">
@@ -745,19 +765,15 @@ const Chat: React.FC<ChatProps> = ({ currentUser, otherUser, onBack }) => {
                                     />
                                   </div>
                                 ) : msg.type === 'post' && msg.post ? (
-                                  <MemoryPreview memoryId={msg.post.id} />
+                                  <div className="bg-white/10 rounded-lg p-3">
+                                    <p className="text-sm text-gray-300">Shared post</p>
+                                  </div>
                                 ) : (
                                   <div className="flex flex-col">
                                     <span className="text-[15px] leading-relaxed break-words whitespace-pre-wrap font-medium">
                                       {msg.text}
                                       <span className="inline-block w-12 h-0"></span>
                                     </span>
-                                    
-                                    {/* Link Preview for Memories */}
-                                    {msg.text && msg.text.includes('/memory/') && (() => {
-                                        const match = msg.text.match(/\/memory\/([a-zA-Z0-9_-]+)/);
-                                        return match ? <MemoryPreview memoryId={match[1]} /> : null;
-                                    })()}
                                   </div>
                                 )}
     
@@ -970,6 +986,27 @@ const Chat: React.FC<ChatProps> = ({ currentUser, otherUser, onBack }) => {
                 }
             }}
           />
+        )}
+      </AnimatePresence>
+
+      {/* Camera Overlay */}
+      <AnimatePresence>
+        {showCamera && (
+          <motion.div
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.9 }}
+            className="fixed inset-0 z-[100] bg-black"
+          >
+            <SnuggleCamera
+              onClose={() => setShowCamera(false)}
+              onCapture={handleCameraCapture}
+              onGalleryPick={() => {
+                setShowCamera(false);
+                fileInputRef.current?.click();
+              }}
+            />
+          </motion.div>
         )}
       </AnimatePresence>
 

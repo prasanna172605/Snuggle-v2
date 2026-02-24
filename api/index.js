@@ -9,16 +9,16 @@ import { dirname, join } from 'path';
 dotenv.config({ path: '.env.local' });
 
 // Initialize Firebase Admin (Global)
-import './backend/config/firebase.js';
+import '../server/backend/config/firebase.js';
 
 console.log('Environment check:');
 console.log('FIREBASE_PROJECT_ID:', process.env.FIREBASE_PROJECT_ID ? 'Set' : 'Missing');
 console.log('FIREBASE_CLIENT_EMAIL:', process.env.FIREBASE_CLIENT_EMAIL ? 'Set' : 'Missing');
 console.log('FIREBASE_PRIVATE_KEY:', process.env.FIREBASE_PRIVATE_KEY ? 'Set' : 'Missing');
 
-// Dynamic import to ensure process.env is populated first
-// Lazy load push handler to prevent startup crashes
-// const pushHandlerPromise = import('./send-push.js');
+// Explicitly handle legacy endpoints that were previously separate files
+// but now moved to server/ folder
+import loginHandler from '../server/auth/login.js';
 
 const app = express();
 const PORT = 3000;
@@ -31,32 +31,25 @@ app.use(cors({
     allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept', 'Origin']
 }));
 
-// 2. Handle Preflight Requests Explicitly
-// app.options('*', (req, res) => {
-//     res.setHeader('Access-Control-Allow-Origin', 'https://snuggle-73465.web.app');
-//     res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS, PUT, PATCH, DELETE');
-//     res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With');
-//     res.setHeader('Access-Control-Allow-Credentials', 'true');
-//     res.status(200).send();
-// });
-
 app.use(express.json());
 
+// Legacy Route: /api/auth/login (Previously api/auth/login.js)
+app.post('/api/auth/login', (req, res) => loginHandler(req, res));
+// Note: If there were others like 2fa, add them here
+
 // Middleware Import (local file)
-import { verifyToken, requireRole } from './backend/middleware/auth.js';
-import AppError from './backend/utils/AppError.js';
-import catchAsync from './backend/utils/catchAsync.js';
-import { apiLimiter, authLimiter } from './backend/middleware/rateLimiter.js';
-// We define error handler inline to ensure it definitely runs and has access to res
-// import { globalErrorHandler } from '../middleware/error.js'; 
+import { verifyToken, requireRole } from '../server/backend/middleware/auth.js';
+import AppError from '../server/backend/utils/AppError.js';
+import catchAsync from '../server/backend/utils/catchAsync.js';
+import { apiLimiter, authLimiter } from '../server/backend/middleware/rateLimiter.js';
 
 // Route Imports
-import authRouter from './backend/routes/auth.js';
-import userRouter from './backend/routes/users.js';
-import contentRouter from './backend/routes/content.js';
-import settingsRouter from './backend/routes/settings.js';
-import notificationRouter from './backend/routes/notifications.js';
-import mediaRouter from './backend/routes/media.js';
+import authRouter from '../server/backend/routes/auth.js';
+import userRouter from '../server/backend/routes/users.js';
+import contentRouter from '../server/backend/routes/content.js';
+import settingsRouter from '../server/backend/routes/settings.js';
+import notificationRouter from '../server/backend/routes/notifications.js';
+import mediaRouter from '../server/backend/routes/media.js';
 
 // Global API Rate Limiter
 app.use('/api/v1', apiLimiter);
@@ -77,7 +70,7 @@ app.use('/api/v1/media', mediaRouter);
 // Lazy-loaded Push Handler
 app.post('/api/send-push', verifyToken, catchAsync(async (req, res, next) => {
     console.log(`[Local Server] POST /api/send-push - Authenticated User: ${req.user.uid}`);
-    const { default: pushHandler } = await import('./send-push.js');
+    const { default: pushHandler } = await import('../server/send-push.js');
     await pushHandler(req, res);
 }));
 

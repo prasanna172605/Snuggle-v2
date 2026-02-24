@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { NavLink } from 'react-router-dom';
-import { Home, MessageCircle, User, Plus, Bell, Settings, LogOut, Menu, Moon, Sun, Bookmark, Users, Heart } from 'lucide-react';
+import { MessageCircle, User, Bell, Settings, LogOut, Menu, Moon, Sun, Users } from 'lucide-react';
 import { useTheme } from '../context/ThemeContext';
 
 interface SidebarProps {
@@ -43,7 +43,7 @@ const Sidebar: React.FC<SidebarProps> = ({ unreadCount, unreadMessagesCount = 0,
                 {to === '/notifications' && unreadCount > 0 && (
                     <span className="absolute top-0 right-0 w-2.5 h-2.5 bg-red-500 rounded-full border-2 border-white dark:border-dark-bg" />
                 )}
-                {to === '/messages' && unreadMessagesCount > 0 && (
+                {to === '/' && unreadMessagesCount > 0 && (
                     <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] bg-red-500 rounded-full flex items-center justify-center text-[10px] font-bold text-white border-2 border-white dark:border-dark-bg">
                         {unreadMessagesCount > 9 ? '9+' : unreadMessagesCount}
                     </span>
@@ -52,7 +52,6 @@ const Sidebar: React.FC<SidebarProps> = ({ unreadCount, unreadMessagesCount = 0,
             <span className="font-medium text-base">{label}</span>
         </NavLink>
     );
-
 
     return (
         <aside className="hidden md:flex flex-col w-64 h-full flex-shrink-0 bg-white/60 dark:bg-black/60 backdrop-blur-xl border-r border-white/20 dark:border-white/10 py-6 px-4 z-40">
@@ -83,11 +82,9 @@ const Sidebar: React.FC<SidebarProps> = ({ unreadCount, unreadMessagesCount = 0,
 
             {/* Navigation */}
             <nav className="flex-1 space-y-2">
-                <NavItem to="/" icon={Home} label="Memories" />
-                <NavItem to="/messages" icon={MessageCircle} label="Messages" />
+                <NavItem to="/" icon={MessageCircle} label="Chats" />
                 <NavItem to="/notifications" icon={Bell} label="Notifications" />
                 <NavItem to="/profile" icon={User} label="Profile" />
-                <NavItem to="/create" icon={Plus} label="Create" />
             </nav>
 
             {/* Bottom Menu Area */}
@@ -98,14 +95,6 @@ const Sidebar: React.FC<SidebarProps> = ({ unreadCount, unreadMessagesCount = 0,
                         <NavLink to="/settings" className={({ isActive }) => `flex items-center gap-3 px-4 py-3 hover:bg-gray-50 dark:hover:bg-dark-border transition-colors ${isActive ? 'text-snuggle-600 dark:text-snuggle-300' : ''}`}>
                             <Settings className="w-5 h-5" />
                             <span className="font-medium">Settings</span>
-                        </NavLink>
-                        <NavLink to="/activities" className={({ isActive }) => `flex items-center gap-3 px-4 py-3 hover:bg-gray-50 dark:hover:bg-dark-border transition-colors ${isActive ? 'text-snuggle-600 dark:text-snuggle-300' : ''}`}>
-                            <Heart className="w-5 h-5" />
-                            <span className="font-medium">Your Activity</span>
-                        </NavLink>
-                        <NavLink to="/favourites" className={({ isActive }) => `flex items-center gap-3 px-4 py-3 hover:bg-gray-50 dark:hover:bg-dark-border transition-colors ${isActive ? 'text-snuggle-600 dark:text-snuggle-300' : ''}`}>
-                            <div className="w-5 h-5 flex items-center justify-center text-lg leading-none">⭐</div>
-                            <span className="font-medium">Favourites</span>
                         </NavLink>
                         <div className="flex items-center gap-3 px-4 py-3 hover:bg-gray-50 dark:hover:bg-dark-border transition-colors cursor-pointer" onClick={toggleTheme}>
                             {isDarkMode ? <Moon className="w-5 h-5" /> : <Sun className="w-5 h-5" />}
