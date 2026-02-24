@@ -2541,6 +2541,36 @@ export class DBService {
         return unsubscribe;
     }
 
+
+    static async getRecentChatUsers(userId: string, limitCount: number = 20): Promise<import('../types').User[]> {
+        try {
+            const q = query(
+                collection(db, 'chats'),
+                where('participants', 'array-contains', userId),
+                orderBy('lastMessageTime', 'desc'),
+                limit(limitCount)
+            );
+
+            const snapshot = await getDocs(q);
+            const userIds = new Set<string>();
+
+            snapshot.docs.forEach(doc => {
+                const data = doc.data();
+                if (data.participants && Array.isArray(data.participants)) {
+                    const otherId = data.participants.find((p: string) => p !== userId);
+                    if (otherId) userIds.add(otherId);
+                }
+            });
+
+            if (userIds.size === 0) return [];
+
+            return await this.getUsersByIds(Array.from(userIds));
+        } catch (error) {
+            console.error('[DB] Error fetching recent chat users:', error);
+            return [];
+        }
+    }
+
     // ==================== STORY OPERATIONS ====================
 
     static async createStory(storyData: Omit<Story, 'id' | 'createdAt' | 'expiresAt' | 'viewers'>): Promise<Story> {

@@ -63,16 +63,25 @@ const ShareSheet: React.FC<ShareSheetProps> = ({ isOpen, onClose, content, curre
     const loadRecentChats = async () => {
         setLoading(true);
         try {
-            // Use currentUser.following to get suggested users
-            const followingIds = currentUser.following || [];
-            
-            if (followingIds.length === 0) {
-                setRecentChats([]);
-                return;
-            }
+            // 1. Try to get recent chats first (Better suggestions)
+            let users = await DBService.getRecentChatUsers(currentUser.id, 20);
 
-            // Fetch users
-            const users = await DBService.getUsersByIds(followingIds.slice(0, 20)); // Limit to 20
+            // 2. If we don't have enough recent chats, fill with following
+            if (users.length < 10) {
+                 const followingIds = currentUser.following || [];
+                 if (followingIds.length > 0) {
+                     // Filter out already present users
+                     const existingIds = new Set(users.map(u => u.id));
+                     const needed = 20 - users.length;
+                     const remainingIds = followingIds.filter(id => !existingIds.has(id)).slice(0, needed);
+                     
+                     if (remainingIds.length > 0) {
+                         const followingUsers = await DBService.getUsersByIds(remainingIds);
+                         users = [...users, ...followingUsers];
+                     }
+                 }
+            }
+            
             setRecentChats(users);
         } catch (error) {
             console.error("Failed to load suggested shares", error);
